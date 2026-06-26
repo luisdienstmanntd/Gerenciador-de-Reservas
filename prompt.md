@@ -2,7 +2,6 @@
 
 **README versão:** 4.0  
 **Data:** 2026-02-22  
-**Finalidade:** Documento completo para continuidade de desenvolvimento por IA ou humano. Cole este arquivo no início de qualquer novo chat. Contém arquitetura, regras críticas, funções, histórico de bugs, estado atual de todos os arquivos e lista de manutenções pendentes com ordem de execução.
 
 ---
 
