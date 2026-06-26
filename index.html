@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Osteria Di Lucca - Gestão</title>
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#1e1e1e">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <!-- ========================================================
+         TELA DE LOGIN — aparece só se não houver usuário salvo
+         Salva em localStorage, persiste entre sessões no dispositivo
+         ======================================================== -->
+    <div id="telaLogin" style="
+        display: none;
+        position: fixed; inset: 0; z-index: 9999;
+        background: #121212;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+    ">
+        <div style="text-align: center; margin-bottom: 6px;">
+            <img src="data:image/jpeg;base64,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zo0noW7WVYQXbgz/ANsxj/cxfxqkq78GD/RmL/7mL+NUhBljbkAddPivoPs7kFQK7DXHSohJj8pIR2bf10VEotHZrd0F3vG3zspThvHnU1VDPkYSx7SXWINibO2NtieiCFc0gkHQjQ+o0KwrX7TsJFPiEuQfVy2nZbbLL2tPfdVRAREQEREBERAREQeo3lpDmktI2IJBHoRqF7qKmSQ3ke958XuLj8SVqRAWWkggjQjUEbj0KwiDbNUyP773u/E4n8ytSIgLcauQtyGR5Z93M7L7m3stKIC9McQbgkHxC8q48J8EitmjiMxjzgm4YDawvtcKM2ivVC1611E91WkrpXG7pZHHxL3E/Ela5Z3utmc51trkm197X2Vz444CGHysjE5kzMzXLA22traOKpUjbEjwWYtEzpavw+SlK5LR9T0YBtqFtnqpH25kj322zOcbDwFzotKLLQ3x1srW5GySBh+yHuDf3b2WhEQboquRoLWSPa07hrnAH1ANitKIg2x1D2izXOA8ASFrBO/VYRBunq5H25kj322zOc63kLnRaURAREQEREBERAREQEREBEWbIMIstaSbAXPgFhAREQF9c9k7wayCxv2XfwlfI11YdiM1O8SU8j43jZzTYqF6c2vTVkx88xPh9g9tx/8AFRX/ALL/AJivjExu4+pXZi2NVNU4OqpnyuAsC47Dw0XAkV1My6Wfi/kwUw6/IiIpqQiLIBOwQYRFkhBhERAREQEREBERAREQEREBERAREQdFFU8txda5yuDfIuFs3uBK9QvYInXsXlzQ0EagC5c78guVEHY6j+o5tzfmZCPAFuYFaqimczJf7bWvA8nbXWrObWubb26X8bLY+pc5wc7UjLb0bYAfJBh9M8PMZac4NrDU38NFra0nYban0810xVzhLzvtZ8/zuR/Je6atDJXPDey4kFv7Lt2/D8gg4l6LDa5BsetkeRc228/DzXXUV2eJsZbctAAcdwBfsi24167IOd8DmuDXDKdN+l7b+G62Ooy2QRyEMN7EnYeenReayp5jsxFjZo/dAH8liWqe7Lc9wWaeoF7gX30QdkdE1spY8tILCWOzNy3tdpuDboRr4rXQV3KzAta4OtcFtxf1uCNCdiuJzidTqsIMlYREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERAREQEREBERB//2Q==" alt="Osteria Di Lucca" style="width: 200px; height: 200px; border-radius: 50%; object-fit: cover; margin-bottom: 8px;">
+
+        </div>
+
+        <input id="inputUsuario" type="text" placeholder="Usuário"
+            autocomplete="username"
+            style="
+                width: 260px; padding: 14px 16px;
+                border: 1px solid rgba(255,255,255,0.15); border-radius: 10px;
+                background: rgba(255,255,255,0.07); color: #fff;
+                font-size: 1rem; text-align: center; outline: none;
+            "
+            onkeydown="if(event.key==='Enter') document.getElementById('inputSenha').focus()"
+        >
+
+        <input id="inputSenha" type="password" placeholder="Senha"
+            autocomplete="current-password"
+            style="
+                width: 260px; padding: 14px 16px;
+                border: 1px solid rgba(255,255,255,0.15); border-radius: 10px;
+                background: rgba(255,255,255,0.07); color: #fff;
+                font-size: 1rem; text-align: center; outline: none;
+            "
+            onkeydown="if(event.key==='Enter') confirmarLogin()"
+        >
+
+        <button onclick="confirmarLogin()" style="
+            width: 260px; padding: 14px;
+            background: #c9a96e; color: #1a1a1a;
+            border: none; border-radius: 10px;
+            font-size: 1rem; font-weight: 900; cursor: pointer; letter-spacing: 1px;
+            margin-top: 4px;
+        ">ENTRAR</button>
+
+        <div id="loginErro" style="color: #e74c3c; font-size: 0.85rem; display: none; text-align: center;">
+            Usuário ou senha incorretos.
+        </div>
+    </div>
+
+    <script>
+        // ✅ Credenciais válidas — formato: 'usuario': 'senha'
+        const USUARIOS_VALIDOS = {
+            'recepcao': 'usuario1',
+            'osteria':  'usuario2',
+            'gerencia': 'usuario 3'
+        };
+
+        // ✅ Verifica login ao carregar — antes de qualquer módulo ES6
+        (function() {
+            const usuario = localStorage.getItem('usuario_nome');
+            if (!usuario) {
+                const tela = document.getElementById('telaLogin');
+                tela.style.display = 'flex';
+                setTimeout(() => document.getElementById('inputUsuario').focus(), 100);
+            }
+        })();
+
+        function confirmarLogin() {
+            const usuario = document.getElementById('inputUsuario').value.trim().toLowerCase();
+            const senha   = document.getElementById('inputSenha').value;
+            const erroEl  = document.getElementById('loginErro');
+
+            // Valida credenciais
+            if (!usuario || !senha || USUARIOS_VALIDOS[usuario] !== senha) {
+                erroEl.style.display = 'block';
+                document.getElementById('inputSenha').value = '';
+                document.getElementById('inputSenha').focus();
+                return;
+            }
+
+            erroEl.style.display = 'none';
+            localStorage.setItem('usuario_nome', usuario);
+            document.getElementById('telaLogin').style.display = 'none';
+        }
+
+        // ✅ Expõe função global para trocar usuário (útil nas configurações)
+        function trocarUsuario() {
+            localStorage.removeItem('usuario_nome');
+            location.reload();
+        }
+    </script>
+
+    <!-- SIDEBAR -->
+
+    <div class="sidebar" id="sidebar">
+
+        <!-- Cabeçalho: avatar + brand -->
+        <div class="sb-header">
+
+            <!-- Botão ☰ — visível só em mobile/tablet via CSS -->
+            <button id="sb-btn-toggle" title="Menu" aria-label="Abrir menu">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"
+                     width="20" height="20">
+                    <line x1="3" y1="6"  x2="21" y2="6"/>
+                    <line x1="3" y1="12" x2="21" y2="12"/>
+                    <line x1="3" y1="18" x2="21" y2="18"/>
+                </svg>
+            </button>
+
+            <div class="sb-avatar">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="22" height="22">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                    <circle cx="12" cy="7" r="4"/>
+                </svg>
+            </div>
+
+            <div class="sb-brand">
+                <span class="sb-title">Osteria Di Lucca</span>
+                <span class="sb-sub" id="nomeUsuarioSidebar">—</span>
+            </div>
+
+        </div>
+
+        <!-- Nav items -->
+        <nav class="sb-nav">
+
+            <button class="nav-item" data-tela="home" onclick="navegar('home'); _sbAtivo(this)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                    <polyline points="9 22 9 12 15 12 15 22"/>
+                </svg>
+                <span>Início</span>
+            </button>
+
+            <button class="nav-item" data-tela="reservas" onclick="navegar('reservas'); _sbAtivo(this)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                    <line x1="16" y1="2" x2="16" y2="6"/>
+                    <line x1="8" y1="2" x2="8" y2="6"/>
+                    <line x1="3" y1="10" x2="21" y2="10"/>
+                </svg>
+                <span>Reservas</span>
+            </button>
+
+            <button class="nav-item" data-tela="dashboard" onclick="navegar('dashboard'); _sbAtivo(this)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+                    <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+                    <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+                </svg>
+                <span>Dashboard</span>
+            </button>
+
+            <button class="nav-item" data-tela="roomservice" onclick="navegar('roomservice'); _sbAtivo(this)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+                    <path d="M18 8h1a4 4 0 0 1 0 8h-1"/>
+                    <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/>
+                    <line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/>
+                </svg>
+                <span>Room Service</span>
+            </button>
+
+            <button class="nav-item" data-tela="logs" onclick="navegar('logs'); _sbAtivo(this)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <line x1="16" y1="13" x2="8" y2="13"/>
+                    <line x1="16" y1="17" x2="8" y2="17"/>
+                </svg>
+                <span>Log</span>
+            </button>
+
+            <button class="nav-item" data-tela="configuracoes" onclick="navegar('configuracoes'); _sbAtivo(this)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+                    <circle cx="12" cy="12" r="3"/>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                </svg>
+                <span>Configurações</span>
+            </button>
+
+            <button class="nav-item" onclick="alternarTelaCheia()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+                    <polyline points="15 3 21 3 21 9"/>
+                    <polyline points="9 21 3 21 3 15"/>
+                    <line x1="21" y1="3" x2="14" y2="10"/>
+                    <line x1="3" y1="21" x2="10" y2="14"/>
+                </svg>
+                <span>Tela Cheia</span>
+            </button>
+
+        </nav>
+
+        <!-- Rodapé: Logout + Tema -->
+        <div class="sb-footer">
+            <div class="sb-divider"></div>
+
+            <button class="nav-item nav-logout" onclick="trocarUsuario()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                    <polyline points="16 17 21 12 16 7"/>
+                    <line x1="21" y1="12" x2="9" y2="12"/>
+                </svg>
+                <span>Logout</span>
+            </button>
+
+            <div class="sb-theme-row">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                </svg>
+                <span>Dark Mode</span>
+                <label class="switch">
+                    <input type="checkbox" id="theme-switch" onclick="alternarTema()">
+                    <span class="slider-round"></span>
+                </label>
+            </div>
+        </div>
+
+    </div><!-- fim .sidebar -->
+
+    <script>
+        /* Marca item ativo */
+        function _sbAtivo(el) {
+            document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+            if (el) el.classList.add('active');
+        }
+        /* Preenche nome e ativa Home por padrão */
+        (function() {
+            function init() {
+                var nome = localStorage.getItem('usuario_nome') || '—';
+                var el = document.getElementById('nomeUsuarioSidebar');
+                if (el) el.textContent = nome;
+                var primeiro = document.querySelector('.nav-item[data-tela="home"]');
+                if (primeiro) primeiro.classList.add('active');
+            }
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', init);
+            } else { init(); }
+        })();
+    </script>
+
+    <div class="main-content">
+        
+        <div class="menu-overlay" id="overlay"></div>
+
+        <!-- ═══════════════════════════════════════════════════════════════
+             TELA HOME — Dashboard inicial do dia
+             ═══════════════════════════════════════════════════════════════ -->
+        <div id="tela-home" class="view" style="padding: 8px 16px 16px; overflow-y: auto;">
+
+            <!-- Header da tela -->
+            <div class="home-header">
+                <div>
+                    <h2 class="home-titulo">Bem-vindo</h2>
+                    <p class="home-subtitulo" id="home-data-label">—</p>
+                </div>
+
+            </div>
+
+            <!-- KPI Cards -->
+            <div class="home-kpis" id="home-kpis-grid">
+                <div class="home-kpi-card" style="--kpi-color: #4a90e2;">
+                    <div class="home-kpi-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    </div>
+                    <div class="home-kpi-info">
+                        <span class="home-kpi-label">Total PAX</span>
+                        <b class="home-kpi-valor" id="home-kpi-pax">—</b>
+                    </div>
+                </div>
+
+                <div class="home-kpi-card" style="--kpi-color: #4a90e2;">
+                    <div class="home-kpi-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    </div>
+                    <div class="home-kpi-info">
+                        <span class="home-kpi-label">Hóspedes</span>
+                        <b class="home-kpi-valor" id="home-kpi-hospedes">—</b>
+                    </div>
+                </div>
+
+                <div class="home-kpi-card" style="--kpi-color: #f39c12;">
+                    <div class="home-kpi-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                    </div>
+                    <div class="home-kpi-info">
+                        <span class="home-kpi-label">Externos</span>
+                        <b class="home-kpi-valor" id="home-kpi-externos">—</b>
+                    </div>
+                </div>
+
+                <div class="home-kpi-card" style="--kpi-color: #95a5a6;">
+                    <div class="home-kpi-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
+                    </div>
+                    <div class="home-kpi-info">
+                        <span class="home-kpi-label">Passantes</span>
+                        <b class="home-kpi-valor" id="home-kpi-passantes">—</b>
+                    </div>
+                </div>
+
+                <div class="home-kpi-card" style="--kpi-color: #9b59b6;">
+                    <div class="home-kpi-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
+                    </div>
+                    <div class="home-kpi-info">
+                        <span class="home-kpi-label">Room</span>
+                        <b class="home-kpi-valor" id="home-kpi-roomservice">—</b>
+                    </div>
+                </div>
+
+                <div class="home-kpi-card" style="--kpi-color: #e67e22;">
+                    <div class="home-kpi-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                    </div>
+                    <div class="home-kpi-info">
+                        <span class="home-kpi-label">Crianças</span>
+                        <b class="home-kpi-valor" id="home-kpi-criancas">—</b>
+                    </div>
+                </div>
+                <div class="home-kpi-card" style="--kpi-color: #d4a373;">
+                    <div class="home-kpi-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path d="M8 12h8M12 8v8"/></svg>
+                    </div>
+                    <div class="home-kpi-info">
+                        <span class="home-kpi-label">Degustação</span>
+                        <b class="home-kpi-valor" id="home-kpi-degustacao">—</b>
+                    </div>
+                </div>
+            </div><!-- fim home-kpis-grid -->
+            <!-- KPI Ticker mobile/tablet: preenchido via JS -->
+            <div id="kpi-ticker-wrap">
+                <div id="kpi-ticker-inner"></div>
+            </div>
+
+            <!-- Grid principal: gráficos + lista -->
+            <div class="home-grid">
+
+                <!-- Gauge: taxa de ocupação -->
+                <div class="home-card">
+                    <h3 class="home-card-titulo">Taxa de Ocupação</h3>
+                    <div style="position: relative; height: 160px;">
+                        <canvas id="home-chart-gauge"></canvas>
+                        <div style="
+                            position: absolute; inset: 0;
+                            display: flex; align-items: center; justify-content: center;
+                            pointer-events: none;
+                        ">
+                            <span id="home-gauge-pct" style="font-size:1.8rem; font-weight:900; color: var(--texto-principal, #fff);">0%</span>
+                        </div>
+                    </div>
+                    <div id="home-gauge-legenda" style="display:flex; justify-content:center; gap:20px; margin-top:10px; font-size:0.75rem;">
+                        <span id="home-gauge-leg-ocupado" style="display:flex; align-items:center; gap:5px;">
+                            <span style="width:10px;height:10px;border-radius:2px;display:inline-block;background:#6c63ff;"></span>
+                            Ocupado
+                        </span>
+                        <span id="home-gauge-leg-livre" style="display:flex; align-items:center; gap:5px;">
+                            <span style="width:10px;height:10px;border-radius:2px;display:inline-block;background:rgba(255,255,255,0.15);"></span>
+                            Livre
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Barras: PAX por horário -->
+                <div class="home-card">
+                    <h3 class="home-card-titulo">PAX por Horário</h3>
+                    <div style="position: relative; height: 200px;">
+                        <canvas id="home-chart-barras"></canvas>
+                    </div>
+                </div>
+
+                <!-- Giro de Mesa -->
+                <div class="home-card home-card-lista">
+                    <div style="display:flex; align-items:baseline; justify-content:space-between; margin-bottom:14px;">
+                        <h3 class="home-card-titulo" style="margin-bottom:0;">Giro de Mesa</h3>
+                        <span id="home-giro-tempo-label" style="font-size:0.72rem; font-weight:700; letter-spacing:.8px; opacity:.5;"></span>
+                    </div>
+                    <div id="home-giro"></div>
+                </div>
+
+            </div>
+
+            <!-- Row: Previsão (esq) + Observações (dir) -->
+            <div class="home-row-dupla">
+
+                <div class="home-card">
+                    <h3 class="home-card-titulo">Previsão Próximos 7 dias</h3>
+                    <div style="position: relative; height: 160px;">
+                        <canvas id="home-chart-semana"></canvas>
+                    </div>
+                </div>
+
+                <div class="home-card home-card-obs">
+                    <h3 class="home-card-titulo">Observações da Noite</h3>
+                    <div id="home-obs-lista"></div>
+                </div>
+
+            </div>
+
+        </div>
+        <!-- fim tela-home -->
+
+        <!-- TELA DE RESERVAS -->
+        <div id="tela-reservas" class="view hidden">
+            <div class="top-bar-unica">
+
+                <div class="cards-header">
+                    <div class="mini-card total" style="cursor: pointer;" data-filtro="todos" onclick="aplicarFiltro('todos')">
+                        <span>TOTAL PAX</span>
+                        <b id="dashTotalPax">0</b>
+                    </div>
+                    <div class="mini-card" style="border-left: 4px solid #e67e22; cursor: pointer;" data-filtro="criancas" onclick="aplicarFiltro('criancas')">
+                        <span>CRIANÇAS</span>
+                        <b id="dashCriancas">0</b>
+                    </div>
+                    <div class="mini-card hosp" style="cursor: pointer;" data-filtro="hospede" onclick="aplicarFiltro('hospede')">
+                        <span>HÓSPEDES</span>
+                        <b id="dashHospedes">0</b>
+                    </div>
+                    <div class="mini-card ext" style="cursor: pointer;" data-filtro="externo" onclick="aplicarFiltro('externo')">
+                        <span>EXTERNOS</span>
+                        <b id="dashExternos">0</b>
+                    </div>
+                    <div class="mini-card pass" style="cursor: pointer;" data-filtro="passante" onclick="aplicarFiltro('passante')">
+                        <span>PASSANTES</span>
+                        <b id="dashPassantes">0</b>
+                    </div>
+                    <div class="mini-card" style="border-left: 4px solid #9b59b6; cursor: pointer;" data-filtro="roomservice" onclick="aplicarFiltro('roomservice')">
+                        <span>ROOM</span>
+                        <b id="dashRoomService">0</b>
+                    </div>
+                    <div class="mini-card" style="border-left: 4px solid #d4a373; cursor: pointer;" data-filtro="menuDegustacao" onclick="aplicarFiltro('menuDegustacao')">
+                        <span>DEGUSTAÇÃO</span>
+                        <b id="dashMenuDegustacao">0</b>
+                    </div>
+                    <div class="mini-card tempo">
+                        <span>T. MÉDIO</span>
+                        <b id="countTempo">-- min</b>
+                    </div>
+                </div>
+
+                <div class="left-group" style="margin-left: auto; display: flex; align-items: center; gap: 10px;">
+                    <div id="sino-notificacao" class="sino-wrap" title="Nova reserva inserida">
+                        <svg id="sino-icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22">
+                            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                        </svg>
+                        <span id="sino-badge" class="sino-badge hidden"></span>
+                    </div>
+                    <input type="date" id="dataFiltro" class="filtro-data" style="margin: 0;">
+                </div>
+
+            </div>
+
+            <div class="table-container" id="gridReservas"></div>
+        </div>
+
+        <!-- TELA DE DASHBOARD -->
+        <div id="tela-dashboard" class="view hidden" style="padding: 20px;">
+            <div class="top-bar-unica" style="position: relative; top: 0; margin-bottom: 20px; z-index: 100;">
+                 <div class="left-group">
+                    <button class="menu-toggle" onclick="toggleMenu()">☰</button>
+                    <h3 style="margin: 0; color: var(--primaria); font-size: 1.2rem;">Painel Analítico</h3>
+                 </div>
+            </div>
+
+            <div style="background: var(--card-bg); padding: 15px; border-radius: 10px; margin-bottom: 20px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; box-shadow: 0 4px 6px var(--shadow);">
+                <div>
+                    <label style="font-size: 0.8rem;">De:</label>
+                    <input type="date" id="dashInicio" class="filtro-data" style="margin: 0;">
+                </div>
+                <div>
+                    <label style="font-size: 0.8rem;">Até:</label>
+                    <input type="date" id="dashFim" class="filtro-data" style="margin: 0;">
+                </div>
+                <button class="btn-main" onclick="carregarDadosDashboard()" style="padding: 5px 15px; height: 38px;">ANALISAR PERÍODO</button>
+            </div>
+
+            <div class="dashboard-kpis">
+                <div class="kpi-card">
+                    <h4>OCUPAÇÃO</h4>
+                    <p class="value" id="kpiOcupacao">0%</p>
+                </div>
+                <div class="kpi-card">
+                    <h4>TOTAL PAX</h4>
+                    <p class="value" id="kpiTotalPax">0</p>
+                </div>
+                <div class="kpi-card">
+                    <h4>TEMPO MÉDIO</h4>
+                    <p class="value" id="kpiTempoMedio">-- min</p>
+                </div>
+                <div class="kpi-card">
+                    <h4>MESA TOP</h4>
+                    <p class="value" id="kpiMesaTop">--</p>
+                </div>
+                <div class="kpi-card">
+                    <h4>CRIANÇAS</h4>
+                    <p class="value" id="kpiCancelados">0</p>
+                </div>
+            </div>
+
+            <div class="charts-grid">
+                <div class="chart-card"><h3>Curva de Horário</h3><div class="chart-container"><canvas id="chartHorario"></canvas></div></div>
+                <div class="chart-card"><h3>Uso de Mesas</h3><div class="chart-container"><canvas id="chartMesas"></canvas></div></div>
+                <div class="chart-card"><h3>Perfil Cliente</h3><div class="chart-container"><canvas id="chartTipo"></canvas></div></div>
+                <div class="chart-card"><h3>Composição</h3><div class="chart-container"><canvas id="chartComposicao"></canvas></div></div>
+            </div>
+        </div>
+
+        <!-- TELA DE CONFIGURAÇÕES -->
+        <div id="tela-configuracoes" class="view hidden" style="padding: 20px;">
+            <div class="top-bar-unica" style="position: relative; top: 0; margin-bottom: 20px; z-index: 100;">
+                 <div class="left-group">
+                    <button class="menu-toggle" onclick="toggleMenu()">☰</button>
+                    <h3 style="margin: 0; color: var(--primaria); font-size: 1.2rem;">Configurações do Sistema</h3>
+                 </div>
+            </div>
+
+            <div style="margin-bottom: 20px;">
+                <label style="font-size: 0.85rem; font-weight: 700; display: block; margin-bottom: 5px; color: var(--texto);">Capacidade Máxima por Noite</label>
+                <input type="number" id="configCapacidade" value="30" style="width: 150px; padding: 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--input-bg); color: var(--texto);">
+                <small style="display: block; margin-top: 5px; color: var(--texto); opacity: 0.7;">Usado para cálculo da taxa de ocupação</small>
+            </div>
+
+            <div style="margin-bottom: 20px;">
+                <label style="font-size: 0.85rem; font-weight: 700; display: block; margin-bottom: 5px; color: var(--texto);">Número Total de Mesas</label>
+                <input type="number" id="configMesas" value="18" style="width: 150px; padding: 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--input-bg); color: var(--texto);">
+                <small style="display: block; margin-top: 5px; color: var(--texto); opacity: 0.7;">A última mesa sempre será "Room Service"</small>
+            </div>
+
+            <div style="margin-top: 30px; display: flex; gap: 10px;">
+                <button class="btn-main save-btn" onclick="salvarConfiguracoes()">SALVAR CONFIGURAÇÕES</button>
+                <button class="btn-main cancel-btn" onclick="navegar('reservas')">↩VOLTAR</button>
+            </div>
+        </div>
+    </div>
+    <!-- TELA DE ROOM SERVICE -->
+<div id="tela-roomservice" class="view hidden" style="padding: 20px;">
+    <div class="top-bar-unica" style="position: relative; top: 0; margin-bottom: 20px; z-index: 100;">
+         <div class="left-group">
+            <button class="menu-toggle" onclick="toggleMenu()">☰</button>
+            <h3 style="margin: 0; color: var(--roomservice); font-size: 1.2rem;">Relatório de Room Service</h3>
+         </div>
+    </div>
+
+    <div style="background: var(--card-bg); padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px var(--shadow);">
+        <div style="display: flex; gap: 15px; align-items: center; margin-bottom: 20px;">
+            <div>
+                <label style="font-size: 0.8rem;">Data:</label>
+                <input type="date" id="dataRoomService" class="filtro-data" style="margin: 0;">
+            </div>
+            <button class="btn-main" onclick="carregarRoomServices()" style="padding: 5px 15px; height: 38px; background: var(--roomservice);">BUSCAR</button>
+        </div>
+
+        <div id="listaRoomServices" style="min-height: 300px;"></div>
+    </div>
+</div>
+
+    <!-- TELA DE LOGS -->
+    <div id="tela-logs" class="view hidden" style="padding: 20px;">
+        <div class="top-bar-unica" style="position: relative; top: 0; margin-bottom: 20px; z-index: 100;">
+            <div class="left-group">
+                <button class="menu-toggle" onclick="toggleMenu()">&#9776;</button>
+                <h3 style="margin: 0; color: #3498db; font-size: 1.2rem;">&#128221; Log de Alteracoes</h3>
+            </div>
+        </div>
+        <div style="background: var(--card-bg); padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px var(--shadow);">
+            <div style="display: flex; gap: 15px; align-items: center; margin-bottom: 20px;">
+                <div>
+                    <label style="font-size: 0.8rem;">Data:</label>
+                    <input type="date" id="dataFiltroLog" class="filtro-data" style="margin: 0;">
+                </div>
+                <button class="btn-main" onclick="carregarLogs()" style="padding: 5px 15px; height: 38px; background: #3498db;">BUSCAR</button>
+            </div>
+            <div id="listaLogs" style="min-height: 300px;"></div>
+        </div>
+    </div>
+    <!-- MODAL DE RESERVA -->
+    <div id="modalReserva" class="modal">
+        <div class="modal-content">
+            <h3>GERENCIAR RESERVA</h3>
+            <input type="hidden" id="reservaId">
+            <input type="hidden" id="horario">
+            <input type="hidden" id="originalBase">
+            <input type="hidden" id="posicaoReserva">
+
+            <div id="textoHorarioContainer" style="text-align: center; margin-bottom: 5px;">
+                <span id="textoHorario" style="font-size: 1.5rem; font-weight: 900; color: #4a1a1a;">--:--</span>
+            </div>
+
+            <div id="modal-header-controls" class="header-controls-row">
+                <div id="wrapperAlterarHorario" class="control-group">
+                    <input type="checkbox" id="checkAlterarHorario" onchange="toggleAlterarHorario()">
+                    <label for="checkAlterarHorario">ALTERAR HORA</label>
+                </div>
+                <div id="containerBloqueio" class="control-group-row">
+                    <div class="control-group">
+                        <input type="checkbox" id="checkBloquear" onclick="return toggleBloqueio('bloq')">
+                        <label for="checkBloquear" style="color: #e74c3c;">BLOQUEAR</label>
+                    </div>
+                    <div class="control-group">
+                        <input type="checkbox" id="checkHospedes" onclick="return toggleBloqueio('hosp')">
+                        <label for="checkHospedes" style="color: #3498db;">SÓ HOSP.</label>
+                    </div>
+                </div>
+            </div>
+
+            <div id="containerNovoHorario" class="time-picker-container hidden">
+                <div class="time-display-row">
+                    <div class="time-group">
+                        <button type="button" class="btn-time" onclick="ajustarHora(1)">▲</button>
+                        <div class="time-value" id="displayHoras">20</div>
+                        <button type="button" class="btn-time" onclick="ajustarHora(-1)">▼</button>
+                    </div>
+                    <div class="time-separator">:</div>
+                    <div class="time-group">
+                        <button type="button" class="btn-time" onclick="ajustarMinuto(15)">▲</button>
+                        <div class="time-value" id="displayMinutos">00</div>
+                        <button type="button" class="btn-time" onclick="ajustarMinuto(-15)">▼</button>
+                    </div>
+                </div>
+            </div>
+
+            <form id="formReserva" onsubmit="return false;">
+                <div id="camposReserva">
+                    <label>Tipo de Cliente</label>
+                    <select id="tipoCliente" onchange="toggleCampos()">
+                        <option value="hospede">HÓSPEDE (HOTEL)</option>
+                        <option value="externo">CLIENTE EXTERNO</option>
+                        <option value="passante">PASSANTE</option>
+                        <option value="roomservice">ROOM SERVICE</option>
+                    </select>
+                    <div id="containerApto"><label>Apartamento</label><input type="number" id="apto" placeholder="Nº Apto"></div>
+                    <label>Nome do Cliente</label><input type="text" id="nomes" placeholder="Nome completo">
+                    <div id="containerExterno" style="display: none;">
+                        <div class="externo-row">
+                            <div style="flex: 2;"><label>WhatsApp</label><input type="text" id="whatsapp" placeholder="(XX) XXXXX-XXXX"></div>
+                            <div style="flex: 1;"><label>Avulsa</label><input type="text" id="avulsa" placeholder="Nº" style="text-align: center;"></div>
+                        </div>
+                    </div>
+                    <div class="pax-row">
+                        <div class="pax-column"><label>Adultos</label><input type="number" id="paxs" value="2"></div>
+                        <div class="pax-column"><label>Crianças</label><input type="number" id="chd" value="0"></div>
+                        <div class="pax-column pax-column-check">
+                            <label for="checkMenuDegustacao" class="label-check-menu">MENU DEG.</label>
+                            <input type="checkbox" id="checkMenuDegustacao">
+                        </div>
+                    </div>
+                </div>
+                <label id="labelObs" style="margin-top: 10px;">Observações</label>
+                <textarea id="obs" rows="2" placeholder="Ex: Aniversário, Alérgico..."></textarea>
+            </form>
+
+            <div class="modal-actions">
+                <button class="btn-main save-btn" id="btnSalvar">SALVAR</button>
+                <button class="btn-main cancel-btn">CANCELAR</button>
+                <button class="btn-main delete-btn hidden" id="btnExcluir">EXCLUIR</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE MESA -->
+    <div id="modalMesa" class="modal">
+        <div class="modal-content modal-compacto">
+            <h3>SELECIONAR MESA</h3>
+            <input type="hidden" id="mesaReservaId">
+            
+            <div id="containerListaMesas" class="grid-mesas"></div>
+            
+            <div class="modal-actions">
+                <button id="btnIniciarAtendimento" type="button" class="btn-main save-btn hidden">
+                    INICIAR ATENDIMENTO
+                </button>
+                
+                <button id="btnTrocarMesa" type="button" class="btn-main hidden" style="background: #f39c12;">
+                    TROCAR MESA
+                </button>
+                
+                <button id="btnCancelarMesa" type="button" class="btn-main cancel-btn hidden">
+                    CANCELAR
+                </button>
+                
+                <button id="btnLiberarMesa" type="button" class="btn-main delete-btn hidden">
+                    FINALIZAR ATENDIMENTO
+                </button>
+                
+                <button type="button" class="btn-main cancel-btn" onclick="fecharModalMesa()">
+                    FECHAR
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE GERENCIAMENTO DE HORÁRIO -->
+    <div id="menuHorario" class="modal" style="background: rgba(0,0,0,0.4);">
+        <div class="modal-content modal-compacto" style="text-align: center;">
+            <h3 id="tituloMenuHorario">GERENCIAR</h3>
+            <button class="btn-main save-btn" style="width: 100%; margin-bottom: 10px;" onclick="acaoAdicionar()">+ ADICIONAR LINHA</button>
+            <button class="btn-main delete-btn" style="width: 100%;" onclick="acaoExcluir()">- REMOVER LINHA</button>
+            <button class="btn-main cancel-btn" style="width: 100%; margin-top: 10px;" onclick="fecharMenuHorario()">CANCELAR</button>
+        </div>
+    </div>
+
+<!-- Firebase CDN -->
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+
+<!-- Core -->
+<script type="module" src="js/core/init.js"></script>
+<script type="module" src="js/core/navigation.js"></script>
+
+<!-- Features -->
+<script type="module" src="js/features/home.js"></script>
+<script type="module" src="js/features/reservas/log.js"></script>
+<script type="module" src="js/features/dashboard.js"></script>
+<script type="module" src="js/features/roomservice.js"></script>
+
+<!-- UI -->
+<script type="module" src="js/ui/controls.js"></script>
+<script type="module" src="js/ui/filters.js"></script>
+
+    <!-- BottomBar — visível só em portrait mobile via CSS -->
+    <nav id="bottom-nav">
+
+        <button class="bn-item active" data-tela="home" onclick="navegar('home')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                <polyline points="9 22 9 12 15 12 15 22"/>
+            </svg>
+            Início
+        </button>
+
+        <button class="bn-item" data-tela="reservas" onclick="navegar('reservas')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                <line x1="16" y1="2" x2="16" y2="6"/>
+                <line x1="8" y1="2" x2="8" y2="6"/>
+                <line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+            Reservas
+        </button>
+
+        <button class="bn-item" data-tela="dashboard" onclick="navegar('dashboard')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+                <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+            </svg>
+            Dashboard
+        </button>
+
+        <button class="bn-item" data-tela="logs" onclick="navegar('logs')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="16" y1="13" x2="8" y2="13"/>
+                <line x1="16" y1="17" x2="8" y2="17"/>
+            </svg>
+            Log
+        </button>
+
+        <button class="bn-item" data-tela="configuracoes" onclick="navegar('configuracoes')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
+            Config
+        </button>
+
+    </nav>
+
+</body>
+</html>
