@@ -68,12 +68,17 @@
         </div>
     </div>
 
-    <script>
-        // ✅ Credenciais válidas — formato: 'usuario': 'senha'
-        const USUARIOS_VALIDOS = {
-            'recepcao': 'usuario1',
-            'osteria':  'usuario2',
-            'gerencia': 'usuario 3'
+    <script type="module">
+        // ✅ Importar db garante que firebase.initializeApp() já rodou
+        // (módulos ES6 resolvem imports antes de executar o próprio código)
+        import { db } from './js/core/database.js';
+
+        // ✅ Tradução nome curto → e-mail fictício cadastrado no Firebase Authentication
+        // Não é segredo: a senha real fica só no Firebase, nunca aparece aqui.
+        const EMAIL_POR_USUARIO = {
+            'recepcao': 'recepcao@osteriadilucca.app',
+            'osteria':  'osteria@osteriadilucca.app',
+            'gerencia': 'gerencia@osteriadilucca.app'
         };
 
         // ✅ Verifica login ao carregar — antes de qualquer módulo ES6
@@ -86,29 +91,43 @@
             }
         })();
 
-        function confirmarLogin() {
+        async function confirmarLogin() {
             const usuario = document.getElementById('inputUsuario').value.trim().toLowerCase();
             const senha   = document.getElementById('inputSenha').value;
             const erroEl  = document.getElementById('loginErro');
+            const email   = EMAIL_POR_USUARIO[usuario];
 
-            // Valida credenciais
-            if (!usuario || !senha || USUARIOS_VALIDOS[usuario] !== senha) {
+            if (!usuario || !senha || !email) {
                 erroEl.style.display = 'block';
                 document.getElementById('inputSenha').value = '';
                 document.getElementById('inputSenha').focus();
                 return;
             }
 
-            erroEl.style.display = 'none';
-            localStorage.setItem('usuario_nome', usuario);
-            document.getElementById('telaLogin').style.display = 'none';
+            try {
+                // Firebase verifica a senha no servidor — nunca comparamos aqui
+                await firebase.auth().signInWithEmailAndPassword(email, senha);
+                erroEl.style.display = 'none';
+                localStorage.setItem('usuario_nome', usuario);
+                document.getElementById('telaLogin').style.display = 'none';
+            } catch (e) {
+                // Mensagem genérica de propósito — não revela se o usuário existe ou não
+                erroEl.style.display = 'block';
+                document.getElementById('inputSenha').value = '';
+                document.getElementById('inputSenha').focus();
+            }
         }
 
         // ✅ Expõe função global para trocar usuário (útil nas configurações)
-        function trocarUsuario() {
+        async function trocarUsuario() {
+            await firebase.auth().signOut();
             localStorage.removeItem('usuario_nome');
             location.reload();
         }
+
+        // Módulos ES6 não expõem funções para onclick="..." automaticamente
+        window.confirmarLogin = confirmarLogin;
+        window.trocarUsuario = trocarUsuario;
     </script>
 
     <!-- SIDEBAR -->
@@ -723,6 +742,7 @@
 
 <!-- Firebase CDN -->
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
 
 <!-- Core -->
