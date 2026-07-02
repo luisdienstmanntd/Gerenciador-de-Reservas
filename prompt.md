@@ -1,6 +1,6 @@
 # Osteria Di Lucca — Sistema de Gestão de Reservas
 
-**README versão:** 4.1  
+**README versão:** 4.2  
 **Data:** 2026-07-02  
 
 ---
@@ -71,18 +71,19 @@ Sistema web de gerenciamento de reservas para o restaurante **Osteria Di Lucca**
 | `js/core/init.js` | **v1.3** | Corrige leitura do relógio em ALTERAR HORÁRIO |
 | `js/core/navigation.js` | v4.10 | Overlay fecha menu lateral |
 | `js/core/state.js` | v4.22 | Permite `linhasExtras` negativos |
-| `js/features/reservas/modal.js` | **v2.5** | Botão ALTERAR HORÁRIO no resumo de reserva existente |
+| `js/features/reservas/modal.js` | **v3.10** | Escapa `reserva.nomes` na confirmação de CANCELAR RESERVA — corrige XSS |
 | `js/features/reservas/service.js` | **v2.5** | `salvarApenasHorario` sempre atualiza `originalBase` + posição livre |
 | `js/features/reservas/listener.js` | v2.0 | Migrado para DatabaseService |
 | `js/features/reservas/log.js` | v1.3 | Exibe usuário logado nos cards |
+| `js/features/reservas/validators.js` | **v1.3** | `escapeHtml()` adicionada — sanitização de saída contra XSS |
 | `js/features/mesas/modal.js` | v1.0 | — |
 | `js/features/dashboard.js` | v3.7 | Migrado para DatabaseService |
-| `js/features/roomservice.js` | v2.0 | Migrado para DatabaseService |
+| `js/features/home.js` | **v2.2** | Escapa `obs`/`nomes` no card "Observações da Noite" — corrige XSS |
+| `js/features/roomservice.js` | **v2.3** | Escapa `nomes`/`obs` no card — corrige XSS |
 | `js/ui/controls.js` | **v7.9** | `ajustarHora()` adicionada |
 | `js/ui/filters.js` | v3.0 | 100% modular |
-| `js/ui/render.js` | **v5.3** | Blocos editados detectados por `originalBase` |
+| `js/ui/render.js` | **v6.0** | Escapa `nomes`/`obs`/`avulsa` antes de inserir em innerHTML — corrige XSS |
 | `js/ui/timers.js` | v4.1 | Sem dependência de render.js |
-| `js/ui/validators.js` | v1.0 | — |
 | `index.html` | — | Relógio com setas ▲▼ para horas |
 | `css/style.css` | — | — |
 
@@ -809,6 +810,7 @@ roomservice.js         ← state.js, database.js
 | 29 | Impossível alterar horas no relógio — só minutos funcionavam | `index.html` + `controls.js` | Adicionadas setas ▲▼ para horas; `ajustarHora()` criada |
 | 30 | Login validado só no cliente, senhas hardcoded expostas no fonte | `index.html` | Migrado para Firebase Authentication — servidor valida a senha, código não guarda mais senha nenhuma |
 | 31 | Firestore com regras públicas (`allow read, write: if true`) — qualquer um na internet podia ler/apagar reservas sem login | Console Firebase | Regras alteradas para `if request.auth != null`; documentado em `firestore.rules` |
+| 32 | XSS armazenado — `nomes`/`obs`/`avulsa` inseridos sem escapar em `innerHTML` (render.js, home.js, roomservice.js, modal.js) | `render.js`, `home.js`, `roomservice.js`, `modal.js` | `escapeHtml()` criada em `validators.js` e aplicada em todos os pontos que inserem texto livre do usuário em HTML |
 
 ---
 
@@ -1060,7 +1062,7 @@ const acaoClique = res
 | 4 | Race condition em ALTERAR HORÁRIO | 🟡 Recomendada | ⏳ Pendente |
 | 5 | `_limparFormulario` não reseta estado da instância | 🟡 Recomendada | ⏳ Pendente |
 | 6 | `horariosPadrao` hardcoded em dois lugares | 🟡 Recomendada | ⏳ Pendente |
-| 7 | Sanitização de HTML nos campos livres | 🟡 Recomendada | ⏳ Pendente |
+| 7 | Sanitização de HTML nos campos livres | 🟡 Recomendada | ✅ Concluída |
 | 8 | Branch morto em `renderizarLinha` | 🟡 Recomendada | ⏳ Pendente |
 
 **Ao concluir cada manutenção:** atualizar a coluna Status para ✅ Concluída, incrementar a versão do arquivo afetado na tabela da §4, e adicionar entrada no histórico de bugs (§17) se aplicável.
