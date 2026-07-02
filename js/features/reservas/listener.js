@@ -3,6 +3,7 @@
    RESPONSABILIDADE: Escuta em Tempo Real do Firebase
    ✅ v3.1: Usa DatabaseService + notificacao.js
    ✅ v4.0: Etapa 5 — escuta config_dia em tempo real; linhasExtras vêm do Firestore
+   ✅ v4.1: Usa getHorariosPadrao() de state.js — elimina array hardcoded (Manutenção #6)
    ========================================================================================= */
 
 import {
@@ -15,6 +16,7 @@ import {
     setUnsubscribeConfig,
     getLinhasExtras,
     setLinhasExtras,
+    getHorariosPadrao,
 } from '../../core/state.js';
 import { renderizarGrid, atualizarMiniCards } from '../../ui/render.js';
 import { db } from '../../core/database.js';
@@ -101,7 +103,7 @@ function iniciarListenerConfig(dataFiltro) {
 
         // Pega reservas já em memória para garantir que nenhuma fique fora da grade
         const reservas = getTodasReservas();
-        const horariosPadrao = ["20:00", "20:30", "21:00", "21:30", "22:00", "22:30"];
+        const horariosPadrao = getHorariosPadrao();
 
         // Começa com os valores que vieram do Firestore (pode ser {} no primeiro uso)
         const linhasExtrasAtualizadas = { ...linhasExtrasFirestore };
@@ -353,5 +355,3 @@ function _pararSino() {
     if (wrap)  wrap.classList.remove('sino-animando');
     if (badge) badge.classList.add('hidden');
 }
-
-console.log('✅ reservas/listener.js v5.0 carregado - sino simplificado');

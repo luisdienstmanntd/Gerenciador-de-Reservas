@@ -1,6 +1,6 @@
 # Osteria Di Lucca — Sistema de Gestão de Reservas
 
-**README versão:** 4.7  
+**README versão:** 4.11  
 **Data:** 2026-07-02  
 
 ---
@@ -71,14 +71,14 @@ Sistema web de gerenciamento de reservas para o restaurante **Osteria Di Lucca**
 | `js/core/init.js` | **v1.3** | Corrige leitura do relógio em ALTERAR HORÁRIO |
 | `js/core/navigation.js` | v4.10 | Overlay fecha menu lateral |
 | `js/core/state.js` | v4.22 | Permite `linhasExtras` negativos |
-| `js/features/reservas/modal.js` | **v3.10** | Escapa `reserva.nomes` na confirmação de CANCELAR RESERVA — corrige XSS |
+| `js/features/reservas/modal.js` | **v3.11** | Centraliza reset de estado de bloqueio em `_limparFormulario()` |
 | `js/features/reservas/service.js` | **v2.5** | `salvarApenasHorario` sempre atualiza `originalBase` + posição livre |
-| `js/features/reservas/listener.js` | v2.0 | Migrado para DatabaseService |
+| `js/features/reservas/listener.js` | **v4.1** | Usa `getHorariosPadrao()` — elimina array hardcoded |
 | `js/features/reservas/log.js` | v1.3 | Exibe usuário logado nos cards |
 | `js/features/reservas/validators.js` | **v1.3** | `escapeHtml()` adicionada — sanitização de saída contra XSS |
 | `js/features/mesas/modal.js` | v1.0 | — |
-| `js/features/dashboard.js` | v3.7 | Migrado para DatabaseService |
-| `js/features/home.js` | **v2.2** | Escapa `obs`/`nomes` no card "Observações da Noite" — corrige XSS |
+| `js/features/dashboard.js` | **v3.10** | Usa `getHorariosPadrao()` — elimina objeto hardcoded |
+| `js/features/home.js` | **v2.3** | Usa `getHorariosPadrao()` — elimina 2 arrays hardcoded |
 | `js/features/roomservice.js` | **v2.3** | Escapa `nomes`/`obs` no card — corrige XSS |
 | `js/ui/controls.js` | **v7.9** | `ajustarHora()` adicionada |
 | `js/ui/filters.js` | v3.0 | 100% modular |
@@ -812,6 +812,8 @@ roomservice.js         ← state.js, database.js
 | 31 | Firestore com regras públicas (`allow read, write: if true`) — qualquer um na internet podia ler/apagar reservas sem login | Console Firebase | Regras alteradas para `if request.auth != null`; documentado em `firestore.rules` |
 | 32 | XSS armazenado — `nomes`/`obs`/`avulsa` inseridos sem escapar em `innerHTML` (render.js, home.js, roomservice.js, modal.js) | `render.js`, `home.js`, `roomservice.js`, `modal.js` | `escapeHtml()` criada em `validators.js` e aplicada em todos os pontos que inserem texto livre do usuário em HTML |
 | 33 | Chart.js carregado via CDN sem versão fixa (`.../npm/chart.js`) e nenhum script CDN tinha Subresource Integrity (SRI) — CDN comprometido poderia injetar código malicioso | `index.html` | Chart.js fixado em v4.5.1 (versão que já estava rodando); `integrity` (SHA-384) + `crossorigin="anonymous"` adicionados nos 4 scripts CDN (Chart.js + 3 do Firebase) |
+| 34 | 18 arquivos com `console.log` de banner ("✅ xyz.js vX.X carregado") sem nenhuma utilidade em produção — poluíam o console | 18 arquivos em `js/` | Removidos os banners; mantidos todos os `console.log`/`warn`/`error` de fluxo e diagnóstico (única forma de observabilidade do sistema hoje) |
+| 35 | `horariosPadrao` hardcoded em 4 lugares fora de `state.js` (`dashboard.js`, `home.js` ×2, `listener.js`) — divergência descrita na doc como "dois lugares", mas era pior na prática | `dashboard.js`, `home.js`, `listener.js` | Todos passam a usar `getHorariosPadrao()` de `state.js` como fonte única |
 
 ---
 
@@ -1060,11 +1062,11 @@ const acaoClique = res
 | 1 | Listeners acumulando — duplo disparo | 🔴 Obrigatória | ✅ Concluída (verificado em 2026-07-02: `{ once: true }` já aplicado em `modal.js`, e `_fecharResumo()` remove o nó do DOM — não há acúmulo. Testado com 10 ciclos abrir/fechar via JS, sem duplicação. Status estava desatualizado.) |
 | 2 | `rowspan` incorreto com filtro ativo | 🔴 Obrigatória | ✅ Concluída (verificado em 2026-07-02: branch de filtro em `render.js` v5.4 já calcula `rowspan` = quantidade de reservas filtradas por slot, que é exatamente o nº de linhas renderizadas. Testado com dataset sintético — slot com 3 reservas reais e filtro retornando 2 gerou `rowspan=2`, sem quebra. Status estava desatualizado.) |
 | 3 | `linhasExtras` não persiste entre recarregamentos | 🔴 Obrigatória | ✅ Concluída (verificado em 2026-07-02: implementado de forma diferente da descrita — `controls.js` v8.4 persiste `linhasExtras` na coleção `config_dia` do Firestore, não em `sessionStorage`. Mais robusto: sobrevive a reload E sincroniza entre todos os tablets, não só a mesma aba. Testado: adicionar linha, reload completo, valor restaurado corretamente. Status estava desatualizado.) |
-| 4 | Race condition em ALTERAR HORÁRIO | 🟡 Recomendada | ⏳ Pendente |
-| 5 | `_limparFormulario` não reseta estado da instância | 🟡 Recomendada | ⏳ Pendente |
-| 6 | `horariosPadrao` hardcoded em dois lugares | 🟡 Recomendada | ⏳ Pendente |
+| 4 | Race condition em ALTERAR HORÁRIO | 🟡 Recomendada | ✅ Concluída (verificado em 2026-07-02: `toggleAlterarHorario()` só mexe em `#containerNovoHorario`, nunca em `camposReserva`/`containerApto`/`obs`; e todo o fluxo do handler `btnResumoHorario` roda de forma síncrona, sem `await`/`setTimeout` entre `_abrirFormularioCompleto()` e os ocultamentos manuais — não existe brecha de tempo para a condição de corrida. Testado com reserva real: `camposReserva` fica oculto corretamente, sem reaparecer. Status estava desatualizado.) |
+| 5 | `_limparFormulario` não reseta estado da instância | 🟡 Recomendada | ✅ Concluída (2026-07-02: `_limparFormulario()` agora zera `isBloqueioExistente`, `obsOriginalBloqueio`, `bloqueadoOriginal` e `hospedesOriginal` no início. Não havia bug ativo hoje — `_abrirFormularioCompleto()` já sobrescrevia esses valores logo em seguida em todo fluxo existente — mas a correção remove a fragilidade para fluxos futuros que possam chamar `_limparFormulario()` sem o override explícito.) |
+| 6 | `horariosPadrao` hardcoded em dois lugares | 🟡 Recomendada | ✅ Concluída (2026-07-02: era pior que "dois lugares" — encontrados 4 arrays hardcoded em `dashboard.js`, `home.js` ×2 e `listener.js`. Todos substituídos por `getHorariosPadrao()`. Testado: dashboard carrega sem erro, grade renderiza normalmente após reload.) |
 | 7 | Sanitização de HTML nos campos livres | 🟡 Recomendada | ✅ Concluída |
-| 8 | Branch morto em `renderizarLinha` | 🟡 Recomendada | ⏳ Pendente |
+| 8 | Branch morto em `renderizarLinha` | 🟡 Recomendada | ✅ Concluída (verificado em 2026-07-02: o ternário morto descrito não existe mais — removido junto com a refatoração v5.5–v5.7 que eliminou todos os `onclick` inline em favor de `data-*` + event delegation. Status estava desatualizado.) |
 
 **Ao concluir cada manutenção:** atualizar a coluna Status para ✅ Concluída, incrementar a versão do arquivo afetado na tabela da §4, e adicionar entrada no histórico de bugs (§17) se aplicável.
 

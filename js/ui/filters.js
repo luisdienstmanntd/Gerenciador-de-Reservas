@@ -49,5 +49,3 @@ export function aplicarFiltro(tipo) {
 
 // Expor globalmente
 window.aplicarFiltro = aplicarFiltro;
-
-console.log('✅ filters.js v3.0 carregado - 100% modular');

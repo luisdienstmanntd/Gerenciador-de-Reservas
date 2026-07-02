@@ -241,5 +241,3 @@ export class MesaModal {
         if (this.modal) this.modal.style.display = "none";
     }
 }
-
-console.log('✅ mesas/modal.js v1.4 carregado - stopPropagation em todo clique dentro do modal (Regra 7)');

@@ -2,10 +2,12 @@
    OSTERIA DI LUCCA - DASHBOARD.JS v3.9
    ✅ v3.8: Padroniza error handling — usa notificacao.js
    ✅ v3.9: Bug #7 — usa buscarReservasPorPeriodo() de service.js — elimina acesso direto ao Firestore
+   ✅ v3.10: ocupacaoHorario construído a partir de getHorariosPadrao() — elimina array hardcoded (Manutenção #6)
    ========================================================================================= */
 
 import { buscarReservasPorPeriodo } from './reservas/service.js';
 import { notificarErro } from '../core/notificacao.js';
+import { getHorariosPadrao } from '../core/state.js';
 
 // --- VARIÁVEIS GLOBAIS ---
 let chartHorarioInstance = null;
@@ -20,7 +22,7 @@ function processarDashboard(reservas, diasNoPeriodo = 1) {
 
     let kpis = { totalPax: 0, adultos: 0, criancas: 0, tempoTotalMinutos: 0, mesasFinalizadasCount: 0 };
     let mixCliente = { hospede: 0, externo: 0, passante: 0, roomservice: 0 };
-    let ocupacaoHorario = { "20:00": 0, "20:30": 0, "21:00": 0, "21:30": 0, "22:00": 0, "22:30": 0 };
+    let ocupacaoHorario = Object.fromEntries(getHorariosPadrao().map(h => [h, 0]));
     let usoMesas = {};
     for (let i = 1; i <= 18; i++) usoMesas[i] = 0;
 
@@ -182,5 +184,3 @@ async function carregarDadosDashboard() {
 window.processarDashboard = processarDashboard;
 window.destruirGraficos = destruirGraficos;
 window.carregarDadosDashboard = carregarDadosDashboard;
-
-console.log('✅ dashboard.js v3.9 carregado - Bug #7 corrigido: usa buscarReservasPorPeriodo() de service.js');

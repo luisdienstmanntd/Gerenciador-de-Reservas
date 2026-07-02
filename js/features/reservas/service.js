@@ -550,8 +550,6 @@ export async function removerLinhaDoBloco(hr, data) {
     return { ok: true, linhasExtrasAtualizado: getLinhasExtras() };
 }
 
-console.log('✅ reservas.service.js v3.10 carregado - alterarData() recalcula posição no bloco destino');
-
 // ─────────────────────────────────────────────────────────────────────────────
 // LIMPEZA PROATIVA DE FANTASMAS — boot do dia atual
 // ─────────────────────────────────────────────────────────────────────────────

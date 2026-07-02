@@ -386,5 +386,3 @@ function renderizarLinha(res, horarioVisual, posicao, tdHora, hrBase) {
 
 // Expor globalmente para debug
 window.renderizarGrid = renderizarGrid;
-
-console.log('✅ render.js v6.0 carregado - reservas reais têm prioridade sobre docs vazios na mesma posição');

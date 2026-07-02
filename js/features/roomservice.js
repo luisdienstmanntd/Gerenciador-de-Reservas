@@ -94,5 +94,3 @@ export async function carregarRoomServices() {
 
 // Expor função globalmente
 window.carregarRoomServices = carregarRoomServices;
-
-console.log('✅ roomservice.js v2.2 carregado - Bug #8 corrigido: usa buscarReservasPorData() de service.js');

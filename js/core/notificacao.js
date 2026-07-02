@@ -131,5 +131,3 @@ export function notificarErrosValidacao(erros) {
 
 // Expõe globalmente para uso em onclick inline se necessário
 window.notificar = notificar;
-
-console.log('✅ core/notificacao.js v1.0 carregado');

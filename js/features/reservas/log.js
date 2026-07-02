@@ -444,5 +444,3 @@ window.destacarLogPorReservaId = async function(reservaId) {
         container.innerHTML = '<div class="tl-vazio"><div class="tl-vazio-icone">❌</div><div class="tl-vazio-texto">Erro ao carregar histórico</div></div>';
     }
 };
-
-console.log('✅ log.js v2.0 carregado - timeline profissional');

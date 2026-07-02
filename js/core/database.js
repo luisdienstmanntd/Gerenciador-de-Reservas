@@ -391,5 +391,3 @@ class DatabaseService {
 // Exporta instância única — o construtor já inicializa o Firebase
 export const db = DatabaseService.getInstance();
 export { DatabaseService };
-
-console.log('✅ database.js v1.4 carregado');

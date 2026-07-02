@@ -17,10 +17,12 @@
             em _atualizarClonesKpiTicker() e _iniciarKpiTicker()
             Tab A9 landscape (1138px) passava pelo guard e retornava sem renderizar
    ✅ v2.2: Escapa r.obs/r.nomes no card "Observações da Noite" — corrige XSS armazenado
+   ✅ v2.3: HORARIOS/horarios usam getHorariosPadrao() de state.js — elimina 2 arrays hardcoded (Manutenção #6)
    ========================================================================================= */
 
 import { db } from '../core/database.js';
 import { escapeHtml } from './reservas/validators.js';
+import { getHorariosPadrao } from '../core/state.js';
 
 let chartGaugeInstance  = null;
 let chartBarrasInstance = null;
@@ -142,7 +144,7 @@ function _renderizarGiroMesa(reservas) {
 
     const isDark   = document.body.classList.contains('dark-theme');
     const agora    = new Date();
-    const HORARIOS = ['20:00','20:30','21:00','21:30','22:00','22:30'];
+    const HORARIOS = getHorariosPadrao();
 
     const finalizadas = reservas.filter(r => r.inicioMesa && r.fimMesa);
     let tempoMedioMin = null;
@@ -281,7 +283,7 @@ function _renderizarGraficos(reaisHoje, reaisSemana, hoje) {
 
     const ctxBarras = document.getElementById('home-chart-barras');
     if (ctxBarras) {
-        const horarios  = ['20:00','20:30','21:00','21:30','22:00','22:30'];
+        const horarios  = getHorariosPadrao();
         const paxPorHr  = {};
         horarios.forEach(h => paxPorHr[h] = 0);
         reaisHoje.forEach(r => {
@@ -536,5 +538,3 @@ function _mostrarErro() {
 }
 
 window.carregarHome = carregarHome;
-
-console.log('✅ home.js v2.2 carregado - BUG FIX: breakpoint ticker 1024px → 1200px');

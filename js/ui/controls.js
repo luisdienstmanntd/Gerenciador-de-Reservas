@@ -281,5 +281,3 @@ window.acaoExcluir = acaoExcluir;
 window.alternarTelaCheia = alternarTelaCheia;
 window.toggleAlterarHorario = toggleAlterarHorario;
 window.salvarConfiguracoes = salvarConfiguracoes;
-
-console.log('✅ controls.js v8.7 carregado - acaoExcluir() delegada para removerLinhaDoBloco() em service.js');

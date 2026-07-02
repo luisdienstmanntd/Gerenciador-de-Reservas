@@ -218,5 +218,3 @@ export function escapeHtml(texto) {
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
 }
-
-console.log('✅ validators.js v1.3 carregado - escapeHtml() disponível');

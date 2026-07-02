@@ -110,5 +110,3 @@ export function pararTimer(idReserva) {
 window.atualizarTimers = atualizarTimers;
 window.iniciarTimer = iniciarTimer;
 window.pararTimer = pararTimer;
-
-console.log('✅ timers.js v4.1 carregado');

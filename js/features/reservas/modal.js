@@ -30,6 +30,8 @@
    ✅ v3.9: _limparFormulario() oculta colMenuDeg após o forEach — corrige checkbox visível
             na abertura inicial (tipoCliente resetado para "hospede" antes de _toggleCampos).
    ✅ v3.10: Escapa reserva.nomes na mensagem de confirmação de CANCELAR RESERVA — corrige XSS armazenado
+   ✅ v3.11: _limparFormulario() centraliza reset de isBloqueioExistente/obsOriginalBloqueio/
+             bloqueadoOriginal/hospedesOriginal — remove fragilidade de estado da instância (Manutenção #5)
    ========================================================================================= */
 
 import { getTodasReservas, getDataAtual } from "../../core/state.js";
@@ -532,6 +534,15 @@ export class ReservaModal {
   }
 
   _limparFormulario() {
+    // ✅ Centraliza reset do estado de instância relacionado a bloqueios (Manutenção #5).
+    // _abrirFormularioCompleto() sobrescreve estes valores logo em seguida quando aplicável —
+    // este reset é uma rede de segurança para qualquer fluxo futuro que chame _limparFormulario()
+    // sem depois definir esses campos explicitamente.
+    this.isBloqueioExistente = false;
+    this.obsOriginalBloqueio = "";
+    this.bloqueadoOriginal = false;
+    this.hospedesOriginal = false;
+
     if (this.elementos.reservaId) this.elementos.reservaId.value = "";
     if (this.elementos.horario) this.elementos.horario.value = "";
     if (this.elementos.originalBase) this.elementos.originalBase.value = "";
@@ -832,5 +843,3 @@ export class ReservaModal {
     }
   }
 }
-
-console.log("✅ reservas/modal.js v3.12 carregado - checkbox Menu Degustação via classe CSS .tipo-roomservice (invulnerável ao forEach)");

@@ -106,5 +106,3 @@ export function getUnsubscribeConfig() {
 export function setUnsubscribeConfig(fn) {
     unsubscribeConfig = fn;
 }
-
-console.log('✅ state.js v6.0 carregado - unsubscribeConfig adicionado para config_dia');

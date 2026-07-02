@@ -193,5 +193,3 @@ if (document.readyState === 'loading') {
 } else {
     inicializarNavegacao();
 }
-
-console.log('✅ navigation.js v5.5 carregado');

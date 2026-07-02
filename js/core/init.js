@@ -429,5 +429,3 @@ if (document.readyState === 'loading') {
 } else {
     inicializar();
 }
-
-console.log('✅ core/init.js v2.1 carregado - limpeza proativa de fantasmas no boot');
