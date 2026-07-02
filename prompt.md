@@ -1,6 +1,6 @@
 # Osteria Di Lucca — Sistema de Gestão de Reservas
 
-**README versão:** 4.3  
+**README versão:** 4.4  
 **Data:** 2026-07-02  
 
 ---
@@ -1057,7 +1057,7 @@ const acaoClique = res
 | # | Descrição | Prioridade | Status |
 |---|---|---|---|
 | 1 | Listeners acumulando — duplo disparo | 🔴 Obrigatória | ✅ Concluída (verificado em 2026-07-02: `{ once: true }` já aplicado em `modal.js`, e `_fecharResumo()` remove o nó do DOM — não há acúmulo. Testado com 10 ciclos abrir/fechar via JS, sem duplicação. Status estava desatualizado.) |
-| 2 | `rowspan` incorreto com filtro ativo | 🔴 Obrigatória | ⏳ Pendente |
+| 2 | `rowspan` incorreto com filtro ativo | 🔴 Obrigatória | ✅ Concluída (verificado em 2026-07-02: branch de filtro em `render.js` v5.4 já calcula `rowspan` = quantidade de reservas filtradas por slot, que é exatamente o nº de linhas renderizadas. Testado com dataset sintético — slot com 3 reservas reais e filtro retornando 2 gerou `rowspan=2`, sem quebra. Status estava desatualizado.) |
 | 3 | `linhasExtras` não persiste entre recarregamentos | 🔴 Obrigatória | ⏳ Pendente |
 | 4 | Race condition em ALTERAR HORÁRIO | 🟡 Recomendada | ⏳ Pendente |
 | 5 | `_limparFormulario` não reseta estado da instância | 🟡 Recomendada | ⏳ Pendente |
