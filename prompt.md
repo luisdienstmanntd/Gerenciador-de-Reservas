@@ -1,7 +1,7 @@
 # Osteria Di Lucca — Sistema de Gestão de Reservas
 
-**README versão:** 4.0  
-**Data:** 2026-02-22  
+**README versão:** 4.1  
+**Data:** 2026-07-02  
 
 ---
 
@@ -22,7 +22,7 @@ Sistema web de gerenciamento de reservas para o restaurante **Osteria Di Lucca**
 | Frontend | HTML5, CSS3, JavaScript ES6 modules nativos (sem bundler, sem npm) |
 | Banco de dados | Firebase Firestore v8.10.0 (CDN compat — `firebase-app.js` + `firebase-firestore.js`) |
 | Gráficos | Chart.js (CDN) |
-| Autenticação | `localStorage` com credenciais hardcoded no `index.html` |
+| Autenticação | Firebase Authentication (e-mail/senha) — sessão validada pelo servidor |
 | Deploy | Arquivos estáticos — sem servidor backend |
 
 ---
@@ -679,18 +679,24 @@ Sem `data-tipo`, a regra dos 45min do room service não funciona.
 
 ## 14. Autenticação
 
+Login real via **Firebase Authentication** (e-mail/senha). `index.html` mantém um mapeamento de nome curto → e-mail fictício, só para tradução de UI — a senha nunca trafega nem é comparada no código:
+
 ```javascript
-// index.html — hardcoded
-const USUARIOS_VALIDOS = {
-    'recepcao': 'usuario1',
-    'osteria':  'usuario2',
-    'gerencia': 'usuario 3'
+// index.html — tradução de nome curto para e-mail cadastrado no Firebase Auth
+const EMAIL_POR_USUARIO = {
+    'recepcao': 'recepcao@osteriadilucca.app',
+    'osteria':  'osteria@osteriadilucca.app',
+    'gerencia': 'gerencia@osteriadilucca.app'
 };
+
+await firebase.auth().signInWithEmailAndPassword(email, senha);
 ```
 
 - Se `localStorage.getItem('usuario_nome')` vazio → exibe `#telaLogin`
-- Nome do usuário gravado em `localStorage['usuario_nome']`
+- Nome do usuário (curto) gravado em `localStorage['usuario_nome']` após login bem-sucedido no Firebase
 - `log.js` lê este nome para registrar quem fez cada alteração
+- `trocarUsuario()` chama `firebase.auth().signOut()` além de limpar o `localStorage`
+- Regras do Firestore (`firestore.rules`, versionado na raiz do repo) exigem `request.auth != null` para qualquer leitura/escrita — sem sessão válida, o Firestore recusa com `permission-denied`
 
 ---
 
@@ -801,6 +807,8 @@ roomservice.js         ← state.js, database.js
 | 27 | Query de posição livre excluía o próprio doc causando conflito | `service.js` | Removido filtro `d.id !== dados.id` — doc ainda está no bloco antigo |
 | 28 | Reserva com nome e `originalBase` fora do padrão não gerava bloco próprio | `render.js` | Detecção de blocos editados usa `originalBase` de qualquer reserva |
 | 29 | Impossível alterar horas no relógio — só minutos funcionavam | `index.html` + `controls.js` | Adicionadas setas ▲▼ para horas; `ajustarHora()` criada |
+| 30 | Login validado só no cliente, senhas hardcoded expostas no fonte | `index.html` | Migrado para Firebase Authentication — servidor valida a senha, código não guarda mais senha nenhuma |
+| 31 | Firestore com regras públicas (`allow read, write: if true`) — qualquer um na internet podia ler/apagar reservas sem login | Console Firebase | Regras alteradas para `if request.auth != null`; documentado em `firestore.rules` |
 
 ---
 
@@ -809,7 +817,6 @@ roomservice.js         ← state.js, database.js
 | # | Descrição | Risco |
 |---|---|---|
 | 1 | `validators.js` e `modal.js` têm validações paralelas (`paxs >= 0` vs `paxs > 0`) | Baixo |
-| 2 | Credenciais hardcoded visíveis no fonte do `index.html` | Médio (uso interno) |
 
 ---
 
