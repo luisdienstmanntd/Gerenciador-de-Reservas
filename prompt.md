@@ -1,6 +1,6 @@
 # Osteria Di Lucca — Sistema de Gestão de Reservas
 
-**README versão:** 4.5  
+**README versão:** 4.6  
 **Data:** 2026-07-02  
 
 ---
@@ -816,9 +816,7 @@ roomservice.js         ← state.js, database.js
 
 ## 18. Dívidas Técnicas — Pendentes
 
-| # | Descrição | Risco |
-|---|---|---|
-| 1 | `validators.js` e `modal.js` têm validações paralelas (`paxs >= 0` vs `paxs > 0`) | Baixo |
+Nenhuma pendente no momento (última resolvida: validações de PAX unificadas — verificado em 2026-07-02, `modal.js` já delegava 100% para `validarReserva()`/`validarPax()` de `validators.js`, sem lógica paralela).
 
 ---
 
