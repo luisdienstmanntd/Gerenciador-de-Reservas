@@ -1,6 +1,6 @@
 # Osteria Di Lucca — Sistema de Gestão de Reservas
 
-**README versão:** 4.4  
+**README versão:** 4.5  
 **Data:** 2026-07-02  
 
 ---
@@ -741,7 +741,7 @@ await firebase.auth().signInWithEmailAndPassword(email, senha);
 
 19. **`rowspan` no modo de filtro ativo usa total real do slot, não total filtrado.** Usar só as reservas filtradas quebra a estrutura visual da tabela. *(Regra adicionada após manutenção #2.)*
 
-20. **`linhasExtras` persiste em `sessionStorage` com chave por data.** Inicializado em `state.js` lendo do `sessionStorage`. Sem isso, recarregamento de página apaga configurações manuais do serviço. *(Regra adicionada após manutenção #3.)*
+20. **`linhasExtras` persiste na coleção `config_dia` do Firestore, não em `sessionStorage`.** `controls.js` (`acaoAdicionar`/`acaoExcluir`) chama `db.salvarConfigDia(data, linhasExtras)` após cada mudança; `listener.js` escuta `config_dia/{data}` em tempo real e aplica via `setLinhasExtras()`. Sobrevive a reload e sincroniza entre todos os tablets conectados. *(Regra corrigida em 2026-07-02 — descrição anterior mencionava `sessionStorage`, que não corresponde à implementação real.)*
 
 ---
 
@@ -1058,7 +1058,7 @@ const acaoClique = res
 |---|---|---|---|
 | 1 | Listeners acumulando — duplo disparo | 🔴 Obrigatória | ✅ Concluída (verificado em 2026-07-02: `{ once: true }` já aplicado em `modal.js`, e `_fecharResumo()` remove o nó do DOM — não há acúmulo. Testado com 10 ciclos abrir/fechar via JS, sem duplicação. Status estava desatualizado.) |
 | 2 | `rowspan` incorreto com filtro ativo | 🔴 Obrigatória | ✅ Concluída (verificado em 2026-07-02: branch de filtro em `render.js` v5.4 já calcula `rowspan` = quantidade de reservas filtradas por slot, que é exatamente o nº de linhas renderizadas. Testado com dataset sintético — slot com 3 reservas reais e filtro retornando 2 gerou `rowspan=2`, sem quebra. Status estava desatualizado.) |
-| 3 | `linhasExtras` não persiste entre recarregamentos | 🔴 Obrigatória | ⏳ Pendente |
+| 3 | `linhasExtras` não persiste entre recarregamentos | 🔴 Obrigatória | ✅ Concluída (verificado em 2026-07-02: implementado de forma diferente da descrita — `controls.js` v8.4 persiste `linhasExtras` na coleção `config_dia` do Firestore, não em `sessionStorage`. Mais robusto: sobrevive a reload E sincroniza entre todos os tablets, não só a mesma aba. Testado: adicionar linha, reload completo, valor restaurado corretamente. Status estava desatualizado.) |
 | 4 | Race condition em ALTERAR HORÁRIO | 🟡 Recomendada | ⏳ Pendente |
 | 5 | `_limparFormulario` não reseta estado da instância | 🟡 Recomendada | ⏳ Pendente |
 | 6 | `horariosPadrao` hardcoded em dois lugares | 🟡 Recomendada | ⏳ Pendente |
