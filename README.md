@@ -1,6 +1,6 @@
 # Osteria Di Lucca — Sistema de Gestão de Reservas
 
-Sistema web de gestão de reservas para o restaurante **Osteria Di Lucca**, dentro de um hotel boutique. Usado em tablets pela recepção, pela osteria (restaurante) e pela gerência durante o serviço do jantar, com atualização em tempo real entre os três pontos de acesso.
+Sistema web de gestão de reservas para o restaurante **Osteria Di Lucca**, dentro de um hotel boutique, em Gramado-RS. Usado em tablets pela recepção, pela osteria (restaurante) e pela gerência durante o serviço do jantar, com atualização em tempo real entre os três pontos de acesso.
 
 ## O problema que motivou o projeto
 
