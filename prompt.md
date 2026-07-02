@@ -1,6 +1,6 @@
 # Osteria Di Lucca — Sistema de Gestão de Reservas
 
-**README versão:** 4.6  
+**README versão:** 4.7  
 **Data:** 2026-07-02  
 
 ---
@@ -84,7 +84,7 @@ Sistema web de gerenciamento de reservas para o restaurante **Osteria Di Lucca**
 | `js/ui/filters.js` | v3.0 | 100% modular |
 | `js/ui/render.js` | **v6.0** | Escapa `nomes`/`obs`/`avulsa` antes de inserir em innerHTML — corrige XSS |
 | `js/ui/timers.js` | v4.1 | Sem dependência de render.js |
-| `index.html` | — | Relógio com setas ▲▼ para horas |
+| `index.html` | — | Scripts CDN (Chart.js + Firebase) com versão fixa e `integrity` (SRI) |
 | `css/style.css` | — | — |
 
 ---
@@ -811,12 +811,15 @@ roomservice.js         ← state.js, database.js
 | 30 | Login validado só no cliente, senhas hardcoded expostas no fonte | `index.html` | Migrado para Firebase Authentication — servidor valida a senha, código não guarda mais senha nenhuma |
 | 31 | Firestore com regras públicas (`allow read, write: if true`) — qualquer um na internet podia ler/apagar reservas sem login | Console Firebase | Regras alteradas para `if request.auth != null`; documentado em `firestore.rules` |
 | 32 | XSS armazenado — `nomes`/`obs`/`avulsa` inseridos sem escapar em `innerHTML` (render.js, home.js, roomservice.js, modal.js) | `render.js`, `home.js`, `roomservice.js`, `modal.js` | `escapeHtml()` criada em `validators.js` e aplicada em todos os pontos que inserem texto livre do usuário em HTML |
+| 33 | Chart.js carregado via CDN sem versão fixa (`.../npm/chart.js`) e nenhum script CDN tinha Subresource Integrity (SRI) — CDN comprometido poderia injetar código malicioso | `index.html` | Chart.js fixado em v4.5.1 (versão que já estava rodando); `integrity` (SHA-384) + `crossorigin="anonymous"` adicionados nos 4 scripts CDN (Chart.js + 3 do Firebase) |
 
 ---
 
 ## 18. Dívidas Técnicas — Pendentes
 
-Nenhuma pendente no momento (última resolvida: validações de PAX unificadas — verificado em 2026-07-02, `modal.js` já delegava 100% para `validarReserva()`/`validarPax()` de `validators.js`, sem lógica paralela).
+| # | Descrição | Risco |
+|---|---|---|
+| 1 | Firebase SDK v8 "compat" desatualizado — Google não lança novidades, só correções de segurança. Upgrade para v9+ (modular) exige reescrever a sintaxe de todas as chamadas ao Firestore em `database.js`, `service.js`, `listener.js` e módulos que os usam. Adiado por ser um projeto grande e arriscado sem suíte de testes automatizados, com o sistema em uso real no restaurante. | Baixo (v8 continua recebendo patches de segurança; sem prazo de descontinuação anunciado) |
 
 ---
 
