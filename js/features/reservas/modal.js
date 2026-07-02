@@ -29,6 +29,7 @@
             EDITAR RESERVA + FECHAR (sem ALTERAR HORÁRIO, ALTERAR DATA, CANCELAR RESERVA)
    ✅ v3.9: _limparFormulario() oculta colMenuDeg após o forEach — corrige checkbox visível
             na abertura inicial (tipoCliente resetado para "hospede" antes de _toggleCampos).
+   ✅ v3.10: Escapa reserva.nomes na mensagem de confirmação de CANCELAR RESERVA — corrige XSS armazenado
    ========================================================================================= */
 
 import { getTodasReservas, getDataAtual } from "../../core/state.js";
@@ -39,7 +40,7 @@ import {
   salvarApenasHorario,
   alterarData,
 } from "./service.js";
-import { validarReserva, formatarTelefone, limparHighlightCampos } from "./validators.js";
+import { validarReserva, formatarTelefone, limparHighlightCampos, escapeHtml } from "./validators.js";
 
 export class ReservaModal {
   constructor() {
@@ -356,7 +357,7 @@ export class ReservaModal {
     document.getElementById("btnResumoCancelar")?.addEventListener("click", () => {
       // ✅ v3.2: window.modalConfirmar substitui confirm() nativo — regra 5 (nunca usar confirm)
       // window.modalConfirmar é exposto por init.js v2.0 via exponerFuncoesGlobais()
-      window.modalConfirmar(`Cancelar reserva de ${reserva.nomes}?`, async () => {
+      window.modalConfirmar(`Cancelar reserva de ${escapeHtml(reserva.nomes)}?`, async () => {
         await excluirReserva(id);
         this.fechar();
       });

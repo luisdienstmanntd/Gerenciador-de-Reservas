@@ -19,9 +19,11 @@
             Completa a eliminação de todos os onclicks inline da tabela (regra arquitetural)
    ✅ v5.9: Reservas reais têm prioridade sobre docs vazios na mesma posição ao preencher slotsBase
             Evita que doc vazio fantasma sobrescreva reserva real quando ambos estão na mesma posição
+   ✅ v6.0: Escapa nomes/obs/avulsa com escapeHtml() antes de inserir no innerHTML — corrige XSS armazenado
    ========================================================================================= */
 
 import { getHorariosPadrao, getLinhasExtras, getFiltroAtivo } from '../core/state.js';
+import { escapeHtml } from '../features/reservas/validators.js';
 
 /**
  * Atualiza os mini-cards do header com totais
@@ -302,7 +304,7 @@ function renderizarLinha(res, horarioVisual, posicao, tdHora, hrBase) {
         if (isB) {
             let txt = res.bloqueado ? "BLOQUEADO" : "SOMENTE HÓSPEDES";
             let classeBloqueio = res.bloqueado ? "reserva-bloqueada" : "reserva-somente-hospedes";
-            let obsTexto = res.obs ? ` - ${res.obs}` : '';
+            let obsTexto = res.obs ? ` - ${escapeHtml(res.obs)}` : '';
             
             return `
 <tr>
@@ -342,13 +344,13 @@ function renderizarLinha(res, horarioVisual, posicao, tdHora, hrBase) {
             (res.tipo === "roomservice" ? `<b>APTO ${res.apto || "?"}</b>` : 
             "<b>PASS</b>"));
         let classePag = res.pagamento === 'pago' ? 'pg-confirmado' : (res.pagamento === 'pendente' ? 'pg-pendente' : '');
-        let textoPag = (res.tipo === 'externo' && res.avulsa) ? res.avulsa : (res.pagamento || "-");
+        let textoPag = (res.tipo === 'externo' && res.avulsa) ? escapeHtml(res.avulsa) : (res.pagamento || "-");
 
         return `
 <tr>
     ${tdHora}
     <td class="reserva-clicavel border-${res.tipo}" data-id="${res.id}">
-        ${label} — ${res.nomes} ${res.menuDegustacao ? `<span class="badge-deg">🍽 DEG</span>` : ''}${res.obs ? `<span class="obs-exibicao">${res.obs}</span>` : ""}
+        ${label} — ${escapeHtml(res.nomes)} ${res.menuDegustacao ? `<span class="badge-deg">🍽 DEG</span>` : ''}${res.obs ? `<span class="obs-exibicao">${escapeHtml(res.obs)}</span>` : ""}
     </td>
     <td class="col-pax"><div class="td-content">${adultos}</div></td>
     <td class="col-chd"><div class="td-content">${criancas}</div></td>

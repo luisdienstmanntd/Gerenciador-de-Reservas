@@ -2,11 +2,13 @@
    OSTERIA DI LUCCA - ROOMSERVICE.JS v2.2
    ✅ v2.1: Padroniza error handling — usa notificacao.js
    ✅ v2.2: Bug #8 — usa buscarReservasPorData() de service.js — elimina acesso direto ao Firestore
+   ✅ v2.3: Escapa rs.nomes/rs.obs no card — corrige XSS armazenado
    ========================================================================================= */
 
 import { getDataAtual } from '../core/state.js';
 import { buscarReservasPorData } from './reservas/service.js';
 import { notificarErro } from '../core/notificacao.js';
+import { escapeHtml } from './reservas/validators.js';
 
 /**
  * Carrega room services de uma data específica
@@ -55,11 +57,11 @@ export async function carregarRoomServices() {
                         <div>
                             <div style="font-size: 0.8rem; opacity: 0.7; margin-bottom: 5px;">${rs.horario}</div>
                             <div style="font-size: 1.3rem; font-weight: 900; color: var(--roomservice);">APTO ${rs.apto}</div>
-                            <div style="margin-top: 8px; font-size: 0.95rem;">${rs.nomes || 'Sem nome'}</div>
+                            <div style="margin-top: 8px; font-size: 0.95rem;">${rs.nomes ? escapeHtml(rs.nomes) : 'Sem nome'}</div>
                             <div style="margin-top: 5px; font-size: 0.85rem; opacity: 0.8;">
                                 👤 ${rs.paxs || 0} adultos ${rs.chd ? `+ ${rs.chd} crianças` : ''}
                             </div>
-                            ${rs.obs ? `<div style="margin-top: 8px; font-size: 0.8rem; background: #fff3cd; color: #856404; padding: 5px 10px; border-radius: 5px; display: inline-block;">${rs.obs}</div>` : ''}
+                            ${rs.obs ? `<div style="margin-top: 8px; font-size: 0.8rem; background: #fff3cd; color: #856404; padding: 5px 10px; border-radius: 5px; display: inline-block;">${escapeHtml(rs.obs)}</div>` : ''}
                         </div>
                         <div style="text-align: right;">
                             <div style="background: ${corStatus}; color: white; padding: 5px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; margin-bottom: 10px;">

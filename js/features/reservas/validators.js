@@ -201,4 +201,22 @@ function _marcar(id) {
     if (el) el.classList.add('campo-invalido');
 }
 
-console.log('✅ validators.js v1.2 carregado - destacarCamposInvalidos() disponível');
+/**
+ * Escapa caracteres HTML perigosos em texto livre digitado pelo usuário
+ * (nomes, observações, etc.) antes de inserir em template strings de innerHTML.
+ * Sem isso, um usuário digitando "<img src=x onerror=alert(1)>" em Observações
+ * executaria esse código para qualquer pessoa que abrir a grade (XSS armazenado).
+ * @param {string} texto - Texto potencialmente perigoso
+ * @returns {string} Texto seguro para inserir em HTML
+ */
+export function escapeHtml(texto) {
+    if (texto === null || texto === undefined) return '';
+    return String(texto)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+console.log('✅ validators.js v1.3 carregado - escapeHtml() disponível');

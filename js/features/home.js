@@ -16,9 +16,11 @@
    ✅ v2.1: BUG FIX ticker invisível no tablet — breakpoint corrigido 1024px → 1200px
             em _atualizarClonesKpiTicker() e _iniciarKpiTicker()
             Tab A9 landscape (1138px) passava pelo guard e retornava sem renderizar
+   ✅ v2.2: Escapa r.obs/r.nomes no card "Observações da Noite" — corrige XSS armazenado
    ========================================================================================= */
 
 import { db } from '../core/database.js';
+import { escapeHtml } from './reservas/validators.js';
 
 let chartGaugeInstance  = null;
 let chartBarrasInstance = null;
@@ -452,14 +454,14 @@ function _renderizarObsNoite(reservas) {
     const itemHtml = comObs.map(r => {
         const linhas = [];
         if (r.menuDegustacao) linhas.push(`<span class="home-obs-deg">🍽️ Menu Degustação</span>`);
-        if (r.obs?.trim())    linhas.push(`<span>${r.obs}</span>`);
+        if (r.obs?.trim())    linhas.push(`<span>${escapeHtml(r.obs)}</span>`);
         const mesaLabel = r.mesa && r.mesa !== '' && r.mesa !== '-'
             ? (r.mesa === 'ROOM' ? 'RS' : `Mesa ${r.mesa}`)
             : r.horario;
         return `
         <div class="home-obs-row" style="border-bottom:1px solid ${border};" data-id="${r.id}">
             <div class="home-obs-mesa">${mesaLabel}</div>
-            <div class="home-obs-texto">${r.nomes ? `<span class="home-obs-nome">${r.nomes}</span>` : ''}${linhas.join('')}</div>
+            <div class="home-obs-texto">${r.nomes ? `<span class="home-obs-nome">${escapeHtml(r.nomes)}</span>` : ''}${linhas.join('')}</div>
         </div>`;
     }).join('');
 
