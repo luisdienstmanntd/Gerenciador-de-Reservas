@@ -22,6 +22,8 @@
    ✅ v3.8: salvarApenasHorario() branch "linha vazia" agora consulta snapshot do bloco
             destino e usa _calcularPosicaoLivre() — evita posição fora do range visual
             quando a posição original não existe no bloco destino.
+   ✅ v3.11: _calcularPosicaoLivre() exportada — permite teste unitário isolado (sem mock
+             do Firestore inteiro), cobrindo a lógica por trás dos bugs #25/#26/#27
    ========================================================================================= */
 
 import {
@@ -57,7 +59,7 @@ async function _getFirestore() {
  * @param {number} [posicaoDesejada=0] - Posição preferida (usada se livre)
  * @returns {number} Menor posição disponível
  */
-function _calcularPosicaoLivre(snapBloco, posicaoDesejada = 0) {
+export function _calcularPosicaoLivre(snapBloco, posicaoDesejada = 0) {
     const ocupadas = [];
     snapBloco.forEach(d => {
         const r = d.data();

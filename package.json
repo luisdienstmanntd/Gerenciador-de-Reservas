@@ -1,0 +1,26 @@
+{
+  "name": "gerenciador-de-reservas",
+  "version": "1.0.0",
+  "description": "Sistema web de gestão de reservas para o restaurante **Osteria Di Lucca**, dentro de um hotel boutique, em Gramado-RS. Usado em tablets pela recepção, pela osteria (restaurante) e pela gerência durante o serviço do jantar, com atualização em tempo real entre os três pontos de acesso.",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/luisdienstmanntd/Gerenciador-de-Reservas.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/luisdienstmanntd/Gerenciador-de-Reservas/issues"
+  },
+  "homepage": "https://github.com/luisdienstmanntd/Gerenciador-de-Reservas#readme",
+  "devDependencies": {
+    "jsdom": "^29.1.1",
+    "vitest": "^4.1.9"
+  }
+}

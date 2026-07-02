@@ -58,3 +58,14 @@ Depois acesse `http://localhost:8080`. É necessário um projeto Firebase própr
 ## Documentação técnica
 
 Para detalhes de arquitetura, modelo de dados, regras internas do código e histórico de manutenções, veja [`prompt.md`](prompt.md).
+
+## Testes
+
+O projeto tem testes automatizados com [Vitest](https://vitest.dev/) cobrindo as regras de validação, o gerenciamento de estado e a lógica de cálculo de posição de reservas (81 testes). Rode com:
+
+```bash
+npm install
+npx vitest run
+```
+
+O plano completo (ferramenta escolhida, prioridades, convenções, o que ainda falta) está documentado em [`TESTES.md`](TESTES.md).
