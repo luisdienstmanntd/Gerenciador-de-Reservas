@@ -7,9 +7,11 @@
              em vez de só o total de pax
    ✅ v3.12: Gráfico "Composição" (adultos/crianças) substituído por "Movimento por Dia da
              Semana" — barra empilhada por tipo de cliente, por dia (bug #47)
+   ✅ v3.13: Modo "Datas específicas" (analisa datas avulsas) e exceções de data no modo
+             "Período" (exclui dias com eventos fechados que distorceriam a análise) (bug #48)
    ========================================================================================= */
 
-import { buscarReservasPorPeriodo } from './reservas/service.js';
+import { buscarReservasPorPeriodo, buscarReservasPorData } from './reservas/service.js';
 import { notificarErro } from '../core/notificacao.js';
 import { getHorariosPadrao } from '../core/state.js';
 
@@ -21,6 +23,11 @@ let chartMesasInstance = null;
 
 const CAPACIDADE_NOITE = 30;
 const DIAS_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+
+// ✅ v3.13: Consulta por período com exceções, ou por datas específicas (bug #48)
+let modoConsulta = 'periodo'; // 'periodo' | 'especificas'
+let datasExcluidas = [];      // usado no modo 'periodo' — datas dentro do intervalo a ignorar
+let datasEspecificas = [];    // usado no modo 'especificas' — datas avulsas a analisar
 
 function processarDashboard(reservas, diasNoPeriodo = 1) {
     console.log("📊 Dashboard processando", reservas.length, "reservas em", diasNoPeriodo, "dias");
@@ -206,27 +213,46 @@ function destruirGraficos() {
 async function carregarDadosDashboard() {
     console.log("🔄 Carregando Dashboard...");
 
-    let inicio = document.getElementById("dashInicio")?.value;
-    let fim = document.getElementById("dashFim")?.value;
-
-    if (!inicio || !fim) {
-        const hoje = new Date();
-        const dataLocal = `${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}-${String(hoje.getDate()).padStart(2,'0')}`;
-        const inputInicio = document.getElementById("dashInicio");
-        const inputFim = document.getElementById("dashFim");
-        if (inputInicio && !inputInicio.value) { inputInicio.value = dataLocal; inicio = dataLocal; }
-        if (inputFim && !inputFim.value) { inputFim.value = dataLocal; fim = dataLocal; }
-        if (!inicio || !fim) return;
-    }
-
-    console.log("📅 Buscando dados de", inicio, "até", fim);
-
     try {
-        const reservasPeriodo = await buscarReservasPorPeriodo(inicio, fim);
-        console.log("✅ Carregadas", reservasPeriodo.length, "reservas");
+        let reservasPeriodo, diasNoPeriodo;
 
-        const diffDays = Math.ceil(Math.abs(new Date(fim) - new Date(inicio)) / (1000 * 60 * 60 * 24)) + 1;
-        processarDashboard(reservasPeriodo, diffDays);
+        if (modoConsulta === 'especificas') {
+            if (datasEspecificas.length === 0) {
+                notificarErro('Adicione ao menos uma data específica para analisar.');
+                return;
+            }
+            console.log("📅 Buscando", datasEspecificas.length, "data(s) específica(s):", datasEspecificas);
+            const resultados = await Promise.all(datasEspecificas.map(d => buscarReservasPorData(d)));
+            reservasPeriodo = resultados.flat();
+            diasNoPeriodo = datasEspecificas.length;
+
+        } else {
+            let inicio = document.getElementById("dashInicio")?.value;
+            let fim = document.getElementById("dashFim")?.value;
+
+            if (!inicio || !fim) {
+                const hoje = new Date();
+                const dataLocal = `${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}-${String(hoje.getDate()).padStart(2,'0')}`;
+                const inputInicio = document.getElementById("dashInicio");
+                const inputFim = document.getElementById("dashFim");
+                if (inputInicio && !inputInicio.value) { inputInicio.value = dataLocal; inicio = dataLocal; }
+                if (inputFim && !inputFim.value) { inputFim.value = dataLocal; fim = dataLocal; }
+                if (!inicio || !fim) return;
+            }
+
+            console.log("📅 Buscando dados de", inicio, "até", fim, "— excluindo", datasExcluidas.length, "data(s)");
+
+            const todasReservasPeriodo = await buscarReservasPorPeriodo(inicio, fim);
+            reservasPeriodo = todasReservasPeriodo.filter(r => !datasExcluidas.includes(r.data));
+
+            const diffDays = Math.ceil(Math.abs(new Date(fim) - new Date(inicio)) / (1000 * 60 * 60 * 24)) + 1;
+            // Só desconta do denominador as exceções que realmente caem dentro do intervalo pesquisado
+            const excluidasNoIntervalo = datasExcluidas.filter(d => d >= inicio && d <= fim).length;
+            diasNoPeriodo = Math.max(1, diffDays - excluidasNoIntervalo);
+        }
+
+        console.log("✅ Carregadas", reservasPeriodo.length, "reservas em", diasNoPeriodo, "dia(s)");
+        processarDashboard(reservasPeriodo, diasNoPeriodo);
 
     } catch (e) {
         console.error("❌ Erro ao carregar Dashboard:", e);
@@ -234,6 +260,80 @@ async function carregarDadosDashboard() {
     }
 }
 
+/**
+ * Alterna entre "Período contínuo" e "Datas específicas" — mostra/oculta os
+ * campos correspondentes e re-renderiza os chips do modo ativo.
+ */
+function alternarModoDashboard() {
+    modoConsulta = document.getElementById('dashModo')?.value || 'periodo';
+
+    const grupoPeriodo = document.getElementById('dashGrupoPeriodo');
+    const grupoExclusao = document.getElementById('dashGrupoExclusao');
+    const grupoEspecificas = document.getElementById('dashGrupoEspecificas');
+
+    if (grupoPeriodo) grupoPeriodo.style.display = modoConsulta === 'periodo' ? 'flex' : 'none';
+    if (grupoExclusao) grupoExclusao.style.display = modoConsulta === 'periodo' ? 'flex' : 'none';
+    if (grupoEspecificas) grupoEspecificas.style.display = modoConsulta === 'especificas' ? 'flex' : 'none';
+
+    _renderizarChipsDatas();
+}
+
+/** Formata 'YYYY-MM-DD' como 'DD/MM/AAAA' pro chip, sem depender de fuso horário. */
+function _formatarDataChip(data) {
+    const [ano, mes, dia] = data.split('-');
+    return `${dia}/${mes}/${ano}`;
+}
+
+function _renderizarChipsDatas() {
+    const container = document.getElementById('dashChipsDatas');
+    if (!container) return;
+
+    const lista = modoConsulta === 'periodo' ? datasExcluidas : datasEspecificas;
+    const funcaoRemover = modoConsulta === 'periodo' ? 'removerDataExcluida' : 'removerDataEspecifica';
+    const isDark = document.body.classList.contains('dark-theme');
+    const bgChip = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
+
+    container.innerHTML = [...lista].sort().map(d => `
+        <span style="background:${bgChip}; border-radius:20px; padding:4px 6px 4px 12px; font-size:0.8rem; display:inline-flex; align-items:center; gap:6px;">
+            ${_formatarDataChip(d)}
+            <span onclick="${funcaoRemover}('${d}')" style="cursor:pointer; font-weight:700; opacity:0.7; padding:0 4px;">✕</span>
+        </span>
+    `).join('');
+}
+
+function adicionarDataExcluida() {
+    const input = document.getElementById('dashDataExcluir');
+    const data = input?.value;
+    if (!data) return;
+    if (!datasExcluidas.includes(data)) datasExcluidas.push(data);
+    input.value = '';
+    _renderizarChipsDatas();
+}
+
+function removerDataExcluida(data) {
+    datasExcluidas = datasExcluidas.filter(d => d !== data);
+    _renderizarChipsDatas();
+}
+
+function adicionarDataEspecifica() {
+    const input = document.getElementById('dashDataEspecifica');
+    const data = input?.value;
+    if (!data) return;
+    if (!datasEspecificas.includes(data)) datasEspecificas.push(data);
+    input.value = '';
+    _renderizarChipsDatas();
+}
+
+function removerDataEspecifica(data) {
+    datasEspecificas = datasEspecificas.filter(d => d !== data);
+    _renderizarChipsDatas();
+}
+
 window.processarDashboard = processarDashboard;
 window.destruirGraficos = destruirGraficos;
 window.carregarDadosDashboard = carregarDadosDashboard;
+window.alternarModoDashboard = alternarModoDashboard;
+window.adicionarDataExcluida = adicionarDataExcluida;
+window.removerDataExcluida = removerDataExcluida;
+window.adicionarDataEspecifica = adicionarDataEspecifica;
+window.removerDataEspecifica = removerDataEspecifica;

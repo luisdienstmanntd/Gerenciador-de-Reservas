@@ -540,16 +540,39 @@
                  </div>
             </div>
 
-            <div style="background: var(--card-bg); padding: 15px; border-radius: 10px; margin-bottom: 20px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; box-shadow: 0 4px 6px var(--shadow);">
+            <div style="background: var(--card-bg); padding: 15px; border-radius: 10px; margin-bottom: 10px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; box-shadow: 0 4px 6px var(--shadow);">
                 <div>
-                    <label style="font-size: 0.8rem;">De:</label>
-                    <input type="date" id="dashInicio" class="filtro-data" style="margin: 0;">
+                    <label style="font-size: 0.8rem;">Modo:</label>
+                    <select id="dashModo" class="filtro-data" style="margin: 0;" onchange="alternarModoDashboard()">
+                        <option value="periodo">Período contínuo</option>
+                        <option value="especificas">Datas específicas</option>
+                    </select>
                 </div>
-                <div>
-                    <label style="font-size: 0.8rem;">Até:</label>
-                    <input type="date" id="dashFim" class="filtro-data" style="margin: 0;">
+                <div id="dashGrupoPeriodo" style="display: flex; gap: 10px; align-items: center;">
+                    <div>
+                        <label style="font-size: 0.8rem;">De:</label>
+                        <input type="date" id="dashInicio" class="filtro-data" style="margin: 0;">
+                    </div>
+                    <div>
+                        <label style="font-size: 0.8rem;">Até:</label>
+                        <input type="date" id="dashFim" class="filtro-data" style="margin: 0;">
+                    </div>
                 </div>
-                <button class="btn-main" onclick="carregarDadosDashboard()" style="padding: 5px 15px; height: 38px;">ANALISAR PERÍODO</button>
+                <button class="btn-main" onclick="carregarDadosDashboard()" style="padding: 5px 15px; height: 38px;">ANALISAR</button>
+            </div>
+
+            <div style="background: var(--card-bg); padding: 15px; border-radius: 10px; margin-bottom: 20px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; box-shadow: 0 4px 6px var(--shadow);">
+                <div id="dashGrupoExclusao" style="display: flex; gap: 8px; align-items: center;">
+                    <label style="font-size: 0.8rem;">Excluir data (evento fechado, etc.):</label>
+                    <input type="date" id="dashDataExcluir" class="filtro-data" style="margin: 0;">
+                    <button class="btn-main" onclick="adicionarDataExcluida()" style="padding: 5px 12px; height: 34px;">+ EXCLUIR</button>
+                </div>
+                <div id="dashGrupoEspecificas" style="display: none; gap: 8px; align-items: center;">
+                    <label style="font-size: 0.8rem;">Adicionar data à análise:</label>
+                    <input type="date" id="dashDataEspecifica" class="filtro-data" style="margin: 0;">
+                    <button class="btn-main" onclick="adicionarDataEspecifica()" style="padding: 5px 12px; height: 34px;">+ ADICIONAR</button>
+                </div>
+                <div id="dashChipsDatas" style="display: flex; gap: 6px; flex-wrap: wrap;"></div>
             </div>
 
             <div class="dashboard-kpis">
