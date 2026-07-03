@@ -84,7 +84,7 @@ Sistema web de gerenciamento de reservas para o restaurante **Osteria Di Lucca**
 | `js/ui/filters.js` | v3.0 | 100% modular |
 | `js/ui/render.js` | **v6.0** | Escapa `nomes`/`obs`/`avulsa` antes de inserir em innerHTML — corrige XSS |
 | `js/ui/timers.js` | v4.1 | Sem dependência de render.js |
-| `index.html` | — | Scripts Firebase (CDN) sem `integrity` (SRI) — removido por bloquear carregamento em redes com proxy/inspeção; Chart.js mantém SRI |
+| `index.html` | — | Scripts Firebase (CDN) sem `integrity` (SRI, bug #36); login gate usa `onAuthStateChanged()` como fonte da verdade em vez de `localStorage`, e chama `recarregarReservas()` ao confirmar usuário real (bug #37) |
 | `css/style.css` | — | — |
 
 ---
@@ -815,6 +815,7 @@ roomservice.js         ← state.js, database.js
 | 34 | 18 arquivos com `console.log` de banner ("✅ xyz.js vX.X carregado") sem nenhuma utilidade em produção — poluíam o console | 18 arquivos em `js/` | Removidos os banners; mantidos todos os `console.log`/`warn`/`error` de fluxo e diagnóstico (única forma de observabilidade do sistema hoje) |
 | 35 | `horariosPadrao` hardcoded em 4 lugares fora de `state.js` (`dashboard.js`, `home.js` ×2, `listener.js`) — divergência descrita na doc como "dois lugares", mas era pior na prática | `dashboard.js`, `home.js`, `listener.js` | Todos passam a usar `getHorariosPadrao()` de `state.js` como fonte única |
 | 36 | Em redes com proxy/inspeção de conteúdo (ex: rede do hotel), o `integrity` (SRI) adicionado no bug #34 aos 3 scripts do Firebase (CDN) fazia o navegador bloquear o script silenciosamente quando o proxy alterava minimamente o arquivo baixado (recompressão, cache transparente etc.) — sem erro visível na tela. Sintoma: `firebase.auth is not a function`, e todos os listeners do Firestore falhando com `Missing or insufficient permissions` (o SDK de Auth nunca carregava para completar o login; `firebase.app`/`firestore()` continuavam funcionando normalmente pois seus scripts não eram bloqueados) | `index.html` | `integrity` removido dos 3 scripts do Firebase CDN (mantido em Chart.js, que não expôs o problema); mantido `crossorigin="anonymous"`; adicionado `onerror` em cada script para logar no console se o CDN for bloqueado pela rede, em vez de falhar silenciosamente |
+| 37 | Corrigido o bug #36 (SRI), o `Missing or insufficient permissions` persistiu em teste na rede do hotel. Causa: a tela de login era decidida só pelo flag `localStorage.usuario_nome` — não pelo estado real do Firebase Auth (guardado no IndexedDB). Se o IndexedDB do site for limpo/bloqueado (tablet/rede do hotel) mas o `localStorage` sobreviver, a UI achava o usuário logado e escondia a tela, enquanto o Firestore corretamente negava tudo porque `request.auth` era `null` no servidor. Agravante: `init.js` chama `escutarReservas()` no boot **antes** de qualquer autenticação resolver; se essa 1ª tentativa leva um `permission-denied`, o Firestore SDK v8 encerra aquele `onSnapshot` para sempre — um login bem-sucedido *depois* não o reativa sozinho | `index.html` | Login gate reescrito para usar `firebase.auth().onAuthStateChanged()` como fonte única da verdade: sem usuário real → limpa o flag obsoleto e mostra a tela de login; com usuário real → esconde a tela e chama `recarregarReservas()` (listener.js) para garantir um listener nascido sob autenticação confirmada, eliminando a corrida de boot. Mesma classe de bug ainda não corrigida em `iniciarEscutaNotificacoes()` (sino) — ver dívida técnica #2 |
 
 ---
 
@@ -823,6 +824,7 @@ roomservice.js         ← state.js, database.js
 | # | Descrição | Risco |
 |---|---|---|
 | 1 | Firebase SDK v8 "compat" desatualizado — Google não lança novidades, só correções de segurança. Upgrade para v9+ (modular) exige reescrever a sintaxe de todas as chamadas ao Firestore em `database.js`, `service.js`, `listener.js` e módulos que os usam. Adiado por ser um projeto grande e arriscado sem suíte de testes automatizados, com o sistema em uso real no restaurante. | Baixo (v8 continua recebendo patches de segurança; sem prazo de descontinuação anunciado) |
+| 2 | `iniciarEscutaNotificacoes()` (`listener.js`) tem a mesma classe de bug corrigida no bug #37 nos listeners de reservas/config_dia: é chamada uma única vez no boot por `init.js`, antes de qualquer autenticação resolver. Se essa 1ª tentativa cair em `permission-denied`, o `onSnapshot` do sino morre e não existe hoje uma função de "reconectar" equivalente a `recarregarReservas()` — o guard `if (_unsubscribeNotificacoes) return` impede uma nova tentativa. Resultado possível: sino de notificações fica mudo pelo resto da sessão nas mesmas condições de rede do bug #37, mesmo com a grade de reservas já funcionando normalmente | Médio (funcionalidade secundária — não bloqueia login nem a grade principal, mas pode falhar silenciosamente sem o usuário perceber a causa) |
 
 ---
 

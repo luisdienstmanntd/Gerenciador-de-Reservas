@@ -74,6 +74,7 @@
         // ✅ Importar db garante que firebase.initializeApp() já rodou
         // (módulos ES6 resolvem imports antes de executar o próprio código)
         import { db } from './js/core/database.js';
+        import { recarregarReservas } from './js/features/reservas/listener.js';
 
         // ✅ Tradução nome curto → e-mail fictício cadastrado no Firebase Authentication
         // Não é segredo: a senha real fica só no Firebase, nunca aparece aqui.
@@ -83,15 +84,41 @@
             'gerencia': 'gerencia@osteriadilucca.app'
         };
 
-        // ✅ Verifica login ao carregar — antes de qualquer módulo ES6
-        (function() {
-            const usuario = localStorage.getItem('usuario_nome');
-            if (!usuario) {
-                const tela = document.getElementById('telaLogin');
-                tela.style.display = 'flex';
-                setTimeout(() => document.getElementById('inputUsuario').focus(), 100);
+        function mostrarTelaLogin() {
+            const tela = document.getElementById('telaLogin');
+            tela.style.display = 'flex';
+            setTimeout(() => document.getElementById('inputUsuario').focus(), 100);
+        }
+
+        function esconderTelaLogin() {
+            document.getElementById('telaLogin').style.display = 'none';
+        }
+
+        // ✅ Fonte única da verdade sobre login: o estado real do Firebase Auth.
+        // Antes, a tela de login era decidida só por um flag em localStorage
+        // ('usuario_nome'), que não reflete a sessão real do Firebase (guardada
+        // no IndexedDB pelo SDK). Em redes/navegadores que limpam ou bloqueiam
+        // o IndexedDB do site (comum em tablets e redes de hotel/corporativas)
+        // mas preservam o localStorage, a UI escondia a tela de login achando
+        // que o usuário estava autenticado, enquanto o Firestore corretamente
+        // negava tudo com "Missing or insufficient permissions" — porque
+        // request.auth era null no servidor.
+        //
+        // Reconectar os listeners aqui (recarregarReservas) também corrige um
+        // problema de corrida: se a escuta inicial de init.js rodar antes da
+        // autenticação terminar de resolver, ela recebe permission-denied e o
+        // onSnapshot correspondente morre — o Firestore não o reativa sozinho
+        // quando o login é concluído depois. Reconectar sob um usuário já
+        // confirmado garante um listener sempre vivo e autenticado.
+        firebase.auth().onAuthStateChanged((user) => {
+            if (user) {
+                esconderTelaLogin();
+                recarregarReservas();
+            } else {
+                localStorage.removeItem('usuario_nome');
+                mostrarTelaLogin();
             }
-        })();
+        });
 
         async function confirmarLogin() {
             const usuario = document.getElementById('inputUsuario').value.trim().toLowerCase();
@@ -111,7 +138,7 @@
                 await firebase.auth().signInWithEmailAndPassword(email, senha);
                 erroEl.style.display = 'none';
                 localStorage.setItem('usuario_nome', usuario);
-                document.getElementById('telaLogin').style.display = 'none';
+                // esconderTelaLogin() e recarregarReservas() disparam via onAuthStateChanged acima
             } catch (e) {
                 // Mensagem genérica de propósito — não revela se o usuário existe ou não
                 erroEl.style.display = 'block';
