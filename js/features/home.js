@@ -20,6 +20,8 @@
    ✅ v2.3: HORARIOS/horarios usam getHorariosPadrao() de state.js — elimina 2 arrays hardcoded (Manutenção #6)
    ✅ v2.4: Gráfico "PAX por Horário" vira barra empilhada por tipo de cliente
             (hóspede/externo/passante), mesma quebra do Dashboard (bug #45)
+   ✅ v2.5: Remove borderRadius das séries empilhadas — cantos arredondados por segmento
+            deixavam um "degrau" visual entre hóspede/externo/passante (bug #49)
    ========================================================================================= */
 
 import { db } from '../core/database.js';
@@ -303,9 +305,9 @@ function _renderizarGraficos(reaisHoje, reaisSemana, hoje) {
             data: {
                 labels: horarios,
                 datasets: [
-                    { label: 'Hóspede', data: horarios.map(h => paxPorHr[h].hospede), backgroundColor: PALETA.hospede, borderRadius: 6, borderSkipped: false },
-                    { label: 'Externo', data: horarios.map(h => paxPorHr[h].externo), backgroundColor: PALETA.externo, borderRadius: 6, borderSkipped: false },
-                    { label: 'Passante', data: horarios.map(h => paxPorHr[h].passante), backgroundColor: PALETA.passante, borderRadius: 6, borderSkipped: false },
+                    { label: 'Hóspede', data: horarios.map(h => paxPorHr[h].hospede), backgroundColor: PALETA.hospede },
+                    { label: 'Externo', data: horarios.map(h => paxPorHr[h].externo), backgroundColor: PALETA.externo },
+                    { label: 'Passante', data: horarios.map(h => paxPorHr[h].passante), backgroundColor: PALETA.passante },
                 ]
             },
             options: {

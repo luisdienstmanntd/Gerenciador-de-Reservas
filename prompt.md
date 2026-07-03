@@ -1,6 +1,6 @@
 # Osteria Di Lucca — Sistema de Gestão de Reservas
 
-**README versão:** 4.19  
+**README versão:** 4.20  
 **Data:** 2026-07-03  
 
 ---
@@ -77,8 +77,8 @@ Sistema web de gerenciamento de reservas para o restaurante **Osteria Di Lucca**
 | `js/features/reservas/log.js` | v1.3 | Exibe usuário logado nos cards |
 | `js/features/reservas/validators.js` | **v1.3** | `escapeHtml()` adicionada — sanitização de saída contra XSS |
 | `js/features/mesas/modal.js` | v1.0 | — |
-| `js/features/dashboard.js` | **v3.13** | Modo "Datas específicas" + exceções de data no modo "Período" (bug #48) |
-| `js/features/home.js` | **v2.4** | Gráfico "PAX por Horário" em barra empilhada por tipo de cliente (bug #46) |
+| `js/features/dashboard.js` | **v3.14** | Remove `borderRadius` das barras empilhadas — corrige "degrau" visual (bug #49) |
+| `js/features/home.js` | **v2.5** | Remove `borderRadius` da barra empilhada — corrige "degrau" visual (bug #49) |
 | `js/features/roomservice.js` | **v2.3** | Escapa `nomes`/`obs` no card — corrige XSS |
 | `js/ui/controls.js` | **v7.9** | `ajustarHora()` adicionada |
 | `js/ui/filters.js` | v3.0 | 100% modular |
@@ -830,6 +830,7 @@ roomservice.js         ← state.js, database.js
 | 46 | Mesma limitação do bug #45, no gráfico "PAX por Horário" da tela Início | `home.js` | Mesma quebra por tipo aplicada em `home-chart-barras`, reaproveitando a paleta de cores por tipo já existente (`PALETA.hospede`/`externo`/`passante`) — mantém consistência visual dentro da própria tela. Testado com dados reais |
 | 47 | Solicitação: gráfico "Composição" (adultos×crianças) tinha baixo valor analítico — dono do projeto queria ver movimento por dia da semana, por tipo de cliente | `dashboard.js`, `index.html` | Gráfico substituído por "Movimento por Dia da Semana" — barra empilhada (hóspede/externo/passante) agrupando `reservas` pelo dia da semana de `data` (`new Date(data + 'T12:00:00').getDay()`, mesmo padrão de `home.js`). Canvas renomeado de `chartComposicao` para `chartDiaSemana`. Testado com dados reais e sintéticos (domingo/segunda/sexta caem nas colunas corretas) |
 | 48 | Solicitação: eventos fechados na osteria (ex: aniversário particular) distorciam as análises do Dashboard, que só permitia um intervalo De/Até contínuo, sem forma de isolar ou excluir dias | `dashboard.js`, `index.html` | Novo seletor "Modo" (`#dashModo`): **Período contínuo** (comportamento anterior + campo "Excluir data", remove dias específicos do intervalo antes de calcular KPIs/gráficos, com a taxa de ocupação recalculada sobre os dias realmente considerados) ou **Datas específicas** (busca só as datas avulsas escolhidas, via `buscarReservasPorData()` em paralelo — sem limite de 10 itens que uma query `where(...,'in',...)` do Firestore teria). Datas adicionadas viram "chips" removíveis (`_renderizarChipsDatas()`). Testado: exclusão reduz o total corretamente (27→15 pax excluindo hoje), remoção da exclusão restaura o total (15→27), modo "datas específicas" isola corretamente (12 pax só de hoje), validação de lista vazia |
+| 49 | Nos 3 gráficos de barra empilhada (bugs #45/#46/#47), `borderRadius` aplicado em cada série individualmente arredondava os cantos de cada segmento — criava um "degrau" visual onde hóspede/externo/passante deveriam se encaixar sem emenda | `home.js`, `dashboard.js` | Removido `borderRadius`/`borderSkipped` das séries empilhadas em `home-chart-barras`, `chartHorario` e `chartDiaSemana` — barras agora ficam sólidas e contínuas |
 
 ---
 

@@ -9,6 +9,8 @@
              Semana" — barra empilhada por tipo de cliente, por dia (bug #47)
    ✅ v3.13: Modo "Datas específicas" (analisa datas avulsas) e exceções de data no modo
              "Período" (exclui dias com eventos fechados que distorceriam a análise) (bug #48)
+   ✅ v3.14: Remove borderRadius das séries empilhadas (chartHorario e chartDiaSemana) — mesmo
+             "degrau" visual do bug #49
    ========================================================================================= */
 
 import { buscarReservasPorPeriodo, buscarReservasPorData } from './reservas/service.js';
@@ -138,9 +140,9 @@ function renderizarGraficosAvancados(dadosHorario, dadosTipo, dadosDiaSemana, da
             data: {
                 labels: horariosOrdenados,
                 datasets: [
-                    { label: 'Hóspede', data: horariosOrdenados.map(h => dadosHorario[h].hospede), backgroundColor: '#3498db', borderRadius: 4 },
-                    { label: 'Externo', data: horariosOrdenados.map(h => dadosHorario[h].externo), backgroundColor: '#f39c12', borderRadius: 4 },
-                    { label: 'Passante', data: horariosOrdenados.map(h => dadosHorario[h].passante), backgroundColor: '#95a5a6', borderRadius: 4 },
+                    { label: 'Hóspede', data: horariosOrdenados.map(h => dadosHorario[h].hospede), backgroundColor: '#3498db' },
+                    { label: 'Externo', data: horariosOrdenados.map(h => dadosHorario[h].externo), backgroundColor: '#f39c12' },
+                    { label: 'Passante', data: horariosOrdenados.map(h => dadosHorario[h].passante), backgroundColor: '#95a5a6' },
                 ]
             },
             options: {
@@ -185,9 +187,9 @@ function renderizarGraficosAvancados(dadosHorario, dadosTipo, dadosDiaSemana, da
             data: {
                 labels: DIAS_SEMANA,
                 datasets: [
-                    { label: 'Hóspede', data: dadosDiaSemana.map(d => d.hospede), backgroundColor: '#3498db', borderRadius: 4 },
-                    { label: 'Externo', data: dadosDiaSemana.map(d => d.externo), backgroundColor: '#f39c12', borderRadius: 4 },
-                    { label: 'Passante', data: dadosDiaSemana.map(d => d.passante), backgroundColor: '#95a5a6', borderRadius: 4 },
+                    { label: 'Hóspede', data: dadosDiaSemana.map(d => d.hospede), backgroundColor: '#3498db' },
+                    { label: 'Externo', data: dadosDiaSemana.map(d => d.externo), backgroundColor: '#f39c12' },
+                    { label: 'Passante', data: dadosDiaSemana.map(d => d.passante), backgroundColor: '#95a5a6' },
                 ]
             },
             options: {
