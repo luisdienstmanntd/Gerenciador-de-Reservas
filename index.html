@@ -743,15 +743,18 @@
     </div>
 
 <!-- Firebase CDN -->
+<!-- integrity (SRI) removido: redes com proxy/inspeção de conteúdo (ex: hotéis)
+     recomprimem ou alteram levemente o arquivo baixado, o hash SHA-384 deixa de
+     bater e o navegador bloqueia o script silenciosamente, sem erro visível. -->
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"
-    integrity="sha384-gNTK1b3nq+NMsDf1ASdhbVEwXj9tjBeobuvcjWGlmIffN9OP+Q0SU9Q10JKPZryT"
-    crossorigin="anonymous"></script>
+    crossorigin="anonymous"
+    onerror="console.error('❌ Falha ao carregar firebase-app.js — a rede pode estar bloqueando o CDN do Firebase (proxy/firewall/inspeção de conteúdo).')"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"
-    integrity="sha384-p62xBRve8PdqGDGASZtZMuHgPsyPcT5VsFwgmz2p4zaFdEtt5ZzNqxK+CLzQS7xP"
-    crossorigin="anonymous"></script>
+    crossorigin="anonymous"
+    onerror="console.error('❌ Falha ao carregar firebase-auth.js — a rede pode estar bloqueando o CDN do Firebase (proxy/firewall/inspeção de conteúdo).')"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"
-    integrity="sha384-RCX4/afwL4rcvPna7SzxURYLlkH4PeSnyydnrIn/zzZyviOL3A9RZjNPvXunkiFD"
-    crossorigin="anonymous"></script>
+    crossorigin="anonymous"
+    onerror="console.error('❌ Falha ao carregar firebase-firestore.js — a rede pode estar bloqueando o CDN do Firebase (proxy/firewall/inspeção de conteúdo).')"></script>
 
 <!-- Core -->
 <script type="module" src="js/core/init.js"></script>

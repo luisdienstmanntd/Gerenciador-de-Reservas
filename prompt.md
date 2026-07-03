@@ -84,7 +84,7 @@ Sistema web de gerenciamento de reservas para o restaurante **Osteria Di Lucca**
 | `js/ui/filters.js` | v3.0 | 100% modular |
 | `js/ui/render.js` | **v6.0** | Escapa `nomes`/`obs`/`avulsa` antes de inserir em innerHTML — corrige XSS |
 | `js/ui/timers.js` | v4.1 | Sem dependência de render.js |
-| `index.html` | — | Scripts CDN (Chart.js + Firebase) com versão fixa e `integrity` (SRI) |
+| `index.html` | — | Scripts Firebase (CDN) sem `integrity` (SRI) — removido por bloquear carregamento em redes com proxy/inspeção; Chart.js mantém SRI |
 | `css/style.css` | — | — |
 
 ---
@@ -814,6 +814,7 @@ roomservice.js         ← state.js, database.js
 | 33 | Chart.js carregado via CDN sem versão fixa (`.../npm/chart.js`) e nenhum script CDN tinha Subresource Integrity (SRI) — CDN comprometido poderia injetar código malicioso | `index.html` | Chart.js fixado em v4.5.1 (versão que já estava rodando); `integrity` (SHA-384) + `crossorigin="anonymous"` adicionados nos 4 scripts CDN (Chart.js + 3 do Firebase) |
 | 34 | 18 arquivos com `console.log` de banner ("✅ xyz.js vX.X carregado") sem nenhuma utilidade em produção — poluíam o console | 18 arquivos em `js/` | Removidos os banners; mantidos todos os `console.log`/`warn`/`error` de fluxo e diagnóstico (única forma de observabilidade do sistema hoje) |
 | 35 | `horariosPadrao` hardcoded em 4 lugares fora de `state.js` (`dashboard.js`, `home.js` ×2, `listener.js`) — divergência descrita na doc como "dois lugares", mas era pior na prática | `dashboard.js`, `home.js`, `listener.js` | Todos passam a usar `getHorariosPadrao()` de `state.js` como fonte única |
+| 36 | Em redes com proxy/inspeção de conteúdo (ex: rede do hotel), o `integrity` (SRI) adicionado no bug #34 aos 3 scripts do Firebase (CDN) fazia o navegador bloquear o script silenciosamente quando o proxy alterava minimamente o arquivo baixado (recompressão, cache transparente etc.) — sem erro visível na tela. Sintoma: `firebase.auth is not a function`, e todos os listeners do Firestore falhando com `Missing or insufficient permissions` (o SDK de Auth nunca carregava para completar o login; `firebase.app`/`firestore()` continuavam funcionando normalmente pois seus scripts não eram bloqueados) | `index.html` | `integrity` removido dos 3 scripts do Firebase CDN (mantido em Chart.js, que não expôs o problema); mantido `crossorigin="anonymous"`; adicionado `onerror` em cada script para logar no console se o CDN for bloqueado pela rede, em vez de falhar silenciosamente |
 
 ---
 
