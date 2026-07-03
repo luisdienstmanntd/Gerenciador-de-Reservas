@@ -1,6 +1,6 @@
 # Osteria Di Lucca — Sistema de Gestão de Reservas
 
-**README versão:** 4.14  
+**README versão:** 4.15  
 **Data:** 2026-07-03  
 
 ---
@@ -67,7 +67,7 @@ Sistema web de gerenciamento de reservas para o restaurante **Osteria Di Lucca**
 | Arquivo | Versão | Última mudança significativa |
 |---|---|---|
 | `js/config/firebase-config.js` | v1.0 | Inicialização Firebase |
-| `js/core/database.js` | **v1.4** | Listeners de reservas não relançam erro no callback do `onSnapshot` — evita `Uncaught FirebaseError` (bug #38) |
+| `js/core/database.js` | **v1.5** | Persistência offline do Firestore ativada (bug #41) |
 | `js/core/init.js` | **v1.3** | Corrige leitura do relógio em ALTERAR HORÁRIO |
 | `js/core/navigation.js` | v4.10 | Overlay fecha menu lateral |
 | `js/core/state.js` | v4.22 | Permite `linhasExtras` negativos |
@@ -84,8 +84,10 @@ Sistema web de gerenciamento de reservas para o restaurante **Osteria Di Lucca**
 | `js/ui/filters.js` | v3.0 | 100% modular |
 | `js/ui/render.js` | **v6.0** | Escapa `nomes`/`obs`/`avulsa` antes de inserir em innerHTML — corrige XSS |
 | `js/ui/timers.js` | v4.1 | Sem dependência de render.js |
-| `index.html` | — | Scripts Firebase (CDN) sem `integrity` (SRI, bug #36); login gate usa `onAuthStateChanged()` como fonte da verdade em vez de `localStorage`, chamando `recarregarReservas()` + `carregarHome()` + `recarregarNotificacoes()` ao confirmar usuário real (bugs #37, #38, #40) |
+| `index.html` | — | Scripts Firebase (CDN) sem `integrity` (SRI, bug #36); login gate usa `onAuthStateChanged()` como fonte da verdade em vez de `localStorage`, chamando `recarregarReservas()` + `carregarHome()` + `recarregarNotificacoes()` ao confirmar usuário real (bugs #37, #38, #40); manifest/ícones linkados e Service Worker registrado (bugs #42, #43) |
 | `css/style.css` | — | — |
+| `manifest.json` | — | Criado em 2026-07-03 — nome, ícones e cores do PWA (bug #42) |
+| `sw.js` | — | Criado em 2026-07-03 — Service Worker com estratégia network-first (bug #43) |
 | `firebase.json` / `.firebaserc` | — | Corrigido em 2026-07-03 — deploy de Hosting agora aponta pro mesmo projeto do Firestore/Auth (`osteriadilucca-afea6`), site `osteriadilucca` → **https://osteriadilucca.web.app**. Antes apontava, por engano, pro projeto de um produto não relacionado (`osteria-di-lucca-links`, um encurtador de links) — ver bug #39 |
 
 ---
@@ -820,6 +822,9 @@ roomservice.js         ← state.js, database.js
 | 38 | Após validar o bug #37, o logoff (`trocarUsuario()` → `signOut()` → reload) mostrava a tela de login corretamente, mas o console poluía com `Uncaught FirebaseError: Missing or insufficient permissions` — as duas versões de listener de reservas (`escutarReservasPorData`, `escutarReservasPorDataComMudancas`) relançavam (`throw error`) dentro do próprio callback de erro do `onSnapshot`, virando exceção não tratada dentro do SDK, sem nenhum listener escutando esse throw. Além disso, o listener da tela Home (`carregarHome()`, via `escutarReservasPorData`) sofre do mesmo problema de corrida do bug #37 — morre com o `permission-denied` do boot e só se recupera se o usuário sair e voltar manualmente para a aba Home | `database.js`, `index.html` | Removido o `throw error` dos dois callbacks de erro em `database.js` (mantém só o `console.error`, igual ao padrão já usado em `escutarConfigDia`); `carregarHome()` importado em `index.html` e chamado junto com `recarregarReservas()` no `onAuthStateChanged`, garantindo que a tela Home também reconecta sob autenticação confirmada |
 | 39 | O `firebase.json`/`.firebaserc` (adicionados em 2026-07-03) apontavam o deploy de Hosting pro projeto `osteria-di-lucca-links` — que não é o projeto do restaurante, e sim um produto totalmente diferente do mesmo dono (um encurtador de links, com coleções `links`/`clicks` no Firestore). O site publicado funcionava (porque `database.js` sempre apontou corretamente pro Firestore de `osteriadilucca-afea6`, independente de onde os arquivos estáticos estivessem hospedados), mas misturava dois produtos não relacionados no mesmo projeto Firebase | `firebase.json`, `.firebaserc` | Criado um novo site de Hosting (`osteriadilucca`) dentro do projeto correto (`osteriadilucca-afea6`); `firebase.json`/`.firebaserc` atualizados para apontar pra ele. Novo endereço oficial: **https://osteriadilucca.web.app** |
 | 40 | Dívida técnica #2 — `iniciarEscutaNotificacoes()` (sino) sofria da mesma corrida de boot do bug #37: chamada uma única vez em `init.js`, antes de qualquer autenticação resolver. Se a 1ª tentativa caísse em `permission-denied`, o guard `if (_unsubscribeNotificacoes) return` impedia qualquer nova tentativa — sino ficava mudo pelo resto da sessão, mesmo com login bem-sucedido depois, mesmo com a grade e a Home já reconectando normalmente | `listener.js`, `index.html` | Criadas `pararEscutaNotificacoes()` e `recarregarNotificacoes()` (mesmo padrão de `recarregarReservas()`); `index.html` chama `recarregarNotificacoes()` dentro de `onAuthStateChanged`, junto com `recarregarReservas()` e `carregarHome()`. Testado: logs confirmam parar+reiniciar limpo a cada mudança de estado de autenticação |
+| 41 | Persistência offline do Firestore (presente na versão de produção antiga, ausente deste repositório) | `database.js` | `_ativarPersistenciaOffline()` chama `enablePersistence()` uma única vez (guard `_persistenciaSolicitada`), com tratamento de `failed-precondition` (múltiplas abas) e `unimplemented` (navegador sem suporte). Testado: log "✅ Persistência offline do Firestore ativada" confirmado em boot real |
+| 42 | `manifest.json`/ícones PWA ausentes — app não instalável como aplicativo no celular/tablet | `manifest.json`, `icons/icon-192.png`, `icons/icon-512.png`, `index.html` | Ícones gerados a partir do logo já existente (`images.jpg`, 225×225, redimensionado via Pillow); `manifest.json` criado e linkado (`<link rel="manifest">`) |
+| 43 | Service Worker ausente — sem cache de arquivos estáticos, app não funciona offline | `sw.js`, `index.html` | Criado `sw.js` com estratégia network-first (tenta rede, cai pro cache só se offline); nunca intercepta requisições de outra origem (Firebase/Firestore/CDNs) — só arquivos estáticos do próprio site. Registrado via `navigator.serviceWorker.register()`. Testado: SW ativo, controlando a página, cacheando dinamicamente (25 arquivos após 2º reload) |
 
 ---
 
@@ -828,7 +833,6 @@ roomservice.js         ← state.js, database.js
 | # | Descrição | Risco |
 |---|---|---|
 | 1 | Firebase SDK v8 "compat" desatualizado — Google não lança novidades, só correções de segurança. Upgrade para v9+ (modular) exige reescrever a sintaxe de todas as chamadas ao Firestore em `database.js`, `service.js`, `listener.js` e módulos que os usam. Adiado por ser um projeto grande e arriscado sem suíte de testes automatizados, com o sistema em uso real no restaurante. | Baixo (v8 continua recebendo patches de segurança; sem prazo de descontinuação anunciado) |
-| 2 | Até 2026-07-02, o site em produção (`osteria-di-lucca-links.web.app`) era publicado manualmente a partir de outra máquina/pasta que nunca foi commitada neste GitHub, e tinha 3 funcionalidades ausentes deste repositório: (1) offline persistence do Firestore (log "v1.5 carregado - offline persistence ativada"), (2) Service Worker registrado, (3) `manifest.json`/ícones de PWA (`icons/icon-192.png`). Decisão consciente do dono do projeto (2026-07-03): usar só este repositório como fonte única daqui pra frente, aceitando perder essas 3 features em vez de tentar reconciliar as duas cópias. **Atualização (2026-07-03, mesmo dia):** ao configurar o deploy, descobriu-se que `osteria-di-lucca-links` era na verdade o projeto Firebase de um produto não relacionado (encurtador de links) — não do restaurante (ver bug #39). Corrigido: novo site de Hosting criado dentro do projeto certo (`osteriadilucca-afea6`), endereço oficial agora é **https://osteriadilucca.web.app**. Falta apenas recriar as 3 features (offline persistence, Service Worker, PWA) quando/se fizerem falta | Baixo a médio — nenhuma das 3 features é essencial ao funcionamento (login/grade/reservas continuam OK sem elas); offline persistence e Service Worker melhoravam a experiência em conexão instável (relevante justamente em rede de hotel), então vale reavaliar se o problema de conectividade persistir |
 
 ---
 

@@ -1,0 +1,21 @@
+{
+  "name": "Osteria Di Lucca - Gestão",
+  "short_name": "Osteria Di Lucca",
+  "description": "Sistema de gestão de reservas do restaurante Osteria Di Lucca",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#121212",
+  "theme_color": "#1e1e1e",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

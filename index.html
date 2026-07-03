@@ -8,7 +8,10 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#1e1e1e">
-    
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
+    <link rel="icon" href="icons/icon-192.png">
+
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"
         integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ"
@@ -850,6 +853,18 @@
         </button>
 
     </nav>
+
+    <script>
+        // ✅ Registra o Service Worker (cache offline) — falha silenciosa em
+        // navegadores sem suporte, não afeta o funcionamento normal do app.
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(() => console.log('✅ Service Worker registrado'))
+                    .catch((e) => console.warn('⚠️ Falha ao registrar Service Worker:', e.message));
+            });
+        }
+    </script>
 
 </body>
 </html>

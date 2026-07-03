@@ -10,6 +10,8 @@
    ✅ v1.4: Callbacks de erro dos listeners de reservas não relançam mais (throw) — evita
             "Uncaught FirebaseError" quando o onSnapshot inicial cai em permission-denied
             antes do login terminar de resolver (bug #38).
+   ✅ v1.5: Persistência offline do Firestore ativada — recria feature perdida na migração
+            pra este repositório (dívida técnica #2, PWA/offline).
    ========================================================================================= */
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -32,6 +34,7 @@ class DatabaseService {
 
         this.db = null;
         this.inicializado = false;
+        this._persistenciaSolicitada = false;
 
         DatabaseService.instance = this;
 
@@ -58,10 +61,42 @@ class DatabaseService {
             this.db = firebase.firestore();
             this.inicializado = true;
             console.log('✅ Firestore instanciado pelo DatabaseService');
+            this._ativarPersistenciaOffline();
         } catch (e) {
             // SDK ainda não disponível — aguardarInicializacao() tentará novamente
             console.warn('⚠️ Firebase ainda não disponível no construtor, aguardando...', e.message);
         }
+    }
+
+    /**
+     * Ativa o cache offline do Firestore — leituras funcionam offline (vindas do
+     * cache local) e escritas ficam enfileiradas até a conexão voltar, sincronizando
+     * sozinhas. Relevante para rede instável (ex: rede do hotel).
+     *
+     * Chamada uma única vez (guard `_persistenciaSolicitada`) porque
+     * `_inicializarFirebase()` pode rodar mais de uma vez (fallback de polling
+     * em `aguardarInicializacao()`), e `enablePersistence()` só pode ser chamada
+     * uma vez por instância do Firestore.
+     * @private
+     */
+    _ativarPersistenciaOffline() {
+        if (this._persistenciaSolicitada) return;
+        this._persistenciaSolicitada = true;
+
+        this.db.enablePersistence().then(() => {
+            console.log('✅ Persistência offline do Firestore ativada');
+        }).catch((e) => {
+            if (e.code === 'failed-precondition') {
+                // Múltiplas abas abertas — só a primeira consegue ativar o cache.
+                // Não é um erro real: o app continua funcionando normalmente,
+                // só sem cache offline nesta aba específica.
+                console.warn('⚠️ Persistência offline não ativada: múltiplas abas abertas.');
+            } else if (e.code === 'unimplemented') {
+                console.warn('⚠️ Persistência offline não suportada neste navegador.');
+            } else {
+                console.error('❌ Erro ao ativar persistência offline:', e);
+            }
+        });
     }
 
     static getInstance() {
