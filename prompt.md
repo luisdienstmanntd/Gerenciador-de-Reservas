@@ -1,6 +1,6 @@
 # Osteria Di Lucca — Sistema de Gestão de Reservas
 
-**README versão:** 4.17  
+**README versão:** 4.18  
 **Data:** 2026-07-03  
 
 ---
@@ -77,7 +77,7 @@ Sistema web de gerenciamento de reservas para o restaurante **Osteria Di Lucca**
 | `js/features/reservas/log.js` | v1.3 | Exibe usuário logado nos cards |
 | `js/features/reservas/validators.js` | **v1.3** | `escapeHtml()` adicionada — sanitização de saída contra XSS |
 | `js/features/mesas/modal.js` | v1.0 | — |
-| `js/features/dashboard.js` | **v3.11** | Curva de horário em barra empilhada por tipo de cliente (bug #45) |
+| `js/features/dashboard.js` | **v3.12** | Gráfico "Composição" substituído por "Movimento por Dia da Semana" (bug #47) |
 | `js/features/home.js` | **v2.4** | Gráfico "PAX por Horário" em barra empilhada por tipo de cliente (bug #46) |
 | `js/features/roomservice.js` | **v2.3** | Escapa `nomes`/`obs` no card — corrige XSS |
 | `js/ui/controls.js` | **v7.9** | `ajustarHora()` adicionada |
@@ -828,6 +828,7 @@ roomservice.js         ← state.js, database.js
 | 44 | `sw.js` v1.0: o `fetch()` da estratégia network-first (e o pré-cache do `install`) não usavam `{ cache: 'no-store' }` — o SW podia reforçar pra sempre uma resposta já desatualizada vinda do cache HTTP do próprio navegador, mesmo depois de um novo deploy. Descoberto ao testar uma mudança em `dashboard.js` que não aparecia mesmo após editar o arquivo | `sw.js` | Adicionado `{ cache: 'no-store' }` em todos os `fetch()` do Service Worker; `CACHE_NAME` incrementado pra `v2` (força limpeza do cache antigo em `activate`) |
 | 45 | Curva de horário do Dashboard mostrava só o total de PAX por horário, sem distinguir tipo de cliente | `dashboard.js` | `ocupacaoHorario` passa a ser `{ horario: { hospede, externo, passante } }`; gráfico `chartHorario` virou barra empilhada com 3 séries (Room Service fica fora dessa quebra específica, por decisão do dono do projeto). Testado com dados reais: totais batem com a versão anterior |
 | 46 | Mesma limitação do bug #45, no gráfico "PAX por Horário" da tela Início | `home.js` | Mesma quebra por tipo aplicada em `home-chart-barras`, reaproveitando a paleta de cores por tipo já existente (`PALETA.hospede`/`externo`/`passante`) — mantém consistência visual dentro da própria tela. Testado com dados reais |
+| 47 | Solicitação: gráfico "Composição" (adultos×crianças) tinha baixo valor analítico — dono do projeto queria ver movimento por dia da semana, por tipo de cliente | `dashboard.js`, `index.html` | Gráfico substituído por "Movimento por Dia da Semana" — barra empilhada (hóspede/externo/passante) agrupando `reservas` pelo dia da semana de `data` (`new Date(data + 'T12:00:00').getDay()`, mesmo padrão de `home.js`). Canvas renomeado de `chartComposicao` para `chartDiaSemana`. Testado com dados reais e sintéticos (domingo/segunda/sexta caem nas colunas corretas) |
 
 ---
 

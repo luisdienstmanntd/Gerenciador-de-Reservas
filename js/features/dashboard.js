@@ -5,6 +5,8 @@
    ✅ v3.10: ocupacaoHorario construído a partir de getHorariosPadrao() — elimina array hardcoded (Manutenção #6)
    ✅ v3.11: Curva de horário agora é barra empilhada por tipo (hóspede/externo/passante),
              em vez de só o total de pax
+   ✅ v3.12: Gráfico "Composição" (adultos/crianças) substituído por "Movimento por Dia da
+             Semana" — barra empilhada por tipo de cliente, por dia (bug #47)
    ========================================================================================= */
 
 import { buscarReservasPorPeriodo } from './reservas/service.js';
@@ -14,10 +16,11 @@ import { getHorariosPadrao } from '../core/state.js';
 // --- VARIÁVEIS GLOBAIS ---
 let chartHorarioInstance = null;
 let chartTipoInstance = null;
-let chartComposicaoInstance = null;
+let chartDiaSemanaInstance = null;
 let chartMesasInstance = null;
 
 const CAPACIDADE_NOITE = 30;
+const DIAS_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
 function processarDashboard(reservas, diasNoPeriodo = 1) {
     console.log("📊 Dashboard processando", reservas.length, "reservas em", diasNoPeriodo, "dias");
@@ -31,6 +34,9 @@ function processarDashboard(reservas, diasNoPeriodo = 1) {
     );
     let usoMesas = {};
     for (let i = 1; i <= 18; i++) usoMesas[i] = 0;
+
+    // ✅ v3.12: Movimento por dia da semana, separado por tipo de cliente (bug #47)
+    let porDiaSemana = DIAS_SEMANA.map(() => ({ hospede: 0, externo: 0, passante: 0 }));
 
     reservas.forEach(r => {
         if (r.somenteHospedes && !r.nomes) return;
@@ -55,6 +61,14 @@ function processarDashboard(reservas, diasNoPeriodo = 1) {
             ocupacaoHorario[h][tipo] += totalReserva;
         }
 
+        // ✅ v3.12: 'T12:00:00' evita problema de fuso horário na conversão de string pra Date
+        if (r.data) {
+            const diaSemana = new Date(r.data + 'T12:00:00').getDay();
+            if (porDiaSemana[diaSemana][tipo] !== undefined) {
+                porDiaSemana[diaSemana][tipo] += totalReserva;
+            }
+        }
+
         if (r.mesa && r.mesa !== "-" && r.mesa !== "" && r.mesa !== "ROOM") {
             let numMesa = parseInt(r.mesa);
             if (usoMesas[numMesa] !== undefined) usoMesas[numMesa]++;
@@ -76,7 +90,7 @@ function processarDashboard(reservas, diasNoPeriodo = 1) {
     if (usoMesas[mesaTop] === 0) mesaTop = "-";
 
     atualizarKpisNaTela(taxaOcupacao, kpis.totalPax, tempoMedio, mesaTop, kpis.criancas);
-    renderizarGraficosAvancados(ocupacaoHorario, mixCliente, kpis.adultos, kpis.criancas, usoMesas);
+    renderizarGraficosAvancados(ocupacaoHorario, mixCliente, porDiaSemana, usoMesas);
 }
 
 function atualizarKpisNaTela(ocupacao, total, tempo, mesaTop, criancas) {
@@ -100,7 +114,7 @@ function atualizarKpisNaTela(ocupacao, total, tempo, mesaTop, criancas) {
     if (el.criancas) el.criancas.innerText = criancas;
 }
 
-function renderizarGraficosAvancados(dadosHorario, dadosTipo, adt, chd, dadosMesas) {
+function renderizarGraficosAvancados(dadosHorario, dadosTipo, dadosDiaSemana, dadosMesas) {
     const isDark = document.body.classList.contains('dark-theme');
     const corTexto = isDark ? '#e0e0e0' : '#333333';
     const corGrid = isDark ? '#444' : '#ddd';
@@ -156,12 +170,28 @@ function renderizarGraficosAvancados(dadosHorario, dadosTipo, adt, chd, dadosMes
         });
     }
 
-    const ctxComp = document.getElementById('chartComposicao');
-    if (ctxComp) {
-        chartComposicaoInstance = new Chart(ctxComp.getContext('2d'), {
-            type: 'pie',
-            data: { labels: ['Adultos', 'Crianças'], datasets: [{ data: [adt, chd], backgroundColor: ['#4a1a1a', '#e67e22'], borderWidth: 0 }] },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { color: corTexto, font: { size: 11 } } } } }
+    const ctxDiaSemana = document.getElementById('chartDiaSemana');
+    if (ctxDiaSemana) {
+        // ✅ v3.12: Movimento por dia da semana, empilhado por tipo de cliente (bug #47)
+        chartDiaSemanaInstance = new Chart(ctxDiaSemana.getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: DIAS_SEMANA,
+                datasets: [
+                    { label: 'Hóspede', data: dadosDiaSemana.map(d => d.hospede), backgroundColor: '#3498db', borderRadius: 4 },
+                    { label: 'Externo', data: dadosDiaSemana.map(d => d.externo), backgroundColor: '#f39c12', borderRadius: 4 },
+                    { label: 'Passante', data: dadosDiaSemana.map(d => d.passante), backgroundColor: '#95a5a6', borderRadius: 4 },
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: true, position: 'top', labels: { color: corTexto, font: { size: 11 } } } },
+                scales: {
+                    x: { stacked: true, ticks: { color: corTexto }, grid: { display: false } },
+                    y: { stacked: true, ticks: { color: corTexto }, grid: { color: corGrid } }
+                }
+            }
         });
     }
 }
@@ -169,7 +199,7 @@ function renderizarGraficosAvancados(dadosHorario, dadosTipo, adt, chd, dadosMes
 function destruirGraficos() {
     if (chartHorarioInstance) { chartHorarioInstance.destroy(); chartHorarioInstance = null; }
     if (chartTipoInstance) { chartTipoInstance.destroy(); chartTipoInstance = null; }
-    if (chartComposicaoInstance) { chartComposicaoInstance.destroy(); chartComposicaoInstance = null; }
+    if (chartDiaSemanaInstance) { chartDiaSemanaInstance.destroy(); chartDiaSemanaInstance = null; }
     if (chartMesasInstance) { chartMesasInstance.destroy(); chartMesasInstance = null; }
 }
 
