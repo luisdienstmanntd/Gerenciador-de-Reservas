@@ -47,6 +47,10 @@ Depois da versão inicial (feita com apoio de IA), conduzi uma auditoria de segu
 
 O histórico completo de decisões técnicas, bugs corrigidos e arquitetura do sistema está documentado em [`prompt.md`](prompt.md).
 
+## Privacidade (LGPD)
+
+O sistema armazena dados pessoais de hóspedes (nome, telefone). O plano para manter o histórico útil para análises do Dashboard sem reter dados pessoais indefinidamente — anonimização em vez de exclusão — está documentado em [`LGPD.md`](LGPD.md) (ainda não implementado).
+
 ## Como rodar localmente
 
 Não há build step — é só servir os arquivos estáticos:
