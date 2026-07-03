@@ -1,6 +1,6 @@
 {
   "hosting": {
-    "site": "osteria-di-lucca-links",
+    "site": "osteriadilucca",
     "public": ".",
     "ignore": [
       "firebase.json",
