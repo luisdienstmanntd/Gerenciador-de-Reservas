@@ -18,6 +18,8 @@
             Tab A9 landscape (1138px) passava pelo guard e retornava sem renderizar
    ✅ v2.2: Escapa r.obs/r.nomes no card "Observações da Noite" — corrige XSS armazenado
    ✅ v2.3: HORARIOS/horarios usam getHorariosPadrao() de state.js — elimina 2 arrays hardcoded (Manutenção #6)
+   ✅ v2.4: Gráfico "PAX por Horário" vira barra empilhada por tipo de cliente
+            (hóspede/externo/passante), mesma quebra do Dashboard (bug #45)
    ========================================================================================= */
 
 import { db } from '../core/database.js';
@@ -283,23 +285,39 @@ function _renderizarGraficos(reaisHoje, reaisSemana, hoje) {
 
     const ctxBarras = document.getElementById('home-chart-barras');
     if (ctxBarras) {
+        // ✅ v2.4: Barra empilhada por tipo de cliente (hóspede/externo/passante),
+        // mesma quebra do gráfico "Curva de Horário" do Dashboard (bug #45)
         const horarios  = getHorariosPadrao();
         const paxPorHr  = {};
-        horarios.forEach(h => paxPorHr[h] = 0);
+        horarios.forEach(h => paxPorHr[h] = { hospede: 0, externo: 0, passante: 0 });
         reaisHoje.forEach(r => {
             const hr = r.originalBase || r.horario;
-            if (paxPorHr[hr] !== undefined) paxPorHr[hr] += (parseInt(r.paxs) || 0) + (parseInt(r.chd) || 0);
+            const tipo = r.tipo ? r.tipo.toLowerCase() : 'hospede';
+            if (paxPorHr[hr] !== undefined && paxPorHr[hr][tipo] !== undefined) {
+                paxPorHr[hr][tipo] += (parseInt(r.paxs) || 0) + (parseInt(r.chd) || 0);
+            }
         });
-        const valores = horarios.map(h => paxPorHr[h]);
-        const maxVal  = Math.max(...valores, 1);
 
         chartBarrasInstance = new Chart(ctxBarras.getContext('2d'), {
             type: 'bar',
-            data: { labels: horarios, datasets: [{ label: 'PAX', data: valores, backgroundColor: valores.map(v => { const r = v/maxVal; return r > 0.75 ? PALETA.accent : r > 0.4 ? PALETA.hospede : 'rgba(74,144,226,0.35)'; }), borderRadius: 8, borderSkipped: false }] },
+            data: {
+                labels: horarios,
+                datasets: [
+                    { label: 'Hóspede', data: horarios.map(h => paxPorHr[h].hospede), backgroundColor: PALETA.hospede, borderRadius: 6, borderSkipped: false },
+                    { label: 'Externo', data: horarios.map(h => paxPorHr[h].externo), backgroundColor: PALETA.externo, borderRadius: 6, borderSkipped: false },
+                    { label: 'Passante', data: horarios.map(h => paxPorHr[h].passante), backgroundColor: PALETA.passante, borderRadius: 6, borderSkipped: false },
+                ]
+            },
             options: {
                 responsive: true, maintainAspectRatio: false, indexAxis: 'y',
-                plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.x} pax` } } },
-                scales: { x: { ticks: { color: corTexto, font: { size: 11 } }, grid: { color: corGrid }, beginAtZero: true }, y: { ticks: { color: corTexto, font: { size: 11, weight: '700' } }, grid: { display: false } } }
+                plugins: {
+                    legend: { display: true, position: 'bottom', labels: { color: corTexto, font: { size: 10 }, boxWidth: 10 } },
+                    tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.x} pax` } }
+                },
+                scales: {
+                    x: { stacked: true, ticks: { color: corTexto, font: { size: 11 } }, grid: { color: corGrid }, beginAtZero: true },
+                    y: { stacked: true, ticks: { color: corTexto, font: { size: 11, weight: '700' } }, grid: { display: false } }
+                }
             }
         });
     }
