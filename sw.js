@@ -3,9 +3,12 @@
    RESPONSABILIDADE: Service Worker — cache de arquivos estáticos para uso offline
    ✅ v1.0: Estratégia network-first. Nunca intercepta chamadas ao Firebase/Firestore —
             só arquivos estáticos do próprio site (HTML/CSS/JS/ícones).
+   ✅ v1.1: fetch() usa { cache: 'no-store' } — sem isso, o SW podia reforçar uma cópia
+            desatualizada do cache HTTP do próprio navegador (bug encontrado ao testar
+            uma mudança em dashboard.js que não aparecia mesmo após deploy).
    ========================================================================================= */
 
-const CACHE_NAME = 'osteria-di-lucca-v1';
+const CACHE_NAME = 'osteria-di-lucca-v2';
 
 // Arquivos essenciais pré-cacheados na instalação — o resto é cacheado
 // dinamicamente conforme o usuário navega (ver estratégia no fetch abaixo).
@@ -19,7 +22,13 @@ const APP_SHELL = [
 
 self.addEventListener('install', (event) => {
     event.waitUntil(
-        caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL))
+        caches.open(CACHE_NAME).then((cache) =>
+            Promise.all(
+                APP_SHELL.map((url) =>
+                    fetch(url, { cache: 'no-store' }).then((resposta) => cache.put(url, resposta))
+                )
+            )
+        )
     );
     self.skipWaiting();
 });
@@ -50,7 +59,7 @@ self.addEventListener('fetch', (event) => {
     if (event.request.method !== 'GET') return;
 
     event.respondWith(
-        fetch(event.request)
+        fetch(event.request, { cache: 'no-store' })
             .then((resposta) => {
                 const copia = resposta.clone();
                 caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copia));

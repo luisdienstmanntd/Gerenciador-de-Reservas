@@ -1,6 +1,6 @@
 # Osteria Di Lucca — Sistema de Gestão de Reservas
 
-**README versão:** 4.15  
+**README versão:** 4.16  
 **Data:** 2026-07-03  
 
 ---
@@ -77,7 +77,7 @@ Sistema web de gerenciamento de reservas para o restaurante **Osteria Di Lucca**
 | `js/features/reservas/log.js` | v1.3 | Exibe usuário logado nos cards |
 | `js/features/reservas/validators.js` | **v1.3** | `escapeHtml()` adicionada — sanitização de saída contra XSS |
 | `js/features/mesas/modal.js` | v1.0 | — |
-| `js/features/dashboard.js` | **v3.10** | Usa `getHorariosPadrao()` — elimina objeto hardcoded |
+| `js/features/dashboard.js` | **v3.11** | Curva de horário em barra empilhada por tipo de cliente (bug #45) |
 | `js/features/home.js` | **v2.3** | Usa `getHorariosPadrao()` — elimina 2 arrays hardcoded |
 | `js/features/roomservice.js` | **v2.3** | Escapa `nomes`/`obs` no card — corrige XSS |
 | `js/ui/controls.js` | **v7.9** | `ajustarHora()` adicionada |
@@ -87,7 +87,7 @@ Sistema web de gerenciamento de reservas para o restaurante **Osteria Di Lucca**
 | `index.html` | — | Scripts Firebase (CDN) sem `integrity` (SRI, bug #36); login gate usa `onAuthStateChanged()` como fonte da verdade em vez de `localStorage`, chamando `recarregarReservas()` + `carregarHome()` + `recarregarNotificacoes()` ao confirmar usuário real (bugs #37, #38, #40); manifest/ícones linkados e Service Worker registrado (bugs #42, #43) |
 | `css/style.css` | — | — |
 | `manifest.json` | — | Criado em 2026-07-03 — nome, ícones e cores do PWA (bug #42) |
-| `sw.js` | — | Criado em 2026-07-03 — Service Worker com estratégia network-first (bug #43) |
+| `sw.js` | **v1.1** | `{ cache: 'no-store' }` em todos os `fetch()` — evita reforçar cache HTTP desatualizado (bug #44) |
 | `firebase.json` / `.firebaserc` | — | Corrigido em 2026-07-03 — deploy de Hosting agora aponta pro mesmo projeto do Firestore/Auth (`osteriadilucca-afea6`), site `osteriadilucca` → **https://osteriadilucca.web.app**. Antes apontava, por engano, pro projeto de um produto não relacionado (`osteria-di-lucca-links`, um encurtador de links) — ver bug #39 |
 
 ---
@@ -825,6 +825,8 @@ roomservice.js         ← state.js, database.js
 | 41 | Persistência offline do Firestore (presente na versão de produção antiga, ausente deste repositório) | `database.js` | `_ativarPersistenciaOffline()` chama `enablePersistence()` uma única vez (guard `_persistenciaSolicitada`), com tratamento de `failed-precondition` (múltiplas abas) e `unimplemented` (navegador sem suporte). Testado: log "✅ Persistência offline do Firestore ativada" confirmado em boot real |
 | 42 | `manifest.json`/ícones PWA ausentes — app não instalável como aplicativo no celular/tablet | `manifest.json`, `icons/icon-192.png`, `icons/icon-512.png`, `index.html` | Ícones gerados a partir do logo já existente (`images.jpg`, 225×225, redimensionado via Pillow); `manifest.json` criado e linkado (`<link rel="manifest">`) |
 | 43 | Service Worker ausente — sem cache de arquivos estáticos, app não funciona offline | `sw.js`, `index.html` | Criado `sw.js` com estratégia network-first (tenta rede, cai pro cache só se offline); nunca intercepta requisições de outra origem (Firebase/Firestore/CDNs) — só arquivos estáticos do próprio site. Registrado via `navigator.serviceWorker.register()`. Testado: SW ativo, controlando a página, cacheando dinamicamente (25 arquivos após 2º reload) |
+| 44 | `sw.js` v1.0: o `fetch()` da estratégia network-first (e o pré-cache do `install`) não usavam `{ cache: 'no-store' }` — o SW podia reforçar pra sempre uma resposta já desatualizada vinda do cache HTTP do próprio navegador, mesmo depois de um novo deploy. Descoberto ao testar uma mudança em `dashboard.js` que não aparecia mesmo após editar o arquivo | `sw.js` | Adicionado `{ cache: 'no-store' }` em todos os `fetch()` do Service Worker; `CACHE_NAME` incrementado pra `v2` (força limpeza do cache antigo em `activate`) |
+| 45 | Curva de horário do Dashboard mostrava só o total de PAX por horário, sem distinguir tipo de cliente | `dashboard.js` | `ocupacaoHorario` passa a ser `{ horario: { hospede, externo, passante } }`; gráfico `chartHorario` virou barra empilhada com 3 séries (Room Service fica fora dessa quebra específica, por decisão do dono do projeto). Testado com dados reais: totais batem com a versão anterior |
 
 ---
 

@@ -3,6 +3,8 @@
    ✅ v3.8: Padroniza error handling — usa notificacao.js
    ✅ v3.9: Bug #7 — usa buscarReservasPorPeriodo() de service.js — elimina acesso direto ao Firestore
    ✅ v3.10: ocupacaoHorario construído a partir de getHorariosPadrao() — elimina array hardcoded (Manutenção #6)
+   ✅ v3.11: Curva de horário agora é barra empilhada por tipo (hóspede/externo/passante),
+             em vez de só o total de pax
    ========================================================================================= */
 
 import { buscarReservasPorPeriodo } from './reservas/service.js';
@@ -22,7 +24,11 @@ function processarDashboard(reservas, diasNoPeriodo = 1) {
 
     let kpis = { totalPax: 0, adultos: 0, criancas: 0, tempoTotalMinutos: 0, mesasFinalizadasCount: 0 };
     let mixCliente = { hospede: 0, externo: 0, passante: 0, roomservice: 0 };
-    let ocupacaoHorario = Object.fromEntries(getHorariosPadrao().map(h => [h, 0]));
+    // ✅ v3.11: ocupacaoHorario agora separa por tipo (hospede/externo/passante) — Room
+    // Service fica de fora dessa quebra específica (decisão do dono do projeto)
+    let ocupacaoHorario = Object.fromEntries(
+        getHorariosPadrao().map(h => [h, { hospede: 0, externo: 0, passante: 0 }])
+    );
     let usoMesas = {};
     for (let i = 1; i <= 18; i++) usoMesas[i] = 0;
 
@@ -45,7 +51,9 @@ function processarDashboard(reservas, diasNoPeriodo = 1) {
         }
 
         let h = r.originalBase || r.horario;
-        if (ocupacaoHorario[h] !== undefined) ocupacaoHorario[h] += totalReserva;
+        if (ocupacaoHorario[h] !== undefined && ocupacaoHorario[h][tipo] !== undefined) {
+            ocupacaoHorario[h][tipo] += totalReserva;
+        }
 
         if (r.mesa && r.mesa !== "-" && r.mesa !== "" && r.mesa !== "ROOM") {
             let numMesa = parseInt(r.mesa);
@@ -101,13 +109,28 @@ function renderizarGraficosAvancados(dadosHorario, dadosTipo, adt, chd, dadosMes
 
     const ctxHorario = document.getElementById('chartHorario');
     if (ctxHorario) {
+        const horariosOrdenados = Object.keys(dadosHorario).sort();
+        // ✅ v3.11: Barras empilhadas por tipo de cliente — mesmas cores do gráfico de pizza
+        // "Tipo de Cliente" (chartTipo), pra manter consistência visual no dashboard.
         chartHorarioInstance = new Chart(ctxHorario.getContext('2d'), {
             type: 'bar',
             data: {
-                labels: Object.keys(dadosHorario).sort(),
-                datasets: [{ label: 'Pax por Horário', data: Object.keys(dadosHorario).sort().map(k => dadosHorario[k]), backgroundColor: '#d4a373', borderRadius: 5 }]
+                labels: horariosOrdenados,
+                datasets: [
+                    { label: 'Hóspede', data: horariosOrdenados.map(h => dadosHorario[h].hospede), backgroundColor: '#3498db', borderRadius: 4 },
+                    { label: 'Externo', data: horariosOrdenados.map(h => dadosHorario[h].externo), backgroundColor: '#f39c12', borderRadius: 4 },
+                    { label: 'Passante', data: horariosOrdenados.map(h => dadosHorario[h].passante), backgroundColor: '#95a5a6', borderRadius: 4 },
+                ]
             },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: corTexto }, grid: { display: false } }, y: { ticks: { color: corTexto }, grid: { color: corGrid } } } }
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: true, position: 'top', labels: { color: corTexto, font: { size: 11 } } } },
+                scales: {
+                    x: { stacked: true, ticks: { color: corTexto }, grid: { display: false } },
+                    y: { stacked: true, ticks: { color: corTexto }, grid: { color: corGrid } }
+                }
+            }
         });
     }
 
