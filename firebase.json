@@ -1,0 +1,19 @@
+{
+  "hosting": {
+    "site": "osteria-di-lucca-links",
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      ".firebaserc",
+      "**/.*",
+      "**/node_modules/**",
+      "**/*.test.js",
+      "package.json",
+      "package-lock.json",
+      "prompt.md",
+      "TESTES.md",
+      "README.md",
+      "firestore.rules"
+    ]
+  }
+}

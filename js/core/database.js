@@ -1,5 +1,5 @@
 /* =========================================================================================
-   OSTERIA DI LUCCA - DATABASE.JS v1.3
+   OSTERIA DI LUCCA - DATABASE.JS v1.4
    RESPONSABILIDADE: Camada de Abstração do Firebase (Singleton)
    ✅ v1.0: Remove dependência de window.db
    ✅ v1.1: Etapa 5 — métodos config_dia adicionados
@@ -7,6 +7,9 @@
             firebase-config.js agora é apenas declarativo (sem efeitos colaterais)
    ✅ v1.3: limparConfigDiasAntigos() — exclui docs de config_dia anteriores ao período de
             retenção configurável. Roda client-side via batch, sem precisar de Cloud Function.
+   ✅ v1.4: Callbacks de erro dos listeners de reservas não relançam mais (throw) — evita
+            "Uncaught FirebaseError" quando o onSnapshot inicial cai em permission-denied
+            antes do login terminar de resolver (bug #38).
    ========================================================================================= */
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -173,8 +176,10 @@ class DatabaseService {
                     callback(reservas);
                 },
                 (error) => {
+                    // ✅ Não relança — relançar dentro do callback de erro do onSnapshot vira uma
+                    // exceção não tratada dentro do SDK do Firestore ("Uncaught FirebaseError"),
+                    // sem nenhum benefício sobre só logar (ninguém está ouvindo esse throw).
                     console.error('❌ Erro ao escutar reservas:', error);
-                    throw error;
                 }
             );
     }
@@ -263,8 +268,8 @@ class DatabaseService {
                     if (mudancas.length > 0) callbackMudancas(mudancas);
                 },
                 (error) => {
+                    // ✅ Não relança — ver comentário equivalente em escutarReservasPorData
                     console.error('❌ Erro ao escutar reservas:', error);
-                    throw error;
                 }
             );
     }

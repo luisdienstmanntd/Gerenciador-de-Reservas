@@ -75,6 +75,7 @@
         // (módulos ES6 resolvem imports antes de executar o próprio código)
         import { db } from './js/core/database.js';
         import { recarregarReservas } from './js/features/reservas/listener.js';
+        import { carregarHome } from './js/features/home.js';
 
         // ✅ Tradução nome curto → e-mail fictício cadastrado no Firebase Authentication
         // Não é segredo: a senha real fica só no Firebase, nunca aparece aqui.
@@ -104,16 +105,18 @@
         // negava tudo com "Missing or insufficient permissions" — porque
         // request.auth era null no servidor.
         //
-        // Reconectar os listeners aqui (recarregarReservas) também corrige um
-        // problema de corrida: se a escuta inicial de init.js rodar antes da
-        // autenticação terminar de resolver, ela recebe permission-denied e o
-        // onSnapshot correspondente morre — o Firestore não o reativa sozinho
-        // quando o login é concluído depois. Reconectar sob um usuário já
-        // confirmado garante um listener sempre vivo e autenticado.
+        // Reconectar os listeners aqui (recarregarReservas + carregarHome) também
+        // corrige um problema de corrida: se a escuta inicial de init.js/navigation.js
+        // rodar antes da autenticação terminar de resolver, ela recebe permission-denied
+        // e o onSnapshot correspondente morre — o Firestore não o reativa sozinho quando
+        // o login é concluído depois. Reconectar sob um usuário já confirmado garante um
+        // listener sempre vivo e autenticado (a tela Home, se não fosse recarregada aqui,
+        // só se recuperaria quando o usuário saísse e voltasse manualmente para ela).
         firebase.auth().onAuthStateChanged((user) => {
             if (user) {
                 esconderTelaLogin();
                 recarregarReservas();
+                carregarHome();
             } else {
                 localStorage.removeItem('usuario_nome');
                 mostrarTelaLogin();
