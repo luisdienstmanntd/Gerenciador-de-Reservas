@@ -4,6 +4,8 @@
    ✅ v3.1: Usa DatabaseService + notificacao.js
    ✅ v4.0: Etapa 5 — escuta config_dia em tempo real; linhasExtras vêm do Firestore
    ✅ v4.1: Usa getHorariosPadrao() de state.js — elimina array hardcoded (Manutenção #6)
+   ✅ v4.2: pararEscutaNotificacoes()/recarregarNotificacoes() — sino reconecta em
+            onAuthStateChanged, corrige dívida técnica #2 (mesma corrida do bug #37)
    ========================================================================================= */
 
 import {
@@ -251,7 +253,8 @@ export async function recarregarReservas(data = null) {
 
 /**
  * Inicia escuta em tempo real das notificações pendentes para o usuário atual.
- * Deve ser chamado uma única vez no boot (init.js ou equivalente).
+ * Chamado no boot (init.js) e novamente por recarregarNotificacoes() sempre que
+ * o Firebase Auth confirma um usuário real (ver dívida técnica #2 — corrigida).
  */
 export function iniciarEscutaNotificacoes() {
     if (_unsubscribeNotificacoes) return; // já está escutando
@@ -266,6 +269,35 @@ export function iniciarEscutaNotificacoes() {
         });
         console.log('✅ Escuta de notificações iniciada para:', USUARIO_ATUAL);
     });
+}
+
+/**
+ * Para a escuta de notificações e libera o guard de iniciarEscutaNotificacoes(),
+ * permitindo uma nova tentativa de conexão.
+ */
+export function pararEscutaNotificacoes() {
+    if (_unsubscribeNotificacoes) {
+        _unsubscribeNotificacoes();
+        _unsubscribeNotificacoes = null;
+        console.log('ℹ️ Escuta de notificações parada');
+    }
+}
+
+/**
+ * Reconecta a escuta de notificações — mesmo padrão de recarregarReservas().
+ *
+ * Corrige a dívida técnica #2: iniciarEscutaNotificacoes() era chamada uma
+ * única vez no boot, antes de qualquer autenticação resolver. Se essa 1ª
+ * tentativa caísse em permission-denied, o onSnapshot do sino morria e o
+ * guard `if (_unsubscribeNotificacoes) return` impedia qualquer nova tentativa
+ * — o sino ficava mudo pelo resto da sessão, mesmo após um login bem-sucedido.
+ *
+ * Chamada por index.html dentro de onAuthStateChanged, junto com
+ * recarregarReservas() e carregarHome(), sempre que há um usuário confirmado.
+ */
+export function recarregarNotificacoes() {
+    pararEscutaNotificacoes();
+    iniciarEscutaNotificacoes();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
