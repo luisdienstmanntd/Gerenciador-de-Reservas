@@ -1,7 +1,7 @@
 # Osteria Di Lucca — Sistema de Gestão de Reservas
 
-**README versão:** 4.20  
-**Data:** 2026-07-03  
+**README versão:** 4.21  
+**Data:** 2026-07-09  
 
 ---
 
@@ -67,6 +67,7 @@ Sistema web de gerenciamento de reservas para o restaurante **Osteria Di Lucca**
 | Arquivo | Versão | Última mudança significativa |
 |---|---|---|
 | `js/config/firebase-config.js` | v1.0 | Inicialização Firebase |
+| `js/core/supabaseClient.js` | **v1.0** | Criado em 2026-07-09 — Fase 1 da migração Firestore→Supabase, ver `plano_de_ação.md` |
 | `js/core/database.js` | **v1.5** | Persistência offline do Firestore ativada (bug #41) |
 | `js/core/init.js` | **v1.3** | Corrige leitura do relógio em ALTERAR HORÁRIO |
 | `js/core/navigation.js` | v4.10 | Overlay fecha menu lateral |

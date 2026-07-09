@@ -65,6 +65,10 @@ Depois acesse `http://localhost:8080`. É necessário um projeto Firebase própr
 
 Para detalhes de arquitetura, modelo de dados, regras internas do código e histórico de manutenções, veja [`prompt.md`](prompt.md).
 
+## Migração em andamento (Firestore → Supabase)
+
+O projeto está migrando a camada de dados do Firebase Firestore para o Supabase (PostgreSQL), em fases incrementais, para permitir análises de dados mais ricas e conexão nativa com Power BI. Plano completo e progresso em [`plano_de_ação.md`](plano_de_ação.md).
+
 ## Testes
 
 O projeto tem testes automatizados com [Vitest](https://vitest.dev/) cobrindo as regras de validação, o gerenciamento de estado e a lógica de cálculo de posição de reservas (81 testes). Rode com:
