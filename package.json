@@ -20,6 +20,7 @@
   },
   "homepage": "https://github.com/luisdienstmanntd/Gerenciador-de-Reservas#readme",
   "devDependencies": {
+    "firebase": "^12.16.0",
     "jsdom": "^29.1.1",
     "vitest": "^4.1.9"
   },

@@ -1,6 +1,6 @@
 # Osteria Di Lucca — Sistema de Gestão de Reservas
 
-**README versão:** 4.21  
+**README versão:** 4.24  
 **Data:** 2026-07-09  
 
 ---
@@ -68,6 +68,10 @@ Sistema web de gerenciamento de reservas para o restaurante **Osteria Di Lucca**
 |---|---|---|
 | `js/config/firebase-config.js` | v1.0 | Inicialização Firebase |
 | `js/core/supabaseClient.js` | **v1.0** | Criado em 2026-07-09 — Fase 1 da migração Firestore→Supabase, ver `plano_de_ação.md` |
+| `supabase/migrations/20260709133321_initial_schema.sql` | — | Criado em 2026-07-09 — Fase 2: schema real (hospedes/mesas/reservas/reservas_log/config_dia/notificacoes), aplicado e testado (RLS bloqueando acesso, como esperado antes da Fase 3) |
+| `supabase/migrations/20260709135200_rls_policies.sql` | — | Criado em 2026-07-09 — Fase 3: políticas RLS (`auth.uid() is not null`) nas 6 tabelas. Decisão: login de produção migra pro Supabase Auth só na Fase 5 (junto com o resto do código) |
+| `supabase/migrations/20260709140241_grants_authenticated.sql` | — | Criado em 2026-07-09 — Fase 3: `GRANT` ao papel `authenticated` nas 6 tabelas. RLS sozinho não bastava porque "Expor automaticamente novas tabelas" foi desmarcado na Fase 1 — Postgres bloqueava antes mesmo de avaliar as políticas |
+| `scripts/migrar-dados.mjs` | v1.0 | Criado em 2026-07-09 — Fase 4: migração única dos dados do Firestore pro Supabase. 100% dos registros migrados (477 reservas, 225 logs, 12 config_dia, 250 notificações). Suporta `--retry-ids=` pra reprocessar registros específicos sem duplicar o resto |
 | `js/core/database.js` | **v1.5** | Persistência offline do Firestore ativada (bug #41) |
 | `js/core/init.js` | **v1.3** | Corrige leitura do relógio em ALTERAR HORÁRIO |
 | `js/core/navigation.js` | v4.10 | Overlay fecha menu lateral |
@@ -832,6 +836,7 @@ roomservice.js         ← state.js, database.js
 | 47 | Solicitação: gráfico "Composição" (adultos×crianças) tinha baixo valor analítico — dono do projeto queria ver movimento por dia da semana, por tipo de cliente | `dashboard.js`, `index.html` | Gráfico substituído por "Movimento por Dia da Semana" — barra empilhada (hóspede/externo/passante) agrupando `reservas` pelo dia da semana de `data` (`new Date(data + 'T12:00:00').getDay()`, mesmo padrão de `home.js`). Canvas renomeado de `chartComposicao` para `chartDiaSemana`. Testado com dados reais e sintéticos (domingo/segunda/sexta caem nas colunas corretas) |
 | 48 | Solicitação: eventos fechados na osteria (ex: aniversário particular) distorciam as análises do Dashboard, que só permitia um intervalo De/Até contínuo, sem forma de isolar ou excluir dias | `dashboard.js`, `index.html` | Novo seletor "Modo" (`#dashModo`): **Período contínuo** (comportamento anterior + campo "Excluir data", remove dias específicos do intervalo antes de calcular KPIs/gráficos, com a taxa de ocupação recalculada sobre os dias realmente considerados) ou **Datas específicas** (busca só as datas avulsas escolhidas, via `buscarReservasPorData()` em paralelo — sem limite de 10 itens que uma query `where(...,'in',...)` do Firestore teria). Datas adicionadas viram "chips" removíveis (`_renderizarChipsDatas()`). Testado: exclusão reduz o total corretamente (27→15 pax excluindo hoje), remoção da exclusão restaura o total (15→27), modo "datas específicas" isola corretamente (12 pax só de hoje), validação de lista vazia |
 | 49 | Nos 3 gráficos de barra empilhada (bugs #45/#46/#47), `borderRadius` aplicado em cada série individualmente arredondava os cantos de cada segmento — criava um "degrau" visual onde hóspede/externo/passante deveriam se encaixar sem emenda | `home.js`, `dashboard.js` | Removido `borderRadius`/`borderSkipped` das séries empilhadas em `home-chart-barras`, `chartHorario` e `chartDiaSemana` — barras agora ficam sólidas e contínuas |
+| 50 | Descoberto durante a migração de dados (Fase 4 do Supabase): `dashboard.js` tem o total de mesas fixo em `18` no gráfico "Uso de Mesas" (`for (let i = 1; i <= 18; i++)`, linhas 45 e 163), mas o total é configurável pelo usuário (tela de Configurações). Existem reservas reais em mesas 19 e 20 — o Dashboard já vem sub-relatando o uso dessas mesas | `js/features/dashboard.js` | **Ainda não corrigido** — registrado como tarefa separada (fora do escopo da migração). Correção sugerida: usar `getConfig().mesas`, mesmo padrão já usado em `mesas/modal.js:58` |
 
 ---
 
