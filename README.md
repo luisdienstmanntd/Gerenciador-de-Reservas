@@ -20,7 +20,7 @@ Este sistema nasceu para resolver esses pontos: uma grade de reservas em tempo r
 ## Funcionalidades principais
 
 - **Grade de reservas em tempo real**, organizada por horário e mesa, sincronizada via Supabase Realtime entre todos os dispositivos conectados.
-- **Bloqueio de horários** (ex: mesa reservada só para hóspedes, ou bloqueada para manutenção).
+- **Bloqueio de horários** (ex: mesa reservada só para hóspedes, ou bloqueada para manutenção) — inclui bloqueio automático da(s) próxima(s) linha(s) do horário quando uma reserva atinge 4+ pessoas (configurável).
 - **Atribuição e cronômetro de mesas**, com aviso visual de tempo de ocupação.
 - **Log de auditoria** — cada criação, edição e exclusão de reserva registra quem fez e quando.
 - **Dashboard analítico** com estatísticas de ocupação, tipos de cliente e movimento por período (Chart.js).

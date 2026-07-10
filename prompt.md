@@ -77,22 +77,22 @@ Sistema web de gerenciamento de reservas para o restaurante **Osteria Di Lucca**
 | `supabase/migrations/20260709160000_habilitar_realtime.sql` | — | Criado em 2026-07-10 — Fase 5: habilita Realtime em `reservas`, `config_dia`, `notificacoes` — sem isso `postgres_changes` nunca dispara |
 | `supabase/migrations/20260709161500_remover_fk_logs_notificacoes.sql` | — | Criado em 2026-07-10 — Fase 5: remove FK de `reservas_log.reserva_id` e `notificacoes.reserva_id` — um log precisa sobreviver à exclusão da reserva que documenta |
 | `scripts/migrar-dados.mjs` | v1.0 | Criado em 2026-07-09 — Fase 4: migração única dos dados do Firestore pro Supabase. 100% dos registros migrados (477 reservas, 225 logs, 12 config_dia, 250 notificações). Suporta `--retry-ids=` pra reprocessar registros específicos sem duplicar o resto |
-| `js/core/database.js` | **v2.1** | Coluna `bloqueioOrigemId` no formato achatado + `buscarBloqueiosAutomaticos()` — suporte ao bug #52 (bloqueio automático de reserva grande) |
-| `js/core/init.js` | v1.3 | Corrige leitura do relógio em ALTERAR HORÁRIO |
+| `js/core/database.js` | v2.0 | 2026-07-10 — métodos de `config_sistema` (bug #56), update-not-duplicate de hóspede na edição (bug #55), `codigoReserva` no formato achatado (bug #54), `bloqueioOrigemId` + `buscarBloqueiosAutomaticos()` (bug #52) |
+| `js/core/init.js` | v2.1 | 2026-07-10 — chama `iniciarEscutaConfigSistema()` no boot (bug #56) |
 | `js/core/navigation.js` | v4.10 | Overlay fecha menu lateral |
-| `js/core/state.js` | v4.22 | Permite `linhasExtras` negativos |
-| `js/features/reservas/modal.js` | v3.11 | Centraliza reset de estado de bloqueio em `_limparFormulario()` |
-| `js/features/reservas/service.js` | **v4.1** | Bloqueio automático da próxima linha quando uma reserva tem 4+ adultos (bug #52) |
-| `js/features/reservas/listener.js` | v4.2 | Sem mudança de código na Fase 5 — continua falando só com `database.js`, que agora é Supabase por dentro |
-| `js/features/reservas/log.js` | **v3.0** | Fase 5 (2026-07-10) — coleção `logs` (Firestore) vira tabela `reservas_log` (Supabase) |
-| `js/features/reservas/validators.js` | **v1.3** | `escapeHtml()` adicionada — sanitização de saída contra XSS |
+| `js/core/state.js` | v6.0 | 2026-07-10 — `getConfig()`/`setConfigSistema()` passam a ler de um cache em memória sincronizado via Supabase Realtime, não mais do `localStorage` (bug #56) |
+| `js/features/reservas/modal.js` | v3.12 | 2026-07-10 — campo `codigoReserva` em `obterDados()`/preenchimento/limpeza do formulário (bug #54) |
+| `js/features/reservas/service.js` | v4.0 | 2026-07-10 — bloqueio automático de reserva grande (bugs #52, aplica em várias linhas + reavaliação após desbloqueio manual), respeitando o switch de Configurações (bug #56) |
+| `js/features/reservas/listener.js` | v4.0 | 2026-07-10 — resync ao voltar pra aba (`visibilitychange`), `iniciarEscutaConfigSistema()`/`recarregarConfigSistema()` (bug #56) |
+| `js/features/reservas/log.js` | v3.0 | 2026-07-10 — campo `codigoReserva` no histórico de alterações (bug #54) |
+| `js/features/reservas/validators.js` | v1.2 | 2026-07-10 — bloqueio não exige mais apto (bug #53); hóspede exige apto OU código de reserva, não os dois (bug #54) |
 | `js/features/mesas/modal.js` | v1.0 | — |
 | `js/features/dashboard.js` | **v3.14** | Remove `borderRadius` das barras empilhadas — corrige "degrau" visual (bug #49) |
-| `js/features/home.js` | **v2.5** | Remove `borderRadius` da barra empilhada — corrige "degrau" visual (bug #49) |
+| `js/features/home.js` | v2.1 | 2026-07-10 — usa `getConfig()` de `state.js` em vez de ler `localStorage` direto (bug #56) |
 | `js/features/roomservice.js` | **v2.3** | Escapa `nomes`/`obs` no card — corrige XSS |
-| `js/ui/controls.js` | **v7.9** | `ajustarHora()` adicionada |
+| `js/ui/controls.js` | v8.7 | 2026-07-10 — switch de travar/destravar em Configurações, switch de bloqueio automático, `salvarConfiguracoes()` grava em `config_sistema` (Supabase) em vez de `localStorage` (bugs #52, #56) |
 | `js/ui/filters.js` | v3.0 | 100% modular |
-| `js/ui/render.js` | **v6.0** | Escapa `nomes`/`obs`/`avulsa` antes de inserir em innerHTML — corrige XSS |
+| `js/ui/render.js` | v6.0 | 2026-07-10 — mostra "RES `<código>`" em vez de "APTO ?" quando o apto ainda não foi definido (bug #54) |
 | `js/ui/timers.js` | v4.1 | Sem dependência de render.js |
 | `index.html` | — | Fase 5 (2026-07-10): login trocado de Firebase Auth pra Supabase Auth (`onAuthStateChange`/`signInWithPassword`/`signOut`); tags `<script>` do SDK clássico do Firebase removidas (não usadas mais). Login gate usa o estado real de sessão como fonte da verdade em vez de `localStorage`, chamando `recarregarReservas()` + `carregarHome()` + `recarregarNotificacoes()` ao confirmar usuário real (bugs #37, #38, #40); manifest/ícones linkados e Service Worker registrado (bugs #42, #43) |
 | `css/style.css` | — | — |
