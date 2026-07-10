@@ -1,30 +1,23 @@
 /* =========================================================================================
-   OSTERIA DI LUCCA - DATABASE.JS v1.4
-   RESPONSABILIDADE: Camada de Abstração do Firebase (Singleton)
-   ✅ v1.0: Remove dependência de window.db
-   ✅ v1.1: Etapa 5 — métodos config_dia adicionados
-   ✅ v1.2: Firebase inicializado diretamente aqui — elimina window.db e polling setInterval
-            firebase-config.js agora é apenas declarativo (sem efeitos colaterais)
-   ✅ v1.3: limparConfigDiasAntigos() — exclui docs de config_dia anteriores ao período de
-            retenção configurável. Roda client-side via batch, sem precisar de Cloud Function.
-   ✅ v1.4: Callbacks de erro dos listeners de reservas não relançam mais (throw) — evita
-            "Uncaught FirebaseError" quando o onSnapshot inicial cai em permission-denied
-            antes do login terminar de resolver (bug #38).
-   ✅ v1.5: Persistência offline do Firestore ativada — recria feature perdida na migração
-            pra este repositório (dívida técnica #2, PWA/offline).
+   OSTERIA DI LUCCA - DATABASE.JS v2.0
+   RESPONSABILIDADE: Camada de Abstração do Supabase (Singleton)
+   ✅ v1.0-v1.5: histórico Firestore — ver git log para versões anteriores.
+   ✅ v2.0: Fase 5 da migração Firestore → Supabase. Reescrito por dentro para falar com
+            o Supabase (Postgres), mas mantém EXATAMENTE os mesmos nomes de método e o
+            mesmo formato de retorno (objeto achatado em camelCase) de antes — quem consome
+            esta classe (listener.js, home.js, service.js, log.js) não precisa mudar nada
+            além da própria migração de service.js/log.js. Ver plano_de_ação.md §Fase 5.
+
+            Duas tabelas viraram uma na visão da aplicação: o Postgres normalizou
+            `reservas` + `hospedes`, mas a UI continua enxergando um único objeto achatado
+            (nomes, apto, whatsapp, tipo, mesa, originalBase, somenteHospedes...). A tradução
+            entre os dois formatos vive nos helpers privados _paraReservaApp()/_paraColunasReserva().
+
+            Persistência offline (enablePersistence do Firestore) NÃO foi recriada aqui —
+            o Supabase não tem equivalente pronto; ver dívida técnica no prompt.md.
    ========================================================================================= */
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Configuração do Firebase — centralizada aqui, não mais em firebase-config.js
-// ─────────────────────────────────────────────────────────────────────────────
-const FIREBASE_CONFIG = {
-    apiKey: "AIzaSyAIWarcirpkReNggjMPw1Ba_rft4iNSoUc",
-    authDomain: "osteriadilucca-afea6.firebaseapp.com",
-    projectId: "osteriadilucca-afea6",
-    storageBucket: "osteriadilucca-afea6.firebasestorage.app",
-    messagingSenderId: "311839746930",
-    appId: "1:311839746930:web:a05d98c70f68c39fd38beb",
-};
+import { supabase } from './supabaseClient.js';
 
 class DatabaseService {
     constructor() {
@@ -32,71 +25,8 @@ class DatabaseService {
             return DatabaseService.instance;
         }
 
-        this.db = null;
-        this.inicializado = false;
-        this._persistenciaSolicitada = false;
-
+        this.client = supabase;
         DatabaseService.instance = this;
-
-        // ✅ v1.2: Inicializa o Firebase imediatamente no construtor.
-        // Os scripts do CDN (firebase-app.js, firebase-firestore.js) são carregados
-        // como <script> clássico ANTES deste módulo no index.html, portanto
-        // `firebase` já está disponível de forma síncrona aqui.
-        this._inicializarFirebase();
-    }
-
-    /**
-     * Inicializa o Firebase e instancia o Firestore de forma síncrona.
-     * Chamado pelo construtor e, como fallback, por aguardarInicializacao().
-     * @private
-     */
-    _inicializarFirebase() {
-        try {
-            if (!firebase.apps.length) {
-                firebase.initializeApp(FIREBASE_CONFIG);
-                console.log('✅ Firebase inicializado pelo DatabaseService');
-            } else {
-                console.log('✅ Firebase já estava inicializado — DatabaseService reutiliza instância');
-            }
-            this.db = firebase.firestore();
-            this.inicializado = true;
-            console.log('✅ Firestore instanciado pelo DatabaseService');
-            this._ativarPersistenciaOffline();
-        } catch (e) {
-            // SDK ainda não disponível — aguardarInicializacao() tentará novamente
-            console.warn('⚠️ Firebase ainda não disponível no construtor, aguardando...', e.message);
-        }
-    }
-
-    /**
-     * Ativa o cache offline do Firestore — leituras funcionam offline (vindas do
-     * cache local) e escritas ficam enfileiradas até a conexão voltar, sincronizando
-     * sozinhas. Relevante para rede instável (ex: rede do hotel).
-     *
-     * Chamada uma única vez (guard `_persistenciaSolicitada`) porque
-     * `_inicializarFirebase()` pode rodar mais de uma vez (fallback de polling
-     * em `aguardarInicializacao()`), e `enablePersistence()` só pode ser chamada
-     * uma vez por instância do Firestore.
-     * @private
-     */
-    _ativarPersistenciaOffline() {
-        if (this._persistenciaSolicitada) return;
-        this._persistenciaSolicitada = true;
-
-        this.db.enablePersistence().then(() => {
-            console.log('✅ Persistência offline do Firestore ativada');
-        }).catch((e) => {
-            if (e.code === 'failed-precondition') {
-                // Múltiplas abas abertas — só a primeira consegue ativar o cache.
-                // Não é um erro real: o app continua funcionando normalmente,
-                // só sem cache offline nesta aba específica.
-                console.warn('⚠️ Persistência offline não ativada: múltiplas abas abertas.');
-            } else if (e.code === 'unimplemented') {
-                console.warn('⚠️ Persistência offline não suportada neste navegador.');
-            } else {
-                console.error('❌ Erro ao ativar persistência offline:', e);
-            }
-        });
     }
 
     static getInstance() {
@@ -107,51 +37,156 @@ class DatabaseService {
     }
 
     /**
-     * Garante que o Firestore está pronto antes de usá-lo.
-     *
-     * Na v1.2, na esmagadora maioria dos casos retorna imediatamente porque
-     * this.inicializado já é true após o construtor.
-     *
-     * O fallback de polling cobre o edge case em que o SDK do Firebase
-     * demore mais que o esperado (ex: conexão lenta, cache miss no CDN).
-     *
+     * Mantida por compatibilidade de interface — service.js/log.js/listener.js/home.js
+     * chamam isso antes de usar o banco. O cliente Supabase já é criado de forma síncrona
+     * no construtor (sem SDK de app tipo firebase.initializeApp para esperar), então não
+     * há nada de fato assíncrono aqui; a função existe só para não exigir mudança nos
+     * chamadores.
      * @returns {Promise<void>}
      */
     async aguardarInicializacao() {
-        if (this.inicializado && this.db) return;
-
-        // Tenta inicializar agora (pode ter falhado silenciosamente no construtor)
-        this._inicializarFirebase();
-        if (this.inicializado && this.db) return;
-
-        // Fallback final: polling com timeout de 10s
-        console.warn('⚠️ Firebase não estava pronto no construtor — aguardando via polling...');
-        return new Promise((resolve, reject) => {
-            const timeout = setTimeout(() => {
-                reject(new Error('Firebase não carregou em 10 segundos'));
-            }, 10000);
-
-            const verificar = setInterval(() => {
-                this._inicializarFirebase();
-                if (this.inicializado && this.db) {
-                    clearInterval(verificar);
-                    clearTimeout(timeout);
-                    resolve();
-                }
-            }, 100);
-        });
+        return;
     }
 
     /**
-     * Obtém referência ao Firestore.
-     * ⚠️ Sempre chame await aguardarInicializacao() antes de usar.
-     * @returns {firebase.firestore.Firestore}
+     * Acesso direto ao cliente do Supabase — usado por service.js/log.js para consultas
+     * que não se encaixam nos métodos de alto nível abaixo (ex: filtros compostos por
+     * data+originalBase). Equivalente ao antigo getFirestore().
+     * @returns {import('@supabase/supabase-js').SupabaseClient}
      */
-    getFirestore() {
-        if (!this.inicializado || !this.db) {
-            throw new Error('DatabaseService não inicializado. Chame await aguardarInicializacao() primeiro.');
-        }
-        return this.db;
+    getClient() {
+        return this.client;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // TRADUÇÃO Postgres (normalizado) ↔ formato antigo da app (achatado)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Postgres guarda horario/original_base como tipo `time`, que a API retorna como
+     * "HH:MM:SS" (ex: "20:30:00"). O app inteiro compara horários como string "HH:MM"
+     * (ex: '20:30' === '20:30'), herdado do Firestore que guardava string simples.
+     * Corta os segundos pra manter esse formato — sem isso, toda comparação de horário
+     * (grade, blocos, dashboard) quebra silenciosamente.
+     * @private
+     */
+    _horaCurta(t) {
+        if (!t) return t;
+        return t.length > 5 ? t.slice(0, 5) : t;
+    }
+
+    /**
+     * Converte uma linha de `reservas` (com `hospedes` embutido via join) para o
+     * formato achatado que a UI sempre conheceu.
+     * @private
+     */
+    _paraReservaApp(row) {
+        const hospede = row.hospedes || {};
+        return {
+            id: row.id,
+            data: row.data,
+            horario: this._horaCurta(row.horario),
+            originalBase: this._horaCurta(row.original_base),
+            posicao: row.posicao ?? 0,
+            tipo: hospede.tipo || 'hospede',
+            nomes: hospede.nome || '',
+            apto: hospede.apto || '',
+            whatsapp: hospede.telefone || '',
+            avulsa: row.avulsa || '',
+            paxs: row.paxs || 0,
+            chd: row.chd || 0,
+            obs: row.obs || '',
+            mesa: row.mesa_identificador || '',
+            bloqueado: row.bloqueado || false,
+            somenteHospedes: row.somente_hospedes || false,
+            pagamento: row.pagamento || '',
+            menuDegustacao: row.menu_degustacao || false,
+            inicioMesa: row.inicio_mesa || null,
+            fimMesa: row.fim_mesa || null,
+        };
+    }
+
+    /**
+     * Encontra o hóspede correspondente aos dados da reserva, ou cria um novo.
+     * Mesma regra de dedup em cascata usada na migração de dados (Fase 4,
+     * scripts/migrar-dados.mjs — resolverHospedeId), confirmada com o dono do projeto:
+     *   - hóspede/roomservice → apto+nome
+     *   - externo/passante    → telefone+nome
+     * @private
+     */
+    async _resolverHospedeId(dados) {
+        if (!dados.nomes || !dados.nomes.trim()) return null; // slot vazio ou bloqueio — sem hóspede
+
+        const nome = dados.nomes.trim().toUpperCase();
+        const tipo = dados.tipo || 'hospede';
+        const isHospedeOuRoom = tipo === 'hospede' || tipo === 'roomservice';
+
+        let query = this.client.from('hospedes').select('id').eq('nome', nome).eq('tipo', tipo);
+        if (isHospedeOuRoom && dados.apto) query = query.eq('apto', dados.apto);
+        if (!isHospedeOuRoom && dados.whatsapp) query = query.eq('telefone', dados.whatsapp);
+
+        const { data: existentes, error: erroConsulta } = await query.limit(1);
+        if (erroConsulta) throw erroConsulta;
+        if (existentes && existentes.length > 0) return existentes[0].id;
+
+        const { data: novo, error: erroCriar } = await this.client
+            .from('hospedes')
+            .insert({
+                nome,
+                apto: isHospedeOuRoom ? (dados.apto || null) : null,
+                telefone: dados.whatsapp || null,
+                tipo,
+            })
+            .select('id')
+            .single();
+
+        if (erroCriar) throw erroCriar;
+        return novo.id;
+    }
+
+    /**
+     * Garante que a mesa existe na tabela de referência antes de vincular uma reserva a
+     * ela. Necessário porque o número de mesas é configurável pelo restaurante (tela de
+     * Configurações) — não é uma lista fixa. Mesmo problema real encontrado na Fase 4
+     * (mesas 19/20 não existiam na lista pré-populada de 1-18).
+     * @private
+     */
+    async garantirMesaExiste(identificador) {
+        if (!identificador) return;
+        const tipo = identificador === 'ROOM' ? 'room_service' : 'numerada';
+        const { error } = await this.client
+            .from('mesas')
+            .upsert({ identificador, tipo }, { onConflict: 'identificador' });
+        if (error) throw error;
+    }
+
+    /**
+     * Converte o objeto achatado que a UI usa para criar/atualizar uma reserva nas
+     * colunas reais de `reservas`, resolvendo hospede_id e garantindo mesa_identificador
+     * como efeitos colaterais (ambos exigem ida ao banco).
+     * @private
+     */
+    async _paraColunasReserva(dados) {
+        const hospedeId = await this._resolverHospedeId(dados);
+        const mesaId = dados.mesa && dados.mesa !== '' && dados.mesa !== '-' ? dados.mesa : null;
+        if (mesaId) await this.garantirMesaExiste(mesaId);
+
+        return {
+            hospede_id: hospedeId,
+            mesa_identificador: mesaId,
+            data: dados.data,
+            horario: dados.horario,
+            original_base: dados.originalBase || dados.horario,
+            posicao: parseInt(dados.posicao) || 0,
+            paxs: parseInt(dados.paxs) || 0,
+            chd: parseInt(dados.chd) || 0,
+            avulsa: dados.avulsa || null,
+            obs: dados.obs || null,
+            bloqueado: dados.bloqueado || false,
+            somente_hospedes: dados.somenteHospedes || false,
+            pagamento: dados.pagamento || null,
+            menu_degustacao: dados.menuDegustacao || false,
+        };
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -159,275 +194,280 @@ class DatabaseService {
     // ─────────────────────────────────────────────────────────────────────────
 
     async getReservasPorData(data) {
-        const db = this.getFirestore();
-        const snapshot = await db.collection('reservas').where('data', '==', data).get();
-        const reservas = [];
-        snapshot.forEach(doc => reservas.push({ id: doc.id, ...doc.data() }));
-        return reservas;
+        const { data: rows, error } = await this.client
+            .from('reservas').select('*, hospedes(*)').eq('data', data);
+        if (error) throw error;
+        return rows.map(r => this._paraReservaApp(r));
     }
 
     async getReservasPorPeriodo(dataInicio, dataFim) {
-        const db = this.getFirestore();
-        const snapshot = await db.collection('reservas')
-            .where('data', '>=', dataInicio)
-            .where('data', '<=', dataFim)
-            .get();
-        const reservas = [];
-        snapshot.forEach(doc => reservas.push({ id: doc.id, ...doc.data() }));
-        return reservas;
+        const { data: rows, error } = await this.client
+            .from('reservas').select('*, hospedes(*)')
+            .gte('data', dataInicio).lte('data', dataFim);
+        if (error) throw error;
+        return rows.map(r => this._paraReservaApp(r));
+    }
+
+    /**
+     * Busca as reservas de um bloco específico (data + horário-base). Usado por
+     * service.js para calcular posição livre e detectar docs "fantasma" — precisa do
+     * hóspede embutido (join) porque a checagem de "slot ocupado" depende de `nomes`.
+     * @returns {Promise<Array>} reservas no formato achatado de sempre
+     */
+    async buscarReservasPorBloco(data, originalBase) {
+        const { data: rows, error } = await this.client
+            .from('reservas').select('*, hospedes(*)')
+            .eq('data', data).eq('original_base', originalBase);
+        if (error) throw error;
+        return rows.map(r => this._paraReservaApp(r));
     }
 
     async getReservaPorId(id) {
-        const db = this.getFirestore();
-        const doc = await db.collection('reservas').doc(id).get();
-        if (doc.exists) return { id: doc.id, ...doc.data() };
-        return null;
+        const { data: row, error } = await this.client
+            .from('reservas').select('*, hospedes(*)').eq('id', id).maybeSingle();
+        if (error) throw error;
+        return row ? this._paraReservaApp(row) : null;
     }
 
     async criarReserva(dados) {
-        const db = this.getFirestore();
-        const docRef = await db.collection('reservas').add(dados);
-        return docRef.id;
+        const colunas = await this._paraColunasReserva(dados);
+        const { data: nova, error } = await this.client
+            .from('reservas').insert(colunas).select('id').single();
+        if (error) throw error;
+        return nova.id;
     }
 
     async atualizarReserva(id, dados) {
-        const db = this.getFirestore();
-        await db.collection('reservas').doc(id).update(dados);
+        const colunas = await this._paraColunasReserva(dados);
+        const { error } = await this.client.from('reservas').update(colunas).eq('id', id);
+        if (error) throw error;
     }
 
     async excluirReserva(id) {
-        const db = this.getFirestore();
-        await db.collection('reservas').doc(id).delete();
+        const { error } = await this.client.from('reservas').delete().eq('id', id);
+        if (error) throw error;
     }
 
+    /**
+     * Escuta reservas de uma data em tempo real via Supabase Realtime.
+     * Igual ao comportamento antigo do Firestore: a cada mudança, refaz a busca inteira
+     * e entrega a lista completa (não tenta reconciliar diffs incrementalmente).
+     *
+     * ⚠️ Requer Realtime habilitado na tabela `reservas` (ver migration
+     * 20260709160000_habilitar_realtime.sql) — sem isso o evento nunca dispara.
+     *
+     * @returns {Function} unsubscribe
+     */
     escutarReservasPorData(data, callback) {
-        const db = this.getFirestore();
-        return db.collection('reservas')
-            .where('data', '==', data)
-            .onSnapshot(
-                (snapshot) => {
-                    const reservas = [];
-                    snapshot.forEach(doc => reservas.push({ id: doc.id, ...doc.data() }));
-                    callback(reservas);
-                },
-                (error) => {
-                    // ✅ Não relança — relançar dentro do callback de erro do onSnapshot vira uma
-                    // exceção não tratada dentro do SDK do Firestore ("Uncaught FirebaseError"),
-                    // sem nenhum benefício sobre só logar (ninguém está ouvindo esse throw).
-                    console.error('❌ Erro ao escutar reservas:', error);
-                }
-            );
+        const buscar = async () => {
+            try {
+                callback(await this.getReservasPorData(data));
+            } catch (error) {
+                console.error('❌ Erro ao escutar reservas:', error);
+            }
+        };
+        buscar();
+
+        const channel = this.client
+            .channel(`reservas-${data}`)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'reservas', filter: `data=eq.${data}` }, buscar)
+            .subscribe();
+
+        return () => this.client.removeChannel(channel);
     }
 
     /**
      * Salva uma notificação para todos os usuários lerem.
-     * @param {{texto: string, reservaId: string, tipo: string}} dados
+     * @param {{texto: string, reservaId: string}} dados
      */
     async salvarNotificacao(dados) {
-        const firestore = this.getFirestore();
-        await firestore.collection('notificacoes').add({
-            ...dados,
-            timestamp: new Date().toISOString(),
+        const { error } = await this.client.from('notificacoes').insert({
+            texto: dados.texto,
+            reserva_id: dados.reservaId || null,
             lido_por: [],
         });
+        if (error) throw error;
     }
 
     /**
      * Marca notificação como lida pelo usuário atual.
-     * @param {string} id - ID do doc na coleção notificacoes
-     * @param {string} usuario
+     * ⚠️ Não é atômico como o arrayUnion do Firestore (lê o array, adiciona e regrava) —
+     * tradeoff aceito dado o volume baixo de usuários internos clicando "OK" ao mesmo tempo.
      */
     async marcarNotificacaoLida(id, usuario) {
-        const firestore = this.getFirestore();
-        await firestore.collection('notificacoes').doc(id).update({
-            lido_por: firebase.firestore.FieldValue.arrayUnion(usuario),
-        });
+        const { data: row, error: erroLeitura } = await this.client
+            .from('notificacoes').select('lido_por').eq('id', id).single();
+        if (erroLeitura) throw erroLeitura;
+
+        const atual = row.lido_por || [];
+        if (atual.includes(usuario)) return;
+
+        const { error } = await this.client
+            .from('notificacoes').update({ lido_por: [...atual, usuario] }).eq('id', id);
+        if (error) throw error;
     }
 
     /**
      * Escuta notificações não lidas pelo usuário em tempo real.
-     * Retorna apenas docs onde lido_por NÃO contém o usuário.
-     * @param {string} usuario
-     * @param {Function} callback - (notificacoes[])
      * @returns {Function} unsubscribe
      */
     escutarNotificacoesNaoLidas(usuario, callback) {
-        const firestore = this.getFirestore();
-        // Firestore não suporta "not contains" — buscamos recentes e filtramos no cliente
         const corte = new Date();
-        corte.setHours(corte.getHours() - 12); // janela de 12h
-        return firestore.collection('notificacoes')
-            .where('timestamp', '>=', corte.toISOString())
-            .orderBy('timestamp', 'desc')
-            .onSnapshot(snap => {
-                const pendentes = [];
-                snap.forEach(doc => {
-                    const data = { id: doc.id, ...doc.data() };
-                    if (!data.lido_por || !data.lido_por.includes(usuario)) {
-                        pendentes.push(data);
-                    }
-                });
+        corte.setHours(corte.getHours() - 12); // janela de 12h, igual antes
+
+        const buscar = async () => {
+            try {
+                const { data: rows, error } = await this.client
+                    .from('notificacoes').select('*')
+                    .gte('criado_em', corte.toISOString())
+                    .order('criado_em', { ascending: false });
+                if (error) throw error;
+
+                const pendentes = rows
+                    .filter(n => !n.lido_por || !n.lido_por.includes(usuario))
+                    .map(n => ({ id: n.id, texto: n.texto, reservaId: n.reserva_id, lido_por: n.lido_por, timestamp: n.criado_em }));
                 callback(pendentes);
-            }, error => {
+            } catch (error) {
                 console.error('❌ Erro ao escutar notificações:', error);
-            });
+            }
+        };
+        buscar();
+
+        const channel = this.client
+            .channel('notificacoes-pendentes')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'notificacoes' }, buscar)
+            .subscribe();
+
+        return () => this.client.removeChannel(channel);
     }
 
     /**
-     * Igual a escutarReservasPorData mas também passa docChanges para detectar
-     * inserções, edições e remoções com dados completos (usado pelo sino).
+     * Igual a escutarReservasPorData mas também dispara callbackMudancas quando uma
+     * reserva NOVA é inserida (usado pelo sino de notificação).
+     *
+     * Diferente do Firestore: o Realtime do Postgres só entrega eventos que acontecem
+     * DEPOIS da inscrição no canal — não existe o "primeiro snapshot com tudo marcado
+     * como added" que o Firestore tinha, então não precisamos do flag `primeiraEntrega`
+     * pra ignorar a carga inicial.
+     *
      * @param {string} data
-     * @param {Function} callbackReservas  - (reservas[]) igual ao anterior
-     * @param {Function} callbackMudancas  - (changes[{type, antes, depois}]) só após carga inicial
+     * @param {Function} callbackReservas - (reservas[])
+     * @param {Function} callbackMudancas  - (changes[{type, antes, depois}])
+     * @returns {Function} unsubscribe
      */
     escutarReservasPorDataComMudancas(data, callbackReservas, callbackMudancas) {
-        const db = this.getFirestore();
-        let primeiraEntrega = true;
-        return db.collection('reservas')
-            .where('data', '==', data)
-            .onSnapshot(
-                (snapshot) => {
-                    const reservas = [];
-                    snapshot.forEach(doc => reservas.push({ id: doc.id, ...doc.data() }));
-                    callbackReservas(reservas);
+        const buscar = async () => {
+            try {
+                callbackReservas(await this.getReservasPorData(data));
+            } catch (error) {
+                console.error('❌ Erro ao escutar reservas:', error);
+            }
+        };
+        buscar();
 
-                    if (primeiraEntrega) { primeiraEntrega = false; return; }
+        const tratarMudanca = async (payload) => {
+            buscar(); // sempre refaz a lista completa, igual ao comportamento anterior
 
-                    // Mapeia mudanças para formato simples
-                    const mudancas = snapshot.docChanges().map(change => ({
-                        type:   change.type, // 'added' | 'modified' | 'removed'
-                        antes:  change.type === 'added'   ? null : { id: change.doc.id, ...change.doc.data() },
-                        depois: change.type === 'removed' ? null : { id: change.doc.id, ...change.doc.data() },
-                    }));
+            if (payload.eventType !== 'INSERT') return;
 
-                    if (mudancas.length > 0) callbackMudancas(mudancas);
-                },
-                (error) => {
-                    // ✅ Não relança — ver comentário equivalente em escutarReservasPorData
-                    console.error('❌ Erro ao escutar reservas:', error);
-                }
-            );
+            const row = payload.new;
+            let hospede = null;
+            if (row.hospede_id) {
+                const { data: h } = await this.client.from('hospedes').select('*').eq('id', row.hospede_id).maybeSingle();
+                hospede = h;
+            }
+            const depois = this._paraReservaApp({ ...row, hospedes: hospede });
+            if (!depois.nomes || depois.bloqueado || depois.somenteHospedes) return;
+
+            callbackMudancas([{ type: 'added', antes: null, depois }]);
+        };
+
+        const channel = this.client
+            .channel(`reservas-mudancas-${data}`)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'reservas', filter: `data=eq.${data}` }, tratarMudanca)
+            .subscribe();
+
+        return () => this.client.removeChannel(channel);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // CONFIG_DIA — linhasExtras persistidas (Etapa 5)
+    // CONFIG_DIA — linhasExtras persistidas
     // ─────────────────────────────────────────────────────────────────────────
 
     /**
-     * Salva (merge) o mapa linhasExtras para um dia específico.
+     * Salva (upsert) o mapa linhasExtras para um dia específico.
      * @param {string} data         - Ex: '2026-02-22'
      * @param {Object} linhasExtras - Ex: { '20:00': 1, '21:00': -1 }
      */
     async salvarConfigDia(data, linhasExtras) {
-        const firestore = this.getFirestore();
-        await firestore
-            .collection('config_dia')
-            .doc(data)
-            .set({ linhasExtras }, { merge: true });
+        const { error } = await this.client
+            .from('config_dia').upsert({ data, linhas_extras: linhasExtras });
+        if (error) throw error;
         console.log(`💾 config_dia/${data} salvo:`, JSON.stringify(linhasExtras));
     }
 
     /**
-     * Escuta em tempo real o documento config_dia/{data}.
-     * Chama callback({}) se o documento não existir.
-     * @param {string}   data     - Ex: '2026-02-22'
-     * @param {Function} callback - Recebe (linhasExtras: Object)
+     * Escuta em tempo real a linha config_dia da data indicada.
+     * Chama callback({}) se a linha não existir.
      * @returns {Function} unsubscribe
      */
     escutarConfigDia(data, callback) {
-        const firestore = this.getFirestore();
-        return firestore
-            .collection('config_dia')
-            .doc(data)
-            .onSnapshot(
-                (doc) => {
-                    const linhasExtras = doc.exists ? (doc.data().linhasExtras || {}) : {};
-                    console.log(`📡 config_dia/${data} recebido:`, JSON.stringify(linhasExtras));
-                    callback(linhasExtras);
-                },
-                (error) => {
-                    console.error('❌ Erro ao escutar config_dia:', error);
-                    callback({});
-                }
-            );
+        const buscar = async () => {
+            try {
+                const { data: row, error } = await this.client
+                    .from('config_dia').select('linhas_extras').eq('data', data).maybeSingle();
+                if (error) throw error;
+                const linhasExtras = row ? (row.linhas_extras || {}) : {};
+                console.log(`📡 config_dia/${data} recebido:`, JSON.stringify(linhasExtras));
+                callback(linhasExtras);
+            } catch (error) {
+                console.error('❌ Erro ao escutar config_dia:', error);
+                callback({});
+            }
+        };
+        buscar();
+
+        const channel = this.client
+            .channel(`config-dia-${data}`)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'config_dia', filter: `data=eq.${data}` }, buscar)
+            .subscribe();
+
+        return () => this.client.removeChannel(channel);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // CONFIG_DIA — limpeza de documentos antigos (v1.3)
+    // CONFIG_DIA — limpeza de linhas antigas
     // ─────────────────────────────────────────────────────────────────────────
 
     /**
-     * Remove documentos de config_dia anteriores ao período de retenção.
+     * Remove linhas de config_dia anteriores ao período de retenção.
      *
-     * Por que client-side e não Cloud Function:
-     *   Cloud Functions requerem plano Blaze (pago). Esta solução roda uma vez
-     *   por sessão de usuário, em background, sem bloquear a UI. O custo de
-     *   leitura é mínimo (apenas IDs, sem dados completos) e as exclusões são
-     *   feitas em batch (máximo 500 ops por commit, nunca atingido na prática
-     *   pois o restaurante dificilmente terá centenas de datas cadastradas).
-     *
-     * Estratégia:
-     *   1. Lista TODOS os docs de config_dia (apenas IDs, sem payload).
-     *   2. Filtra os cujo ID (YYYY-MM-DD) seja anterior ao corte.
-     *   3. Exclui em batches de até 490 ops (margem de segurança abaixo de 500).
-     *   4. Falha silenciosa — não interrompe o fluxo principal.
+     * No Firestore isso exigia ~50 linhas de batch manual (sem "delete where <").
+     * No Postgres é um filtro nativo — grande simplificação.
      *
      * @param {number} [diasRetencao=90] - Quantos dias de histórico manter.
-     *                                     90 = mantém 3 meses; use 365 para 1 ano.
-     * @returns {Promise<number>} Quantidade de docs excluídos (0 se nenhum).
+     * @returns {Promise<number>} Quantidade de linhas excluídas (0 se nenhuma).
      */
     async limparConfigDiasAntigos(diasRetencao = 90) {
-        const firestore = this.getFirestore();
-
-        // Calcula a data-corte no mesmo formato dos IDs (YYYY-MM-DD)
         const corte = new Date();
         corte.setDate(corte.getDate() - diasRetencao);
         const dataCorte = corte.toISOString().split('T')[0]; // 'YYYY-MM-DD'
 
-        console.log(`🧹 config_dia: verificando docs anteriores a ${dataCorte} (retenção: ${diasRetencao} dias)`);
+        console.log(`🧹 config_dia: verificando linhas anteriores a ${dataCorte} (retenção: ${diasRetencao} dias)`);
 
-        // ── 1. Lista todos os docs — select() traz só IDs, sem dados (leitura barata) ──
-        // Nota: o SDK v8 (compat) não suporta select() via .select('__name__'),
-        // mas get() numa coleção pequena (<365 docs) é igualmente eficiente.
-        const snap = await firestore.collection('config_dia').get();
+        const { data: apagados, error } = await this.client
+            .from('config_dia').delete().lt('data', dataCorte).select('data');
 
-        // ── 2. Filtra apenas os anteriores ao corte ──
-        // Os IDs são strings YYYY-MM-DD — comparação lexicográfica é idêntica à cronológica.
-        const parasExcluir = [];
-        snap.forEach(doc => {
-            if (doc.id < dataCorte) {
-                parasExcluir.push(doc.id);
-            }
-        });
-
-        if (parasExcluir.length === 0) {
-            console.log('🧹 config_dia: nenhum documento antigo encontrado.');
+        if (error) {
+            console.error('❌ Erro ao limpar config_dia antigos:', error);
             return 0;
         }
 
-        console.log(`🧹 config_dia: ${parasExcluir.length} doc(s) antigo(s) para excluir:`, parasExcluir);
-
-        // ── 3. Exclui em batches de até 490 ops ──
-        // O Firestore limita um batch a 500 operações. Usamos 490 como margem segura.
-        const LIMITE_BATCH = 490;
-        let totalExcluidos = 0;
-
-        for (let i = 0; i < parasExcluir.length; i += LIMITE_BATCH) {
-            const lote = parasExcluir.slice(i, i + LIMITE_BATCH);
-            const batch = firestore.batch();
-            lote.forEach(id => {
-                batch.delete(firestore.collection('config_dia').doc(id));
-            });
-            await batch.commit();
-            totalExcluidos += lote.length;
-            console.log(`🧹 config_dia: batch ${Math.floor(i / LIMITE_BATCH) + 1} — ${lote.length} doc(s) excluído(s)`);
-        }
-
-        console.log(`✅ config_dia: limpeza concluída — ${totalExcluidos} doc(s) removido(s)`);
-        return totalExcluidos;
+        console.log(`✅ config_dia: limpeza concluída — ${apagados.length} linha(s) removida(s)`);
+        return apagados.length;
     }
 }
 
-// Exporta instância única — o construtor já inicializa o Firebase
+// Exporta instância única
 export const db = DatabaseService.getInstance();
 export { DatabaseService };

@@ -1,9 +1,13 @@
 /* =========================================================================================
-   OSTERIA DI LUCCA - LOG.JS v2.0
+   OSTERIA DI LUCCA - LOG.JS v3.0
    ✅ v1.4: Padroniza error handling — usa notificacao.js
    ✅ v2.0: Timeline profissional — layout otimizado para tablet e PC de recepção
             Linha vertical conectando eventos, agrupamento por hora, ícones SVG por ação,
             diff expandido inline com tabela ANTES/DEPOIS, responsivo sem scroll horizontal
+   ✅ v3.0: Fase 5 da migração Firestore → Supabase. Coleção 'logs' vira tabela
+            'reservas_log'. FK de reserva_id foi removida (ver migration
+            20260709161500) — um log precisa sobreviver à exclusão da reserva que
+            o originou.
    ========================================================================================= */
 
 import { db } from '../../core/database.js';
@@ -21,24 +25,37 @@ const USUARIO_ATUAL = localStorage.getItem('usuario_nome') || 'sistema';
 export async function registrarLog(acao, dadosAntes = null, dadosDepois = null) {
     try {
         await db.aguardarInicializacao();
-        const firestore = db.getFirestore();
+        const client = db.getClient();
 
-        const entrada = {
+        const { error } = await client.from('reservas_log').insert({
+            reserva_id: dadosDepois?.id || dadosAntes?.id || null,
             acao,
             usuario: USUARIO_ATUAL,
-            timestamp: new Date().toISOString(),
-            data: dadosDepois?.data || dadosAntes?.data || '',
-            reservaId: dadosDepois?.id || dadosAntes?.id || '',
-            dadosAntes: dadosAntes ? _resumir(dadosAntes) : null,
-            dadosDepois: dadosDepois ? _resumir(dadosDepois) : null,
-        };
-
-        await firestore.collection('logs').add(entrada);
+            dados_antes: dadosAntes ? _resumir(dadosAntes) : null,
+            dados_depois: dadosDepois ? _resumir(dadosDepois) : null,
+        });
+        if (error) throw error;
         console.log(`📝 Log registrado: ${acao}`);
     } catch (e) {
         // Log de auditoria não deve interromper o fluxo principal
         console.error('❌ Erro ao registrar log:', e);
     }
+}
+
+/**
+ * Converte uma linha de reservas_log (snake_case, criado_em) para o formato que a
+ * timeline sempre usou (camelCase, timestamp) — equivalente ao doc do Firestore.
+ */
+function _paraLogApp(row) {
+    return {
+        id: row.id,
+        acao: row.acao,
+        usuario: row.usuario,
+        timestamp: row.criado_em,
+        reservaId: row.reserva_id,
+        dadosAntes: row.dados_antes,
+        dadosDepois: row.dados_depois,
+    };
 }
 
 /** Resume dados da reserva para o log (evita salvar campos desnecessários) */
@@ -189,19 +206,19 @@ export async function carregarLogs() {
 
     try {
         await db.aguardarInicializacao();
-        const firestore = db.getFirestore();
+        const client = db.getClient();
 
         const inicioDia = data + 'T00:00:00.000Z';
         const fimDia    = data + 'T23:59:59.999Z';
 
-        const snap = await firestore.collection('logs')
-            .where('timestamp', '>=', inicioDia)
-            .where('timestamp', '<=', fimDia)
-            .orderBy('timestamp', 'desc')
-            .get();
+        const { data: rows, error } = await client.from('reservas_log')
+            .select('*')
+            .gte('criado_em', inicioDia)
+            .lte('criado_em', fimDia)
+            .order('criado_em', { ascending: false });
+        if (error) throw error;
 
-        const logs = [];
-        snap.forEach(doc => logs.push({ id: doc.id, ...doc.data() }));
+        const logs = rows.map(r => _paraLogApp(r));
 
         if (logs.length === 0) {
             container.innerHTML = '<div class="tl-vazio"><div class="tl-vazio-icone">📋</div><div class="tl-vazio-texto">Nenhuma alteração nesta data</div></div>';
@@ -399,27 +416,28 @@ window.destacarLogPorReservaId = async function(reservaId) {
 
     try {
         await db.aguardarInicializacao();
-        const firestore = db.getFirestore();
+        const client = db.getClient();
 
         // Tenta até 5x com intervalo de 800ms — cobre race condition entre
-        // notificação (docChanges) e registrarLog (escrita no Firestore)
-        let snap = null;
+        // notificação (evento de INSERT) e registrarLog (escrita no Supabase)
+        let rows = [];
         for (let tentativa = 0; tentativa < 5; tentativa++) {
-            snap = await firestore.collection('logs')
-                .where('reservaId', '==', reservaId)
-                .get();
-            if (!snap.empty) break;
+            const { data, error } = await client.from('reservas_log')
+                .select('*')
+                .eq('reserva_id', reservaId);
+            if (error) throw error;
+            rows = data;
+            if (rows.length > 0) break;
             await new Promise(r => setTimeout(r, 800));
         }
 
-        if (!snap || snap.empty) {
+        if (rows.length === 0) {
             container.innerHTML = '<div class="tl-vazio"><div class="tl-vazio-icone">📋</div><div class="tl-vazio-texto">Nenhum histórico encontrado para esta reserva</div></div>';
             return;
         }
 
         // Ordena no cliente e pega o mais recente
-        const todos = [];
-        snap.forEach(doc => todos.push({ id: doc.id, ...doc.data() }));
+        const todos = rows.map(r => _paraLogApp(r));
         todos.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
         const logAlvo = todos[0];
 

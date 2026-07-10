@@ -78,12 +78,17 @@ Substituídas as regras do Firestore por políticas RLS do Postgres.
 
 ---
 
-## Fase 5 — Refatoração do Código da Aplicação
+## Fase 5 — Refatoração do Código da Aplicação ✅ Concluída (2026-07-10)
 
-- [ ] Substituir todas as chamadas `collection()/doc()/getDocs()` do Firestore por queries do Supabase client (`.from('reservas').select()`, `.insert()`, `.update()`)
-- [ ] Manter a mesma interface/funções públicas do módulo de dados (para não precisar reescrever a UI) — criar uma camada de abstração se ainda não existir
-- [ ] Ajustar tratamento de erros para o formato de resposta do Supabase
-- [ ] Rodar os 81 testes Vitest existentes e corrigir os que dependem de mocks do Firestore
+- [x] Substituídas todas as chamadas `collection()/doc()/getDocs()` do Firestore por queries do Supabase client (`.from('reservas').select()`, `.insert()`, `.update()`) em `database.js`, `service.js` e `log.js`
+- [x] Mantida a mesma interface/funções públicas do módulo de dados — `listener.js`, `home.js`, `dashboard.js`, `render.js` e `controls.js` não precisaram mudar uma linha. A tradução entre o formato normalizado do Postgres (`reservas` + `hospedes`) e o formato achatado que a UI sempre conheceu (camelCase, um objeto por reserva) vive em `database.js` (`_paraReservaApp`/`_paraColunasReserva`)
+- [x] Login trocado de Firebase Auth para Supabase Auth em `index.html` (`onAuthStateChange`, `signInWithPassword`, `signOut`) — SDK clássico do Firebase removido do HTML
+- [x] Tempo real: `onSnapshot` do Firestore substituído por `supabase.channel(...).on('postgres_changes', ...)`. Precisou de uma migration extra habilitando Realtime nas tabelas `reservas`, `config_dia`, `notificacoes` (`20260709160000_habilitar_realtime.sql`) — sem isso os eventos nunca disparam
+- [x] **Bug de schema encontrado durante a portagem:** `reservas_log.reserva_id` e `notificacoes.reserva_id` tinham FK para `reservas(id)`. O fluxo de `excluirReserva()` sempre foi "lê a reserva → apaga → registra o log apontando pra ela" — com a FK original isso quebraria a exclusão (violação de chave estrangeira, já que a reserva referenciada não existe mais no momento do log). Corrigido removendo as duas FKs (`20260709161500_remover_fk_logs_notificacoes.sql`) — um log de auditoria precisa sobreviver à exclusão que documenta
+- [x] **Tradeoff aceito, documentado:** `firestore.batch()` (atômico) não tem equivalente client-side no Supabase — pares insert+delete/update (em `salvarReserva`, `salvarApenasHorario`, `removerLinhaDoBloco`, `limparFantasmasDoDia`) viram chamadas sequenciais. Risco: falha no meio pode deixar um doc "fantasma" temporário, mas `limparFantasmasDoDia()` (já existe, roda no boot) varre e limpa isso sozinho
+- [x] **Tradeoff aceito, documentado:** persistência offline (cache do Firestore, recriada como dívida técnica #2 nesta mesma sessão) **não foi recriada** — o Supabase não tem equivalente pronto; ver dívida técnica nova no prompt.md
+- [x] Testes ajustados: `_calcularPosicaoLivre()` mudou de assinatura (recebe array simples em vez de `QuerySnapshot` do Firestore) — `service.test.js` simplificado. Suíte completa passando (162 testes)
+- [x] QA manual completo na branch `fase5-supabase`: login, criar/editar/excluir reserva, tela de LOG, Dashboard — tudo validado antes do merge
 
 ---
 

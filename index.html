@@ -74,14 +74,13 @@
     </div>
 
     <script type="module">
-        // ✅ Importar db garante que firebase.initializeApp() já rodou
-        // (módulos ES6 resolvem imports antes de executar o próprio código)
-        import { db } from './js/core/database.js';
+        // ✅ Fase 5: login passa a validar contra o Supabase Auth (antes: Firebase Auth).
+        import { supabase } from './js/core/supabaseClient.js';
         import { recarregarReservas, recarregarNotificacoes } from './js/features/reservas/listener.js';
         import { carregarHome } from './js/features/home.js';
 
-        // ✅ Tradução nome curto → e-mail fictício cadastrado no Firebase Authentication
-        // Não é segredo: a senha real fica só no Firebase, nunca aparece aqui.
+        // ✅ Tradução nome curto → e-mail fictício cadastrado no Supabase Auth.
+        // Não é segredo: a senha real fica só no Supabase, nunca aparece aqui.
         const EMAIL_POR_USUARIO = {
             'recepcao': 'recepcao@osteriadilucca.app',
             'osteria':  'osteria@osteriadilucca.app',
@@ -98,26 +97,25 @@
             document.getElementById('telaLogin').style.display = 'none';
         }
 
-        // ✅ Fonte única da verdade sobre login: o estado real do Firebase Auth.
+        // ✅ Fonte única da verdade sobre login: o estado real do Supabase Auth.
         // Antes, a tela de login era decidida só por um flag em localStorage
-        // ('usuario_nome'), que não reflete a sessão real do Firebase (guardada
-        // no IndexedDB pelo SDK). Em redes/navegadores que limpam ou bloqueiam
-        // o IndexedDB do site (comum em tablets e redes de hotel/corporativas)
-        // mas preservam o localStorage, a UI escondia a tela de login achando
-        // que o usuário estava autenticado, enquanto o Firestore corretamente
-        // negava tudo com "Missing or insufficient permissions" — porque
-        // request.auth era null no servidor.
+        // ('usuario_nome'), que não reflete a sessão real do backend (guardada
+        // pelo SDK). Em redes/navegadores que limpam ou bloqueiam esse storage
+        // (comum em tablets e redes de hotel/corporativas) mas preservam o
+        // localStorage, a UI escondia a tela de login achando que o usuário
+        // estava autenticado, enquanto o banco corretamente negava tudo — porque
+        // não havia sessão válida no servidor.
         //
         // Reconectar os listeners aqui (recarregarReservas + carregarHome +
         // recarregarNotificacoes) também corrige um problema de corrida: se a escuta
         // inicial de init.js/navigation.js rodar antes da autenticação terminar de
-        // resolver, ela recebe permission-denied e o onSnapshot correspondente morre —
-        // o Firestore não o reativa sozinho quando o login é concluído depois.
+        // resolver, ela recebe permission-denied e o listener correspondente morre —
+        // o banco não o reativa sozinho quando o login é concluído depois.
         // Reconectar sob um usuário já confirmado garante um listener sempre vivo e
         // autenticado (a tela Home e o sino de notificações, se não fossem recarregados
         // aqui, só se recuperariam manualmente — ver dívida técnica #2, corrigida).
-        firebase.auth().onAuthStateChanged((user) => {
-            if (user) {
+        supabase.auth.onAuthStateChange((event, session) => {
+            if (session?.user) {
                 esconderTelaLogin();
                 recarregarReservas();
                 carregarHome();
@@ -142,11 +140,12 @@
             }
 
             try {
-                // Firebase verifica a senha no servidor — nunca comparamos aqui
-                await firebase.auth().signInWithEmailAndPassword(email, senha);
+                // Supabase verifica a senha no servidor — nunca comparamos aqui
+                const { error } = await supabase.auth.signInWithPassword({ email, password: senha });
+                if (error) throw error;
                 erroEl.style.display = 'none';
                 localStorage.setItem('usuario_nome', usuario);
-                // esconderTelaLogin() e recarregarReservas() disparam via onAuthStateChanged acima
+                // esconderTelaLogin() e recarregarReservas() disparam via onAuthStateChange acima
             } catch (e) {
                 // Mensagem genérica de propósito — não revela se o usuário existe ou não
                 erroEl.style.display = 'block';
@@ -157,7 +156,7 @@
 
         // ✅ Expõe função global para trocar usuário (útil nas configurações)
         async function trocarUsuario() {
-            await firebase.auth().signOut();
+            await supabase.auth.signOut();
             localStorage.removeItem('usuario_nome');
             location.reload();
         }
@@ -799,20 +798,6 @@
             <button class="btn-main cancel-btn" style="width: 100%; margin-top: 10px;" onclick="fecharMenuHorario()">CANCELAR</button>
         </div>
     </div>
-
-<!-- Firebase CDN -->
-<!-- integrity (SRI) removido: redes com proxy/inspeção de conteúdo (ex: hotéis)
-     recomprimem ou alteram levemente o arquivo baixado, o hash SHA-384 deixa de
-     bater e o navegador bloqueia o script silenciosamente, sem erro visível. -->
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"
-    crossorigin="anonymous"
-    onerror="console.error('❌ Falha ao carregar firebase-app.js — a rede pode estar bloqueando o CDN do Firebase (proxy/firewall/inspeção de conteúdo).')"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"
-    crossorigin="anonymous"
-    onerror="console.error('❌ Falha ao carregar firebase-auth.js — a rede pode estar bloqueando o CDN do Firebase (proxy/firewall/inspeção de conteúdo).')"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"
-    crossorigin="anonymous"
-    onerror="console.error('❌ Falha ao carregar firebase-firestore.js — a rede pode estar bloqueando o CDN do Firebase (proxy/firewall/inspeção de conteúdo).')"></script>
 
 <!-- Core -->
 <script type="module" src="js/core/init.js"></script>

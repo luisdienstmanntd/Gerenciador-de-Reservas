@@ -1,7 +1,7 @@
 # Osteria Di Lucca — Sistema de Gestão de Reservas
 
-**README versão:** 4.24  
-**Data:** 2026-07-09  
+**README versão:** 5.0  
+**Data:** 2026-07-10  
 
 ---
 
@@ -9,7 +9,7 @@
 
 Sistema web de gerenciamento de reservas para o restaurante **Osteria Di Lucca**. Usado em tablet durante o serviço do jantar. Controla reservas em tempo real, atribuição de mesas, timers de atendimento, room service e analytics.
 
-**Não há build step.** JavaScript ES6 modules nativos carregados diretamente pelo browser. Firebase Firestore como banco em tempo real via CDN compat (não modular).
+**Não há build step.** JavaScript ES6 modules nativos carregados diretamente pelo browser. **Supabase (Postgres) como banco em tempo real**, via `@supabase/supabase-js` importado por URL de CDN (ESM). Migrado do Firebase Firestore na Fase 5 (2026-07-10) — ver `plano_de_ação.md` para o histórico completo da migração. O Firestore original permanece intacto como backup, sem uso ativo pelo app.
 
 **URL local de desenvolvimento:** `http://127.0.0.1:5500/osteria21/osteria-reservas/`
 
@@ -20,9 +20,9 @@ Sistema web de gerenciamento de reservas para o restaurante **Osteria Di Lucca**
 | Camada | Tecnologia |
 |---|---|
 | Frontend | HTML5, CSS3, JavaScript ES6 modules nativos (sem bundler, sem npm) |
-| Banco de dados | Firebase Firestore v8.10.0 (CDN compat — `firebase-app.js` + `firebase-firestore.js`) |
+| Banco de dados | Supabase (Postgres) — `@supabase/supabase-js@2.110.2` via CDN ESM (`esm.sh`) |
 | Gráficos | Chart.js (CDN) |
-| Autenticação | Firebase Authentication (e-mail/senha) — sessão validada pelo servidor |
+| Autenticação | Supabase Auth (e-mail/senha) — sessão validada pelo servidor |
 | Deploy | Arquivos estáticos — sem servidor backend |
 
 ---
@@ -36,18 +36,21 @@ Sistema web de gerenciamento de reservas para o restaurante **Osteria Di Lucca**
 │   └── style.css                      ← Estilos globais, dark/light theme, timers, grade
 └── js/
     ├── config/
-    │   └── firebase-config.js         ← Inicializa Firebase (usa CDN global firebase.*)
+    │   └── firebase-config.js         ← Histórico — não usado pelo app desde a Fase 5 (Supabase)
     ├── core/
-    │   ├── database.js                ← DatabaseService singleton — ÚNICO acesso ao Firestore
+    │   ├── supabaseClient.js          ← Cria o cliente Supabase (URL + publishable key)
+    │   ├── database.js                ← DatabaseService singleton — ÚNICO acesso ao Supabase. Traduz
+    │   │                                 entre o formato normalizado do Postgres (reservas+hospedes)
+    │   │                                 e o formato achatado que o resto do app sempre conheceu
     │   ├── init.js                    ← Boot do sistema. Orquestra tudo ao carregar a página
     │   ├── navigation.js              ← Troca de telas e controle do menu lateral
     │   └── state.js                   ← Estado global: reservas, data, linhasExtras, filtros
     ├── features/
     │   ├── reservas/
-    │   │   ├── listener.js            ← Listener onSnapshot do Firebase. Re-renderiza automaticamente
-    │   │   ├── log.js                 ← Registra CRIAR/EDITAR/EXCLUIR/DESBLOQUEAR no Firestore
+    │   │   ├── listener.js            ← Listener Realtime (postgres_changes) do Supabase. Re-renderiza automaticamente
+    │   │   ├── log.js                 ← Registra CRIAR/EDITAR/EXCLUIR/DESBLOQUEAR na tabela reservas_log
     │   │   ├── modal.js               ← Classe ReservaModal — todo o fluxo do modal de reserva
-    │   │   └── service.js             ← CRUD assíncrono do Firestore
+    │   │   └── service.js             ← CRUD assíncrono do Supabase
     │   ├── mesas/
     │   │   └── modal.js               ← Classe MesaModal — atribuição e timers de mesas
     │   ├── dashboard.js               ← Analytics com Chart.js. Expostos via window.*
@@ -66,20 +69,22 @@ Sistema web de gerenciamento de reservas para o restaurante **Osteria Di Lucca**
 
 | Arquivo | Versão | Última mudança significativa |
 |---|---|---|
-| `js/config/firebase-config.js` | v1.0 | Inicialização Firebase |
-| `js/core/supabaseClient.js` | **v1.0** | Criado em 2026-07-09 — Fase 1 da migração Firestore→Supabase, ver `plano_de_ação.md` |
-| `supabase/migrations/20260709133321_initial_schema.sql` | — | Criado em 2026-07-09 — Fase 2: schema real (hospedes/mesas/reservas/reservas_log/config_dia/notificacoes), aplicado e testado (RLS bloqueando acesso, como esperado antes da Fase 3) |
-| `supabase/migrations/20260709135200_rls_policies.sql` | — | Criado em 2026-07-09 — Fase 3: políticas RLS (`auth.uid() is not null`) nas 6 tabelas. Decisão: login de produção migra pro Supabase Auth só na Fase 5 (junto com o resto do código) |
-| `supabase/migrations/20260709140241_grants_authenticated.sql` | — | Criado em 2026-07-09 — Fase 3: `GRANT` ao papel `authenticated` nas 6 tabelas. RLS sozinho não bastava porque "Expor automaticamente novas tabelas" foi desmarcado na Fase 1 — Postgres bloqueava antes mesmo de avaliar as políticas |
+| `js/config/firebase-config.js` | v1.0 | Histórico — não usado pelo app desde a Fase 5 (2026-07-10) |
+| `js/core/supabaseClient.js` | v1.0 | Criado em 2026-07-09 — Fase 1 da migração Firestore→Supabase, ver `plano_de_ação.md` |
+| `supabase/migrations/20260709133321_initial_schema.sql` | — | Fase 2: schema real (hospedes/mesas/reservas/reservas_log/config_dia/notificacoes) |
+| `supabase/migrations/20260709135200_rls_policies.sql` | — | Fase 3: políticas RLS (`auth.uid() is not null`) nas 6 tabelas |
+| `supabase/migrations/20260709140241_grants_authenticated.sql` | — | Fase 3: `GRANT` ao papel `authenticated` nas 6 tabelas |
+| `supabase/migrations/20260709160000_habilitar_realtime.sql` | — | Criado em 2026-07-10 — Fase 5: habilita Realtime em `reservas`, `config_dia`, `notificacoes` — sem isso `postgres_changes` nunca dispara |
+| `supabase/migrations/20260709161500_remover_fk_logs_notificacoes.sql` | — | Criado em 2026-07-10 — Fase 5: remove FK de `reservas_log.reserva_id` e `notificacoes.reserva_id` — um log precisa sobreviver à exclusão da reserva que documenta |
 | `scripts/migrar-dados.mjs` | v1.0 | Criado em 2026-07-09 — Fase 4: migração única dos dados do Firestore pro Supabase. 100% dos registros migrados (477 reservas, 225 logs, 12 config_dia, 250 notificações). Suporta `--retry-ids=` pra reprocessar registros específicos sem duplicar o resto |
-| `js/core/database.js` | **v1.5** | Persistência offline do Firestore ativada (bug #41) |
-| `js/core/init.js` | **v1.3** | Corrige leitura do relógio em ALTERAR HORÁRIO |
+| `js/core/database.js` | **v2.0** | Fase 5 (2026-07-10) — reescrito por dentro para falar com o Supabase; interface pública mantida idêntica. Ver §5.1 |
+| `js/core/init.js` | v1.3 | Corrige leitura do relógio em ALTERAR HORÁRIO |
 | `js/core/navigation.js` | v4.10 | Overlay fecha menu lateral |
 | `js/core/state.js` | v4.22 | Permite `linhasExtras` negativos |
-| `js/features/reservas/modal.js` | **v3.11** | Centraliza reset de estado de bloqueio em `_limparFormulario()` |
-| `js/features/reservas/service.js` | **v2.5** | `salvarApenasHorario` sempre atualiza `originalBase` + posição livre |
-| `js/features/reservas/listener.js` | **v4.2** | `recarregarNotificacoes()` — sino reconecta em `onAuthStateChanged` (dívida técnica #2 resolvida) |
-| `js/features/reservas/log.js` | v1.3 | Exibe usuário logado nos cards |
+| `js/features/reservas/modal.js` | v3.11 | Centraliza reset de estado de bloqueio em `_limparFormulario()` |
+| `js/features/reservas/service.js` | **v4.0** | Fase 5 (2026-07-10) — todas as operações migradas pro Supabase; `_calcularPosicaoLivre()` muda de assinatura (array simples em vez de `QuerySnapshot`) |
+| `js/features/reservas/listener.js` | v4.2 | Sem mudança de código na Fase 5 — continua falando só com `database.js`, que agora é Supabase por dentro |
+| `js/features/reservas/log.js` | **v3.0** | Fase 5 (2026-07-10) — coleção `logs` (Firestore) vira tabela `reservas_log` (Supabase) |
 | `js/features/reservas/validators.js` | **v1.3** | `escapeHtml()` adicionada — sanitização de saída contra XSS |
 | `js/features/mesas/modal.js` | v1.0 | — |
 | `js/features/dashboard.js` | **v3.14** | Remove `borderRadius` das barras empilhadas — corrige "degrau" visual (bug #49) |
@@ -89,7 +94,7 @@ Sistema web de gerenciamento de reservas para o restaurante **Osteria Di Lucca**
 | `js/ui/filters.js` | v3.0 | 100% modular |
 | `js/ui/render.js` | **v6.0** | Escapa `nomes`/`obs`/`avulsa` antes de inserir em innerHTML — corrige XSS |
 | `js/ui/timers.js` | v4.1 | Sem dependência de render.js |
-| `index.html` | — | Scripts Firebase (CDN) sem `integrity` (SRI, bug #36); login gate usa `onAuthStateChanged()` como fonte da verdade em vez de `localStorage`, chamando `recarregarReservas()` + `carregarHome()` + `recarregarNotificacoes()` ao confirmar usuário real (bugs #37, #38, #40); manifest/ícones linkados e Service Worker registrado (bugs #42, #43) |
+| `index.html` | — | Fase 5 (2026-07-10): login trocado de Firebase Auth pra Supabase Auth (`onAuthStateChange`/`signInWithPassword`/`signOut`); tags `<script>` do SDK clássico do Firebase removidas (não usadas mais). Login gate usa o estado real de sessão como fonte da verdade em vez de `localStorage`, chamando `recarregarReservas()` + `carregarHome()` + `recarregarNotificacoes()` ao confirmar usuário real (bugs #37, #38, #40); manifest/ícones linkados e Service Worker registrado (bugs #42, #43) |
 | `css/style.css` | — | — |
 | `manifest.json` | — | Criado em 2026-07-03 — nome, ícones e cores do PWA (bug #42) |
 | `sw.js` | **v1.1** | `{ cache: 'no-store' }` em todos os `fetch()` — evita reforçar cache HTTP desatualizado (bug #44) |
@@ -101,28 +106,33 @@ Sistema web de gerenciamento de reservas para o restaurante **Osteria Di Lucca**
 
 ### 5.1 DatabaseService (`database.js`) — REGRA CRÍTICA
 
-**Todo acesso ao Firestore passa exclusivamente pelo DatabaseService.** Nunca usar `window.db`, `firebase.firestore()` ou qualquer outra forma direta.
+**Todo acesso ao banco passa exclusivamente pelo DatabaseService.** Nunca usar `window.db`, `supabase` importado direto em outro módulo, ou qualquer outra forma direta — sempre `db` de `database.js`.
+
+**Desde a Fase 5 (2026-07-10), o banco é o Supabase (Postgres), não mais o Firestore.** Mas o Postgres normalizou o que no Firestore era um único documento achatado em duas tabelas (`reservas` + `hospedes`) — a UI (render.js, controls.js, dashboard.js, home.js, listener.js) continua enxergando o formato achatado de sempre (ver §6). A tradução vive só dentro de `database.js`, nos helpers privados `_paraReservaApp()` (Postgres → formato da UI) e `_paraColunasReserva()` (formato da UI → colunas do Postgres, resolvendo `hospede_id` por dedup e garantindo que `mesa_identificador` existe).
 
 ```javascript
 import { db } from '../../core/database.js';
 
-// Padrão obrigatório em qualquer módulo que acesse o Firestore:
-await db.aguardarInicializacao();
-const firestore = db.getFirestore();
-await firestore.collection('reservas').doc(id).update({ campo: valor });
+// Padrão obrigatório em qualquer módulo que acesse o banco:
+await db.aguardarInicializacao();               // hoje é um no-op — mantido por compatibilidade
+const client = db.getClient();                  // cliente Supabase cru, pra queries que não se
+await client.from('reservas')                   // encaixam nos métodos de alto nível abaixo
+    .update({ campo: valor }).eq('id', id);
 ```
 
 | Método do DatabaseService | Descrição |
 |---|---|
-| `db.aguardarInicializacao()` | Promise — aguarda Firebase pronto (timeout 10s) |
-| `db.getFirestore()` | Retorna instância Firestore compat |
-| `db.getReservasPorData(data)` | Busca snapshot por data |
+| `db.aguardarInicializacao()` | Promise — mantido por compatibilidade (o cliente Supabase já é síncrono) |
+| `db.getClient()` | Retorna o cliente Supabase cru (equivalente ao antigo `getFirestore()`) |
+| `db.getReservasPorData(data)` | Busca reservas de uma data (já traduzidas pro formato achatado) |
 | `db.getReservasPorPeriodo(ini, fim)` | Busca entre datas |
-| `db.getReservaPorId(id)` | Busca um doc |
-| `db.criarReserva(dados)` | Adiciona doc |
-| `db.atualizarReserva(id, dados)` | Atualiza doc |
-| `db.excluirReserva(id)` | Deleta doc |
-| `db.escutarReservasPorData(data, cb)` | Listener `onSnapshot` — retorna `unsubscribe` |
+| `db.getReservaPorId(id)` | Busca uma reserva |
+| `db.buscarReservasPorBloco(data, originalBase)` | Busca reservas de um bloco específico — usado por `service.js` (cálculo de posição livre, limpeza de fantasmas) |
+| `db.criarReserva(dados)` | Resolve/cria hóspede + garante mesa + insere reserva |
+| `db.atualizarReserva(id, dados)` | Idem, mas via update |
+| `db.excluirReserva(id)` | Exclui reserva |
+| `db.garantirMesaExiste(identificador)` | Upsert em `mesas` — o total de mesas é configurável, não fixo (ver bug #50) |
+| `db.escutarReservasPorData(data, cb)` | Listener Realtime (`postgres_changes`) — retorna `unsubscribe` |
 
 ### 5.2 Estado Global (`state.js`)
 
@@ -161,11 +171,12 @@ DOMContentLoaded
 
 ### 5.4 Fluxo de Re-renderização — REGRA CRÍTICA
 
-**Nunca chamar `renderizarGrid()` manualmente após operações Firebase** (exceto em `acaoExcluir()` e `acaoAdicionar()`). O listener `onSnapshot` detecta qualquer mudança no Firestore e chama `renderizarGrid()` automaticamente.
+**Nunca chamar `renderizarGrid()` manualmente após operações no banco** (exceto em `acaoExcluir()` e `acaoAdicionar()`). O listener Realtime (`postgres_changes`, desde a Fase 5 — antes era o `onSnapshot` do Firestore) detecta qualquer mudança em `reservas` e chama `renderizarGrid()` automaticamente. A cada evento, `database.js` refaz a busca inteira e entrega a lista completa — não tenta reconciliar diffs incrementalmente (mesmo comportamento de antes).
 
 ```
-Firebase.update() / .add() / .delete()
-  → onSnapshot dispara
+Supabase .update() / .insert() / .delete()
+  → evento postgres_changes dispara
+  → database.js refaz a busca completa da data
   → listener.js recebe reservas
   → setTodasReservas(reservas)
   → renderizarGrid(reservas)   ← automático
@@ -177,7 +188,9 @@ Exceções que chamam `renderizarGrid` manualmente:
 
 ---
 
-## 6. Modelo de Dados — Coleção `reservas`
+## 6. Modelo de Dados — "Coleção" `reservas` (formato da aplicação)
+
+Este é o formato que **a aplicação inteira** (render.js, controls.js, dashboard.js, home.js, listener.js) sempre conheceu e continua conhecendo — é assim que `db.getReservasPorData()` e afins retornam os dados, mesmo agora que o banco por trás é o Supabase. No banco real (Postgres), esses campos vêm de duas tabelas normalizadas (`reservas` + `hospedes`, ver `supabase/migrations/20260709133321_initial_schema.sql`); a tradução entre os dois formatos é feita só dentro de `database.js` (§5.1) — nenhum outro módulo precisa saber disso.
 
 ```
 reservas/{autoId} {
@@ -688,32 +701,33 @@ Sem `data-tipo`, a regra dos 45min do room service não funciona.
 
 ## 14. Autenticação
 
-Login real via **Firebase Authentication** (e-mail/senha). `index.html` mantém um mapeamento de nome curto → e-mail fictício, só para tradução de UI — a senha nunca trafega nem é comparada no código:
+Login real via **Supabase Auth** (e-mail/senha) — trocado do Firebase Auth na Fase 5 (2026-07-10). `index.html` mantém um mapeamento de nome curto → e-mail fictício, só para tradução de UI — a senha nunca trafega nem é comparada no código:
 
 ```javascript
-// index.html — tradução de nome curto para e-mail cadastrado no Firebase Auth
+// index.html — tradução de nome curto para e-mail cadastrado no Supabase Auth
 const EMAIL_POR_USUARIO = {
     'recepcao': 'recepcao@osteriadilucca.app',
     'osteria':  'osteria@osteriadilucca.app',
     'gerencia': 'gerencia@osteriadilucca.app'
 };
 
-await firebase.auth().signInWithEmailAndPassword(email, senha);
+await supabase.auth.signInWithPassword({ email, password: senha });
 ```
 
 - Se `localStorage.getItem('usuario_nome')` vazio → exibe `#telaLogin`
-- Nome do usuário (curto) gravado em `localStorage['usuario_nome']` após login bem-sucedido no Firebase
+- Nome do usuário (curto) gravado em `localStorage['usuario_nome']` após login bem-sucedido
 - `log.js` lê este nome para registrar quem fez cada alteração
-- `trocarUsuario()` chama `firebase.auth().signOut()` além de limpar o `localStorage`
-- Regras do Firestore (`firestore.rules`, versionado na raiz do repo) exigem `request.auth != null` para qualquer leitura/escrita — sem sessão válida, o Firestore recusa com `permission-denied`
+- `trocarUsuario()` chama `supabase.auth.signOut()` além de limpar o `localStorage`
+- RLS (`supabase/migrations/20260709135200_rls_policies.sql`) exige `auth.uid() is not null` para qualquer leitura/escrita nas 6 tabelas — sem sessão válida, o Postgres recusa com `permission denied`. Uma segunda camada de `GRANT` ao papel `authenticated` (`20260709140241_grants_authenticated.sql`) também é necessária — RLS sozinho não bloqueia nem libera nada se o papel não tiver privilégio de base na tabela
+- E-mails cadastrados no Supabase Auth (recepcao/osteria/gerencia@osteriadilucca.app) têm senha própria, definida na Fase 3 — **não é necessariamente igual** à antiga senha do Firebase Auth
 
 ---
 
 ## 15. Regras Absolutas — Nunca Violar
 
-1. **Nunca usar `window.db` ou `firebase.firestore()` diretamente.** Sempre `db` de `database.js`.
+1. **Nunca usar `window.db`, `supabase` importado direto em outro módulo, ou qualquer acesso cru ao banco.** Sempre `db` de `database.js`.
 
-2. **Nunca chamar `renderizarGrid()` após operações Firebase** (exceto `acaoExcluir()` e `acaoAdicionar()`). O listener re-renderiza automaticamente.
+2. **Nunca chamar `renderizarGrid()` após operações no banco** (exceto `acaoExcluir()` e `acaoAdicionar()`). O listener re-renderiza automaticamente.
 
 3. **`linhasExtras` pode ser negativo.** Representa slots com menos de 3 linhas. `Math.max(0, linhasExtras)` **nunca deve ser aplicado**.
 
@@ -836,7 +850,8 @@ roomservice.js         ← state.js, database.js
 | 47 | Solicitação: gráfico "Composição" (adultos×crianças) tinha baixo valor analítico — dono do projeto queria ver movimento por dia da semana, por tipo de cliente | `dashboard.js`, `index.html` | Gráfico substituído por "Movimento por Dia da Semana" — barra empilhada (hóspede/externo/passante) agrupando `reservas` pelo dia da semana de `data` (`new Date(data + 'T12:00:00').getDay()`, mesmo padrão de `home.js`). Canvas renomeado de `chartComposicao` para `chartDiaSemana`. Testado com dados reais e sintéticos (domingo/segunda/sexta caem nas colunas corretas) |
 | 48 | Solicitação: eventos fechados na osteria (ex: aniversário particular) distorciam as análises do Dashboard, que só permitia um intervalo De/Até contínuo, sem forma de isolar ou excluir dias | `dashboard.js`, `index.html` | Novo seletor "Modo" (`#dashModo`): **Período contínuo** (comportamento anterior + campo "Excluir data", remove dias específicos do intervalo antes de calcular KPIs/gráficos, com a taxa de ocupação recalculada sobre os dias realmente considerados) ou **Datas específicas** (busca só as datas avulsas escolhidas, via `buscarReservasPorData()` em paralelo — sem limite de 10 itens que uma query `where(...,'in',...)` do Firestore teria). Datas adicionadas viram "chips" removíveis (`_renderizarChipsDatas()`). Testado: exclusão reduz o total corretamente (27→15 pax excluindo hoje), remoção da exclusão restaura o total (15→27), modo "datas específicas" isola corretamente (12 pax só de hoje), validação de lista vazia |
 | 49 | Nos 3 gráficos de barra empilhada (bugs #45/#46/#47), `borderRadius` aplicado em cada série individualmente arredondava os cantos de cada segmento — criava um "degrau" visual onde hóspede/externo/passante deveriam se encaixar sem emenda | `home.js`, `dashboard.js` | Removido `borderRadius`/`borderSkipped` das séries empilhadas em `home-chart-barras`, `chartHorario` e `chartDiaSemana` — barras agora ficam sólidas e contínuas |
-| 50 | Descoberto durante a migração de dados (Fase 4 do Supabase): `dashboard.js` tem o total de mesas fixo em `18` no gráfico "Uso de Mesas" (`for (let i = 1; i <= 18; i++)`, linhas 45 e 163), mas o total é configurável pelo usuário (tela de Configurações). Existem reservas reais em mesas 19 e 20 — o Dashboard já vem sub-relatando o uso dessas mesas | `js/features/dashboard.js` | **Ainda não corrigido** — registrado como tarefa separada (fora do escopo da migração). Correção sugerida: usar `getConfig().mesas`, mesmo padrão já usado em `mesas/modal.js:58` |
+| 50 | Descoberto durante a migração de dados (Fase 4 do Supabase): `dashboard.js` tem o total de mesas fixo em `18` no gráfico "Uso de Mesas" (`for (let i = 1; i <= 18; i++)`, linhas 45 e 163), mas o total é configurável pelo usuário (tela de Configurações). Existem reservas reais em mesas 19 e 20 — o Dashboard já vem sub-relatando o uso dessas mesas | `js/features/dashboard.js` | **Ainda não corrigido nesta branch** — sendo corrigido em sessão separada. Correção sugerida: usar `getConfig().mesas`, mesmo padrão já usado em `mesas/modal.js:58` |
+| 51 | Descoberto ao portar `excluirReserva()` pra Supabase (Fase 5): `reservas_log.reserva_id` e `notificacoes.reserva_id` tinham FK para `reservas(id)`. O fluxo sempre foi "lê a reserva → apaga → registra o log/notificação apontando pra ela" — com a FK original o `INSERT` do log falharia (violação de chave estrangeira, reserva já não existe mais no momento). Nunca deu erro no Firestore por não ter schema/FK | `supabase/migrations/20260709161500_remover_fk_logs_notificacoes.sql` | Removidas as duas FKs — um log de auditoria (e uma notificação já disparada) precisa sobreviver à exclusão da reserva que o originou; os dados relevantes já ficam preservados em `dados_antes`/`dados_depois` (jsonb) |
 
 ---
 
@@ -844,7 +859,10 @@ roomservice.js         ← state.js, database.js
 
 | # | Descrição | Risco |
 |---|---|---|
-| 1 | Firebase SDK v8 "compat" desatualizado — Google não lança novidades, só correções de segurança. Upgrade para v9+ (modular) exige reescrever a sintaxe de todas as chamadas ao Firestore em `database.js`, `service.js`, `listener.js` e módulos que os usam. Adiado por ser um projeto grande e arriscado sem suíte de testes automatizados, com o sistema em uso real no restaurante. | Baixo (v8 continua recebendo patches de segurança; sem prazo de descontinuação anunciado) |
+| ~~1~~ | ~~Firebase SDK v8 "compat" desatualizado~~ — **moot desde a Fase 5 (2026-07-10):** o app não usa mais nenhum SDK do Firebase, foi substituído pelo Supabase. | — |
+| 2 | Persistência offline (cache local + fila de escrita, recriada nesta sessão como equivalente ao antigo Firestore) **não foi recriada** ao migrar pro Supabase — o Supabase (Postgres via REST) não tem um cache offline pronto como o SDK do Firestore. Recriar exigiria uma camada própria (ex: IndexedDB manual). Decisão consciente, tomada com o dono do projeto, pra não expandir o escopo da Fase 5. | Médio (rede do hotel é instável; sem cache, leituras/escritas falham totalmente offline em vez de enfileirar) |
+| 3 | `firestore.batch()` (atômico) não tem equivalente client-side no Supabase — pares insert+delete/update em `service.js` (`salvarReserva`, `salvarApenasHorario`, `removerLinhaDoBloco`, `limparFantasmasDoDia`) viram chamadas sequenciais. Uma falha no meio pode deixar um doc "fantasma" temporário. | Baixo (`limparFantasmasDoDia()` já roda no boot e limpa esses casos sozinha) |
+| 4 | `marcarNotificacaoLida()` não é atômico no Supabase (lê `lido_por`, adiciona o usuário, regrava) — o Firestore usava `arrayUnion`, que é atômico no servidor. Dois usuários clicando "OK" no mesmo instante podem, em teoria, perder uma marcação. | Baixo (uso interno, poucos usuários, clique simultâneo extremamente raro) |
 
 ---
 
