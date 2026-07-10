@@ -20,7 +20,7 @@ import {
 } from '../../core/state.js';
 import { registrarLog } from './log.js';
 import { db } from '../../core/database.js';
-import { notificarErro, notificarAviso } from '../../core/notificacao.js';
+import { notificarErro, notificarAviso, notificarSucesso } from '../../core/notificacao.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HELPERS INTERNOS
@@ -115,7 +115,7 @@ async function _verificarBloqueioAutomatico(reservaId, data, originalBase, posic
     } else {
         await db.criarReserva(colunasBloqueio);
     }
-    notificarAviso(`Próxima linha do horário ${originalBase} bloqueada automaticamente (reserva com ${paxs} pessoas).`);
+    notificarSucesso(`Próxima linha do horário ${originalBase} bloqueada automaticamente (reserva com ${paxs} pessoas).`);
 }
 
 /**
@@ -237,10 +237,16 @@ export async function salvarReserva(dados) {
 
 export async function excluirReserva(id) {
     if (!id) throw new Error('ID obrigatório');
-    const dadosAntes = await db.getReservaPorId(id) || { id };
-    await db.excluirReserva(id);
-    await registrarLog('EXCLUIR', dadosAntes, null);
-    console.log('✅ Reserva excluída:', id);
+    try {
+        const dadosAntes = await db.getReservaPorId(id) || { id };
+        await db.excluirReserva(id);
+        await registrarLog('EXCLUIR', dadosAntes, null);
+        console.log('✅ Reserva excluída:', id);
+    } catch (error) {
+        console.error('❌ Erro ao excluir reserva:', error);
+        notificarErro('Erro ao excluir reserva. Tente novamente.');
+        throw error;
+    }
 }
 
 export async function desbloquearReserva(id) {
