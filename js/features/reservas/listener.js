@@ -251,6 +251,21 @@ export async function recarregarReservas(data = null) {
     await escutarReservas(data);
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// RESYNC AO VOLTAR PRA ABA
+//
+// Navegadores reduzem a prioridade de processamento/pintura de abas em segundo
+// plano — o Realtime pode "perder" eventos ou a tela simplesmente não repintar
+// até a aba voltar a ficar ativa. Recarrega a grade sempre que isso acontece,
+// pra nunca depender só do usuário perceber e atualizar manualmente.
+// ─────────────────────────────────────────────────────────────────────────────
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+        console.log('👁️ Aba voltou a ficar visível — recarregando reservas');
+        recarregarReservas();
+    }
+});
+
 /**
  * Inicia escuta em tempo real das notificações pendentes para o usuário atual.
  * Chamado no boot (init.js) e novamente por recarregarNotificacoes() sempre que
