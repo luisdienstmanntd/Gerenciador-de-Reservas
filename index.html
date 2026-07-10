@@ -614,16 +614,28 @@
                  </div>
             </div>
 
-            <div style="margin-bottom: 20px;">
-                <label style="font-size: 0.85rem; font-weight: 700; display: block; margin-bottom: 5px; color: var(--texto);">Capacidade Máxima por Noite</label>
-                <input type="number" id="configCapacidade" value="30" style="width: 150px; padding: 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--input-bg); color: var(--texto);">
-                <small style="display: block; margin-top: 5px; color: var(--texto); opacity: 0.7;">Usado para cálculo da taxa de ocupação</small>
+            <div class="config-linha">
+                <div class="config-linha-topo">
+                    <label for="configCapacidade">Capacidade Máxima por Noite</label>
+                    <label class="switch">
+                        <input type="checkbox" id="toggleConfigCapacidade" onchange="alternarEdicaoConfig('configCapacidade', this.checked)">
+                        <span class="slider-round"></span>
+                    </label>
+                </div>
+                <input type="number" id="configCapacidade" value="30" class="config-input" disabled>
+                <small>Usado para cálculo da taxa de ocupação</small>
             </div>
 
-            <div style="margin-bottom: 20px;">
-                <label style="font-size: 0.85rem; font-weight: 700; display: block; margin-bottom: 5px; color: var(--texto);">Número Total de Mesas</label>
-                <input type="number" id="configMesas" value="18" style="width: 150px; padding: 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--input-bg); color: var(--texto);">
-                <small style="display: block; margin-top: 5px; color: var(--texto); opacity: 0.7;">A última mesa sempre será "Room Service"</small>
+            <div class="config-linha">
+                <div class="config-linha-topo">
+                    <label for="configMesas">Número Total de Mesas</label>
+                    <label class="switch">
+                        <input type="checkbox" id="toggleConfigMesas" onchange="alternarEdicaoConfig('configMesas', this.checked)">
+                        <span class="slider-round"></span>
+                    </label>
+                </div>
+                <input type="number" id="configMesas" value="18" class="config-input" disabled>
+                <small>A última mesa sempre será "Room Service"</small>
             </div>
 
             <div style="margin-top: 30px; display: flex; gap: 10px;">

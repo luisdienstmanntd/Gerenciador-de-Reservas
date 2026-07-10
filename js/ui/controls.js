@@ -17,7 +17,7 @@
             controls.js é agora puramente UI: sem acesso direto ao Firestore
    ========================================================================================= */
 
-import { adicionarLinhaExtra, getLinhasExtras, getTodasReservas, getDataAtual } from '../core/state.js';
+import { adicionarLinhaExtra, getLinhasExtras, getTodasReservas, getDataAtual, getConfig } from '../core/state.js';
 import { renderizarGrid } from './render.js';
 import { removerLinhaDoBloco } from '../features/reservas/service.js';
 import { db } from '../core/database.js';
@@ -240,8 +240,41 @@ export function toggleAlterarHorario() {
 }
 
 /**
+ * Habilita/desabilita a edição de um campo de configuração, de acordo com a
+ * posição do switch ao lado — evita alteração acidental de um valor sensível
+ * (capacidade/mesas afetam cálculos usados no sistema inteiro).
+ * @param {string} inputId   - ID do <input> a travar/destravar
+ * @param {boolean} habilitado - true = switch ligado, campo editável
+ */
+export function alternarEdicaoConfig(inputId, habilitado) {
+    const input = document.getElementById(inputId);
+    if (input) input.disabled = !habilitado;
+}
+
+/**
+ * Carrega os valores salvos (getConfig()) nos campos da tela de Configurações
+ * e garante que todos comecem travados (switch desligado) — nunca ficam
+ * editáveis por padrão, mesmo que a última visita tenha deixado destravado.
+ * Chamada por navigation.js sempre que a tela é aberta.
+ */
+export function carregarConfiguracoes() {
+    const config = getConfig();
+
+    const inputCapacidade = document.getElementById('configCapacidade');
+    const inputMesas = document.getElementById('configMesas');
+    const toggleCapacidade = document.getElementById('toggleConfigCapacidade');
+    const toggleMesas = document.getElementById('toggleConfigMesas');
+
+    if (inputCapacidade) { inputCapacidade.value = config.capacidade; inputCapacidade.disabled = true; }
+    if (inputMesas)      { inputMesas.value = config.mesas; inputMesas.disabled = true; }
+    if (toggleCapacidade) toggleCapacidade.checked = false;
+    if (toggleMesas)      toggleMesas.checked = false;
+}
+
+/**
  * Salva configurações do restaurante no localStorage
  * ✅ v7.8: Offline. Silencioso. Lido por getConfig() em state.js.
+ * ✅ v8.8: Re-trava os campos e desliga os switches depois de salvar.
  */
 export function salvarConfiguracoes() {
     const inputCapacidade = document.getElementById('configCapacidade');
@@ -254,6 +287,8 @@ export function salvarConfiguracoes() {
     localStorage.setItem('osteria_config', JSON.stringify(config));
 
     console.log('✅ Configurações salvas:', config);
+
+    carregarConfiguracoes();
 
     const btnSalvar = document.querySelector('#tela-configuracoes .save-btn');
     if (btnSalvar) {
@@ -281,3 +316,5 @@ window.acaoExcluir = acaoExcluir;
 window.alternarTelaCheia = alternarTelaCheia;
 window.toggleAlterarHorario = toggleAlterarHorario;
 window.salvarConfiguracoes = salvarConfiguracoes;
+window.carregarConfiguracoes = carregarConfiguracoes;
+window.alternarEdicaoConfig = alternarEdicaoConfig;

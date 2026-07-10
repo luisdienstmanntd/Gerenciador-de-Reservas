@@ -394,6 +394,47 @@ input:checked + .slider-round:before {
   transform: translateX(20px);
 }
 
+/* --- Linhas de Configuração (campo só editável com o switch ligado) --- */
+.config-linha {
+  max-width: 340px;
+  margin-bottom: 20px;
+  padding: 14px 16px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.config-linha-topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.config-linha-topo label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--texto);
+}
+.config-input {
+  width: 150px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--input-bg);
+  color: var(--texto);
+  transition: opacity 0.15s ease;
+}
+.config-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.config-linha small {
+  display: block;
+  margin-top: 8px;
+  color: var(--texto);
+  opacity: 0.7;
+}
+
 /* --- CONTEÚDO PRINCIPAL --- */
 .main-content {
   flex: 1;
