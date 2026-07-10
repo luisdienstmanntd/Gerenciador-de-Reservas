@@ -129,13 +129,13 @@ Supabase free tier pausa projetos após 7 dias sem atividade de banco de dados. 
 
 ---
 
-## Fase 8 — Validação Final
+## Fase 8 — Validação Final (em andamento — 2026-07-10)
 
-- [ ] Sistema funcionando 100% em produção usando Supabase
-- [ ] Firestore mantido como backup por um período de segurança (não deletar imediatamente)
-- [ ] Heartbeat confirmado funcionando por pelo menos 2 ciclos (2+ semanas)
-- [ ] Testes Vitest 100% passando
-- [ ] README atualizado refletindo a nova stack (Postgres/Supabase em vez de Firestore)
+- [x] Sistema funcionando 100% em produção usando Supabase — deploy feito na Fase 5, validado
+- [x] Firestore mantido como backup por um período de segurança (não deletado) — sem uso ativo pelo app
+- [ ] **Heartbeat confirmado funcionando por pelo menos 2 ciclos (2+ semanas)** — único item que depende de tempo passar. Workflow criado e testado manualmente com sucesso na Fase 6; falta só confirmar os 2 primeiros ciclos automáticos (segundas/quintas) sem intervenção manual
+- [x] Testes Vitest 100% passando — 162/162
+- [x] README atualizado refletindo a nova stack (Postgres/Supabase em vez de Firestore)
 
 ---
 

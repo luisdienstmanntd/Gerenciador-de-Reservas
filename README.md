@@ -19,7 +19,7 @@ Este sistema nasceu para resolver esses pontos: uma grade de reservas em tempo r
 
 ## Funcionalidades principais
 
-- **Grade de reservas em tempo real**, organizada por horário e mesa, sincronizada via Firebase Firestore entre todos os dispositivos conectados.
+- **Grade de reservas em tempo real**, organizada por horário e mesa, sincronizada via Supabase Realtime entre todos os dispositivos conectados.
 - **Bloqueio de horários** (ex: mesa reservada só para hóspedes, ou bloqueada para manutenção).
 - **Atribuição e cronômetro de mesas**, com aviso visual de tempo de ocupação.
 - **Log de auditoria** — cada criação, edição e exclusão de reserva registra quem fez e quando.
@@ -32,17 +32,19 @@ Este sistema nasceu para resolver esses pontos: uma grade de reservas em tempo r
 | Camada | Tecnologia |
 |---|---|
 | Frontend | HTML5, CSS3, JavaScript (ES6 modules nativos — sem bundler, sem framework) |
-| Banco de dados | Firebase Firestore (tempo real via `onSnapshot`) |
-| Autenticação | Firebase Authentication (e-mail/senha) |
+| Banco de dados | Supabase / PostgreSQL (tempo real via Realtime — `postgres_changes`) |
+| Autenticação | Supabase Auth (e-mail/senha) |
 | Gráficos | Chart.js |
-| Deploy | Arquivos estáticos, sem servidor backend próprio |
+| Automação | GitHub Actions (heartbeat pra manter o banco ativo no free tier) |
+| Analytics | Views SQL prontas para conexão nativa com Power BI |
+| Deploy | Arquivos estáticos (Firebase Hosting), sem servidor backend próprio |
 
 ## Segurança — auditoria e correções aplicadas
 
 Depois da versão inicial (feita com apoio de IA), conduzi uma auditoria de segurança e qualidade de código no projeto e corrigi, entre outros pontos:
 
-- **Login real via Firebase Authentication**, substituindo uma verificação de senha feita inteiramente no navegador (senhas expostas em texto puro no código-fonte).
-- **Regras de segurança do Firestore** (`firestore.rules`) travadas para exigir autenticação — antes, o banco aceitava leitura e escrita de qualquer pessoa na internet, sem login.
+- **Login real via autenticação de servidor** (Firebase Authentication originalmente, migrado para Supabase Auth), substituindo uma verificação de senha feita inteiramente no navegador (senhas expostas em texto puro no código-fonte).
+- **Regras de segurança do banco travadas para exigir autenticação** — antes, o banco aceitava leitura e escrita de qualquer pessoa na internet, sem login (hoje via Row Level Security do Postgres, `auth.uid() is not null`; regras equivalentes do Firestore mantidas no histórico do repositório).
 - **Correção de XSS armazenado**: campos de texto livre (nomes, observações) eram inseridos sem sanitização no HTML da grade, permitindo injeção de código malicioso através de uma reserva. Corrigido com escaping de saída em todos os pontos de renderização.
 
 O histórico completo de decisões técnicas, bugs corrigidos e arquitetura do sistema está documentado em [`prompt.md`](prompt.md).
@@ -59,19 +61,19 @@ Não há build step — é só servir os arquivos estáticos:
 python -m http.server 8080
 ```
 
-Depois acesse `http://localhost:8080`. É necessário um projeto Firebase próprio (Firestore + Authentication) configurado em `js/core/database.js`.
+Depois acesse `http://localhost:8080`. É necessário um projeto Supabase próprio (Postgres + Auth) configurado em `js/core/supabaseClient.js`.
 
 ## Documentação técnica
 
 Para detalhes de arquitetura, modelo de dados, regras internas do código e histórico de manutenções, veja [`prompt.md`](prompt.md).
 
-## Migração em andamento (Firestore → Supabase)
+## Migração Firestore → Supabase
 
-O projeto está migrando a camada de dados do Firebase Firestore para o Supabase (PostgreSQL), em fases incrementais, para permitir análises de dados mais ricas e conexão nativa com Power BI. Plano completo e progresso em [`plano_de_ação.md`](plano_de_ação.md).
+O projeto migrou a camada de dados do Firebase Firestore para o Supabase (PostgreSQL), em fases incrementais, para permitir análises de dados mais ricas e conexão nativa com Power BI. Sistema em produção rodando 100% no Supabase desde 2026-07-10. O Firestore original foi mantido como backup por um período de segurança, sem uso ativo pelo app. Plano completo, decisões e histórico de cada fase em [`plano_de_ação.md`](plano_de_ação.md).
 
 ## Testes
 
-O projeto tem testes automatizados com [Vitest](https://vitest.dev/) cobrindo as regras de validação, o gerenciamento de estado e a lógica de cálculo de posição de reservas (81 testes). Rode com:
+O projeto tem testes automatizados com [Vitest](https://vitest.dev/) cobrindo as regras de validação, o gerenciamento de estado e a lógica de cálculo de posição de reservas (162 testes). Rode com:
 
 ```bash
 npm install
