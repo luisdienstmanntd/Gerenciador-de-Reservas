@@ -76,7 +76,7 @@
     <script type="module">
         // ✅ Fase 5: login passa a validar contra o Supabase Auth (antes: Firebase Auth).
         import { supabase } from './js/core/supabaseClient.js';
-        import { recarregarReservas, recarregarNotificacoes } from './js/features/reservas/listener.js';
+        import { recarregarReservas, recarregarNotificacoes, recarregarConfigSistema } from './js/features/reservas/listener.js';
         import { carregarHome } from './js/features/home.js';
 
         // ✅ Tradução nome curto → e-mail fictício cadastrado no Supabase Auth.
@@ -120,6 +120,7 @@
                 recarregarReservas();
                 carregarHome();
                 recarregarNotificacoes();
+                recarregarConfigSistema();
             } else {
                 localStorage.removeItem('usuario_nome');
                 mostrarTelaLogin();

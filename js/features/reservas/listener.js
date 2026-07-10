@@ -16,6 +16,9 @@ import {
     setUnsubscribe,
     getUnsubscribeConfig,
     setUnsubscribeConfig,
+    getUnsubscribeConfigSistema,
+    setUnsubscribeConfigSistema,
+    setConfigSistema,
     getLinhasExtras,
     setLinhasExtras,
     getHorariosPadrao,
@@ -313,6 +316,44 @@ export function pararEscutaNotificacoes() {
 export function recarregarNotificacoes() {
     pararEscutaNotificacoes();
     iniciarEscutaNotificacoes();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CONFIG_SISTEMA — capacidade/mesas/bloqueioAutomatico sincronizados entre
+// recepção/osteria/gerência (mesmo padrão de notificações acima)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Inicia escuta em tempo real de config_sistema. Chamado no boot (init.js) e de
+ * novo por recarregarConfigSistema() quando o login é confirmado — mesmo motivo
+ * do sino (dívida técnica #2): a 1ª tentativa pode cair em permission-denied
+ * antes do login terminar de resolver.
+ */
+export function iniciarEscutaConfigSistema() {
+    if (getUnsubscribeConfigSistema()) return; // já está escutando
+
+    db.aguardarInicializacao().then(() => {
+        const unsub = db.escutarConfigSistema((config) => {
+            setConfigSistema(config);
+            console.log('🔧 config_sistema aplicado:', config);
+        });
+        setUnsubscribeConfigSistema(unsub);
+        console.log('✅ Escuta de config_sistema iniciada');
+    });
+}
+
+export function pararEscutaConfigSistema() {
+    const unsub = getUnsubscribeConfigSistema();
+    if (unsub) {
+        unsub();
+        setUnsubscribeConfigSistema(null);
+        console.log('ℹ️ Escuta de config_sistema parada');
+    }
+}
+
+export function recarregarConfigSistema() {
+    pararEscutaConfigSistema();
+    iniciarEscutaConfigSistema();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

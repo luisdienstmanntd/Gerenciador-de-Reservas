@@ -17,6 +17,7 @@ import {
     setUnsubscribe,
     getUnsubscribeConfig,
     setUnsubscribeConfig,
+    setConfigSistema,
 } from './state.js';
 
 // state.js guarda tudo em variáveis de módulo (sem função de reset própria),
@@ -74,9 +75,9 @@ describe('getConfig', () => {
         expect(getConfig()).toEqual({ capacidade: 30, mesas: 18, bloqueioAutomatico: true });
     });
 
-    it('retorna a configuração salva no localStorage', () => {
-        localStorage.setItem('osteria_config', JSON.stringify({ capacidade: 40, mesas: 20 }));
-        expect(getConfig()).toEqual({ capacidade: 40, mesas: 20 });
+    it('retorna a configuração aplicada por setConfigSistema (sincronizada via Supabase)', () => {
+        setConfigSistema({ capacidade: 40, mesas: 20, bloqueioAutomatico: false });
+        expect(getConfig()).toEqual({ capacidade: 40, mesas: 20, bloqueioAutomatico: false });
     });
 });
 

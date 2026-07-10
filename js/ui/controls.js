@@ -17,7 +17,7 @@
             controls.js é agora puramente UI: sem acesso direto ao Firestore
    ========================================================================================= */
 
-import { adicionarLinhaExtra, getLinhasExtras, getTodasReservas, getDataAtual, getConfig } from '../core/state.js';
+import { adicionarLinhaExtra, getLinhasExtras, getTodasReservas, getDataAtual, getConfig, setConfigSistema } from '../core/state.js';
 import { renderizarGrid } from './render.js';
 import { removerLinhaDoBloco } from '../features/reservas/service.js';
 import { db } from '../core/database.js';
@@ -276,13 +276,17 @@ export function carregarConfiguracoes() {
 }
 
 /**
- * Salva configurações do restaurante no localStorage
+ * Salva configurações do restaurante — sincronizadas via Supabase, visíveis pra
+ * recepção/osteria/gerência em tempo real (antes viviam só no localStorage de
+ * cada navegador/tablet, cada usuário podia ver um valor diferente).
  * ✅ v7.8: Offline. Silencioso. Lido por getConfig() em state.js.
  * ✅ v8.8: Re-trava os campos e desliga os switches depois de salvar.
  * ✅ v8.9: bloqueioAutomatico — liga/desliga o bloqueio automático de reservas
  *          grandes (service.js), sem trava (não é valor sensível).
+ * ✅ v9.0: Grava em config_sistema (Supabase) em vez de localStorage — sincroniza
+ *          entre todos os usuários.
  */
-export function salvarConfiguracoes() {
+export async function salvarConfiguracoes() {
     const inputCapacidade = document.getElementById('configCapacidade');
     const inputMesas = document.getElementById('configMesas');
     const toggleBloqueioAutomatico = document.getElementById('toggleBloqueioAutomatico');
@@ -292,9 +296,18 @@ export function salvarConfiguracoes() {
     const bloqueioAutomatico = toggleBloqueioAutomatico ? toggleBloqueioAutomatico.checked : true;
 
     const config = { capacidade, mesas, bloqueioAutomatico };
-    localStorage.setItem('osteria_config', JSON.stringify(config));
 
-    console.log('✅ Configurações salvas:', config);
+    try {
+        await db.salvarConfigSistema(config);
+        // Atualiza o cache local na hora — não espera a volta do Realtime pra
+        // refletir a própria escrita (outros usuários recebem via listener normal).
+        setConfigSistema(config);
+        console.log('✅ Configurações salvas (config_sistema):', config);
+    } catch (error) {
+        console.error('❌ Erro ao salvar configurações:', error);
+        notificarErro('Erro ao salvar configurações. Tente novamente.');
+        return;
+    }
 
     carregarConfiguracoes();
 

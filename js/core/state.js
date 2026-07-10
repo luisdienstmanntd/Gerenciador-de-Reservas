@@ -8,8 +8,15 @@ let dataAtual = new Date().toLocaleDateString('en-CA');
 let todasReservas = [];
 let unsubscribe = null;
 let unsubscribeConfig = null; // ✅ v6.0: listener separado para config_dia
+let unsubscribeConfigSistema = null; // ✅ v7.0: listener de config_sistema (capacidade/mesas/bloqueio)
 let linhasExtras = {};
 let filtroAtivo = null;
+
+// ✅ v7.0: config_sistema sincronizado via Supabase (antes vivia só no localStorage
+// de cada navegador/tablet — cada usuário podia ver um valor diferente). Cache em
+// memória, atualizado pelo listener registrado em listener.js — mesmo padrão de
+// linhasExtras/config_dia. Valores default usados até o primeiro carregamento chegar.
+let configSistema = { capacidade: 30, mesas: 18, bloqueioAutomatico: true };
 
 export function getDataAtual() {
     const inputData = document.getElementById("dataFiltro");
@@ -38,15 +45,17 @@ export function getHorariosPadrao() {
 }
 
 export function getConfig() {
-    const configStr = localStorage.getItem("osteria_config");
-    if (configStr) {
-        return JSON.parse(configStr);
-    }
-    return {
-        capacidade: 30,
-        mesas: 18,
-        bloqueioAutomatico: true
-    };
+    return configSistema;
+}
+
+/**
+ * Atualiza o cache em memória de config_sistema. Chamada pelo listener em
+ * tempo real (listener.js) sempre que a linha muda no Supabase — nunca
+ * diretamente pela UI (use db.salvarConfigSistema() pra persistir uma mudança).
+ * @param {{capacidade:number, mesas:number, bloqueioAutomatico:boolean}} novaConfig
+ */
+export function setConfigSistema(novaConfig) {
+    configSistema = novaConfig;
 }
 
 export function getLinhasExtras() {
@@ -106,4 +115,14 @@ export function getUnsubscribeConfig() {
  */
 export function setUnsubscribeConfig(fn) {
     unsubscribeConfig = fn;
+}
+
+// ── Listener de config_sistema (v7.0) ──
+
+export function getUnsubscribeConfigSistema() {
+    return unsubscribeConfigSistema;
+}
+
+export function setUnsubscribeConfigSistema(fn) {
+    unsubscribeConfigSistema = fn;
 }

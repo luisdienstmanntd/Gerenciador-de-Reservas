@@ -15,7 +15,7 @@
    ========================================================================================= */
 
 import { setDataAtual, getDataAtual, removerLinhaExtra, getTodasReservas } from './state.js';
-import { escutarReservas, iniciarEscutaNotificacoes } from '../features/reservas/listener.js';
+import { escutarReservas, iniciarEscutaNotificacoes, iniciarEscutaConfigSistema } from '../features/reservas/listener.js';
 import { ReservaModal } from '../features/reservas/modal.js';
 import { MesaModal } from '../features/mesas/modal.js';
 import { salvarReserva, excluirReserva, desbloquearReserva, salvarApenasHorario, atualizarBloqueio, adicionarObservacao, limparFantasmasDoDia } from '../features/reservas/service.js';
@@ -52,6 +52,7 @@ async function inicializar() {
     // 5. Inicia escuta do Firebase
     escutarReservas();
     iniciarEscutaNotificacoes();
+    iniciarEscutaConfigSistema();
     
     // 6. Inicia sistema de timers
     iniciarTimers();

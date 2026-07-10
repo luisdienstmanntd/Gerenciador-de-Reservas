@@ -26,7 +26,7 @@
 
 import { db } from '../core/database.js';
 import { escapeHtml } from './reservas/validators.js';
-import { getHorariosPadrao } from '../core/state.js';
+import { getHorariosPadrao, getConfig } from '../core/state.js';
 
 let chartGaugeInstance  = null;
 let chartBarrasInstance = null;
@@ -180,8 +180,7 @@ function _renderizarGiroMesa(reservas) {
                 const prevFim = new Date(new Date(r.inicioMesa).getTime() + referencia * 60000);
                 return prevFim.getHours() * 60 + prevFim.getMinutes() <= hrMin;
             });
-            const config      = JSON.parse(localStorage.getItem('osteria_config') || '{}');
-            const totalMesas  = config.mesas || 18;
+            const totalMesas  = getConfig().mesas || 18;
             const disponiveis = totalMesas - emCurso.length + mesasLivres.length;
             if (disponiveis < resDoHr.length) {
                 alertaAtraso = { horario: hr, faltam: resDoHr.length - disponiveis };
@@ -250,8 +249,7 @@ function _renderizarGraficos(reaisHoje, reaisSemana, hoje) {
 
     const ctxGauge = document.getElementById('home-chart-gauge');
     if (ctxGauge) {
-        const cfg        = JSON.parse(localStorage.getItem('osteria_config') || '{}');
-        const capacidade = cfg.capacidade || 30;
+        const capacidade = getConfig().capacidade || 30;
         let totalPax     = 0;
         reaisHoje.forEach(r => { totalPax += (parseInt(r.paxs) || 0) + (parseInt(r.chd) || 0); });
 

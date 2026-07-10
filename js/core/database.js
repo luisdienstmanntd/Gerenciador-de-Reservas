@@ -517,6 +517,60 @@ class DatabaseService {
         console.log(`✅ config_dia: limpeza concluída — ${apagados.length} linha(s) removida(s)`);
         return apagados.length;
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // CONFIG_SISTEMA — capacidade/mesas/bloqueioAutomatico, sincronizados entre
+    // recepção/osteria/gerência (antes viviam só no localStorage de cada tablet)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /** Converte a linha (snake_case) pro formato achatado que a UI usa. */
+    _paraConfigSistemaApp(row) {
+        return {
+            capacidade: row.capacidade,
+            mesas: row.mesas,
+            bloqueioAutomatico: row.bloqueio_automatico,
+        };
+    }
+
+    /**
+     * Salva (update) a linha única de config_sistema.
+     * @param {{capacidade:number, mesas:number, bloqueioAutomatico:boolean}} config
+     */
+    async salvarConfigSistema(config) {
+        const { error } = await this.client.from('config_sistema').update({
+            capacidade: config.capacidade,
+            mesas: config.mesas,
+            bloqueio_automatico: config.bloqueioAutomatico,
+        }).eq('id', 1);
+        if (error) throw error;
+        console.log('💾 config_sistema salvo:', config);
+    }
+
+    /**
+     * Escuta em tempo real a linha única de config_sistema.
+     * @param {Function} callback - Recebe {capacidade, mesas, bloqueioAutomatico}
+     * @returns {Function} unsubscribe
+     */
+    escutarConfigSistema(callback) {
+        const buscar = async () => {
+            try {
+                const { data: row, error } = await this.client
+                    .from('config_sistema').select('*').eq('id', 1).maybeSingle();
+                if (error) throw error;
+                if (row) callback(this._paraConfigSistemaApp(row));
+            } catch (error) {
+                console.error('❌ Erro ao escutar config_sistema:', error);
+            }
+        };
+        buscar();
+
+        const channel = this.client
+            .channel('config-sistema')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'config_sistema' }, buscar)
+            .subscribe();
+
+        return () => this.client.removeChannel(channel);
+    }
 }
 
 // Exporta instância única
