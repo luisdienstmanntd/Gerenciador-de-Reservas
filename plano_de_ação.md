@@ -104,19 +104,28 @@ Supabase free tier pausa projetos após 7 dias sem atividade de banco de dados. 
 
 ---
 
-## Fase 7 — Preparação para Power BI
+## Fase 7 — Preparação para Power BI ✅ Concluída (2026-07-10)
 
-- [ ] Criar **views SQL** que já agregam métricas úteis, para facilitar a conexão direta do Power BI sem lógica extra:
-```sql
-create view vw_reservas_por_dia as
-select data_reserva, count(*) as total_reservas,
-       sum(case when status = 'cancelada' then 1 else 0 end) as canceladas,
-       sum(case when status = 'no_show' then 1 else 0 end) as no_shows
-from reservas
-group by data_reserva;
-```
-- [ ] Documentar a connection string do Postgres (Supabase → Settings → Database) para uso no conector nativo do Power BI
-- [ ] Validar que RLS não bloqueia a conexão do Power BI (avaliar uso de uma role/service key específica só para leitura analítica)
+- [x] **Views SQL criadas** (`supabase/migrations/20260710130000_views_powerbi.sql`) — o rascunho original sugeria colunas que não existem no schema real (`status`, `data_reserva`), corrigido usando só campos reais:
+  - `vw_reservas_detalhado` — view principal, uma linha por reserva já com hóspede/mesa resolvidos (join feito), colunas de calendário prontas (ano/mês/dia da semana), DDD do telefone extraído (melhor esforço), e duas colunas booleanas (`eh_reserva_real`, `eh_bloqueio`) replicando o mesmo filtro que `home.js`/`dashboard.js` já usam no cliente. O Power BI monta qualquer tabela dinâmica/gráfico a partir dela — não precisou criar uma view por pergunta
+  - `vw_reservas_por_dia` — agregado diário (total reservas/pax, quebrado por tipo de cliente)
+  - `vw_reservas_por_dia_semana` — agregado por dia da semana (padrões de movimento segunda-domingo)
+  - Mesma regra de acesso das tabelas: só `authenticated` (RLS das tabelas de base continua valendo por trás das views)
+
+- [x] **Connection string documentada** — Supabase → **Settings → Database → Connection string**. Duas formas de conectar o Power BI:
+
+  **Opção simples (recomendada pra começar):** usar a connection string padrão da aba "Session pooler" como está, com o usuário `postgres` (senha do banco, definida na criação do projeto — **diferente** de todas as senhas de login usadas neste sistema). RLS não se aplica ao dono das tabelas/superusuário — então essa conexão já enxerga tudo, sem nenhum ajuste extra.
+
+  **Opção mais restrita (opcional, mais trabalho):** criar uma role de leitura dedicada em vez de usar o usuário `postgres` direto no Power BI:
+  ```sql
+  create role powerbi_leitura with login password '<escolha uma senha aqui>' bypassrls;
+  grant usage on schema public to powerbi_leitura;
+  grant select on all tables in schema public to powerbi_leitura;
+  grant select on vw_reservas_detalhado, vw_reservas_por_dia, vw_reservas_por_dia_semana to powerbi_leitura;
+  ```
+  (`bypassrls` é necessário porque uma conexão Postgres direta — diferente do navegador — não carrega o token de login do Supabase Auth, então `auth.uid()` nas políticas de RLS sempre daria `null` e bloquearia tudo, mesmo pra um usuário legítimo de leitura.)
+
+- [x] **RLS validado** — não bloqueia a conexão em nenhuma das duas opções acima (motivo: usuário `postgres` já ignora RLS por ser dono das tabelas; a role dedicada usa `bypassrls` explicitamente pelo mesmo motivo)
 
 ---
 
