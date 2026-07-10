@@ -95,11 +95,20 @@ async function _verificarBloqueioAutomatico(reservaId, data, originalBase, posic
     const blocoReservas = blocoPreCarregado || await db.buscarReservasPorBloco(data, originalBase);
     const naPosAlvo = blocoReservas.find(r => r.posicao === posAlvo);
 
-    if (naPosAlvo && naPosAlvo.bloqueioOrigemId === reservaId) {
-        return; // já bloqueado por esta mesma reserva — idempotente
+    // Já bloqueada E ativa por esta mesma reserva — nada a fazer. Checa `bloqueado`
+    // além do vínculo: desbloquearReserva() só limpa `bloqueado`, não o vínculo
+    // (bloqueioOrigemId) — sem checar `bloqueado` aqui, uma reserva desbloqueada
+    // manualmente e depois editada (ex: 4 → 5 pessoas) nunca seria re-bloqueada.
+    if (naPosAlvo && naPosAlvo.bloqueado && naPosAlvo.bloqueioOrigemId === reservaId) {
+        return;
     }
 
-    if (naPosAlvo && (naPosAlvo.nomes || naPosAlvo.bloqueado || naPosAlvo.somenteHospedes)) {
+    // Ocupada por outra coisa (reserva real, ou bloqueio de outra origem) — nunca
+    // atropela, só avisa. Uma linha vinculada a ESTA reserva mas desbloqueada
+    // manualmente (bloqueado:false) NÃO conta como "ocupada por outra coisa" — cai
+    // para o bloco abaixo, que re-bloqueia.
+    if (naPosAlvo && (naPosAlvo.nomes || naPosAlvo.bloqueado || naPosAlvo.somenteHospedes)
+        && naPosAlvo.bloqueioOrigemId !== reservaId) {
         notificarAviso(`Horário ${originalBase}: reserva com ${paxs} pessoas, mas a próxima linha já está ocupada — bloqueie manualmente se necessário.`);
         return;
     }
@@ -135,13 +144,19 @@ async function _removerBloqueioAutomatico(reservaId) {
 
 /**
  * Reavalia o bloqueio automático de uma reserva depois de criada/editada/movida.
- * Só recria o bloqueio quando algo relevante mudou (evita atropelar um desbloqueio
- * manual feito pela recepção numa edição de campo não relacionado, tipo a OBS).
+ *
+ * Sempre que a reserva continua "grande" (4+ pessoas), reconfere se a próxima linha
+ * está de fato bloqueada — cobre o caso de a recepção ter desbloqueado manualmente
+ * e depois editado a reserva (ex: 4 → 5 pessoas), sem exigir uma mudança de bloco ou
+ * uma travessia do limiar de 4 pessoas pra disparar a checagem de novo.
+ * _verificarBloqueioAutomatico() é idempotente — não faz nada (nem notifica) se o
+ * bloqueio já existe e está ativo, então chamar sempre que ehGrande é seguro.
  *
  * @param {string} reservaId
  * @param {Object|null} dadosAntes - Estado anterior no formato achatado (null = criação)
  * @param {Object} reservaData     - Estado novo, mesmo formato achatado
  * @param {Array<Object>|null} [blocoPreCarregado] - Repassado pra _verificarBloqueioAutomatico
+ *   (só é válido quando o bloco não mudou — ver uso abaixo)
  */
 async function _reconciliarBloqueioAutomatico(reservaId, dadosAntes, reservaData, blocoPreCarregado = null) {
     const mudouDeLinha = !dadosAntes
@@ -152,11 +167,17 @@ async function _reconciliarBloqueioAutomatico(reservaId, dadosAntes, reservaData
     const eraGrande = (dadosAntes?.paxs || 0) >= PAX_MINIMO_BLOQUEIO_AUTOMATICO;
     const ehGrande = (reservaData.paxs || 0) >= PAX_MINIMO_BLOQUEIO_AUTOMATICO;
 
+    // Mudou de bloco/posição, ou deixou de ser grande: remove o bloqueio antigo
+    // (se existir) antes de reavaliar — ele não se aplica mais ao lugar certo.
     if (mudouDeLinha || (eraGrande && !ehGrande)) {
         await _removerBloqueioAutomatico(reservaId);
     }
-    if (ehGrande && (mudouDeLinha || !eraGrande)) {
-        await _verificarBloqueioAutomatico(reservaId, reservaData.data, reservaData.originalBase, reservaData.posicao, reservaData.paxs, blocoPreCarregado);
+
+    if (ehGrande) {
+        await _verificarBloqueioAutomatico(
+            reservaId, reservaData.data, reservaData.originalBase, reservaData.posicao, reservaData.paxs,
+            mudouDeLinha ? null : blocoPreCarregado,
+        );
     }
 }
 
