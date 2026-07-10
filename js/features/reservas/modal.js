@@ -57,6 +57,7 @@ export class ReservaModal {
       tipoCliente: document.getElementById("tipoCliente"),
       nomes: document.getElementById("nomes"),
       apto: document.getElementById("apto"),
+      codigoReserva: document.getElementById("codigoReserva"),
       whatsapp: document.getElementById("whatsapp"),
       avulsa: document.getElementById("avulsa"),
       paxs: document.getElementById("paxs"),
@@ -515,6 +516,7 @@ export class ReservaModal {
     if (this.elementos.tipoCliente) this.elementos.tipoCliente.value = reserva.tipo || "hospede";
     if (this.elementos.nomes) this.elementos.nomes.value = reserva.nomes || "";
     if (this.elementos.apto) this.elementos.apto.value = reserva.apto || "";
+    if (this.elementos.codigoReserva) this.elementos.codigoReserva.value = reserva.codigoReserva || "";
     if (this.elementos.whatsapp) this.elementos.whatsapp.value = reserva.whatsapp || "";
     if (this.elementos.avulsa) this.elementos.avulsa.value = reserva.avulsa || "";
     if (this.elementos.paxs) this.elementos.paxs.value = reserva.paxs || 0;
@@ -550,6 +552,7 @@ export class ReservaModal {
     if (this.elementos.tipoCliente) this.elementos.tipoCliente.value = "hospede";
     if (this.elementos.nomes) this.elementos.nomes.value = "";
     if (this.elementos.apto) this.elementos.apto.value = "";
+    if (this.elementos.codigoReserva) this.elementos.codigoReserva.value = "";
     if (this.elementos.whatsapp) this.elementos.whatsapp.value = "";
     if (this.elementos.avulsa) this.elementos.avulsa.value = "";
     if (this.elementos.paxs) this.elementos.paxs.value = "2";
@@ -724,6 +727,7 @@ export class ReservaModal {
       tipo: this.elementos.tipoCliente?.value || "hospede",
       nomes: this.elementos.nomes?.value?.trim().toUpperCase() || "",
       apto: this.elementos.apto?.value?.trim() || "",
+      codigoReserva: this.elementos.codigoReserva?.value?.trim() || "",
       whatsapp: this.elementos.whatsapp?.value || "",
       avulsa: this.elementos.avulsa?.value || "",
       paxs: parseInt(this.elementos.paxs?.value) || 0,

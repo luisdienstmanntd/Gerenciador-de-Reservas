@@ -339,9 +339,12 @@ function renderizarLinha(res, horarioVisual, posicao, tdHora, hrBase) {
             }
         }
 
-        let label = res.tipo === "hospede" ? `<b>APTO ${res.apto || "?"}</b>` : 
-            (res.tipo === "externo" ? "<b>EXT</b>" : 
-            (res.tipo === "roomservice" ? `<b>APTO ${res.apto || "?"}</b>` : 
+        // Hóspede sem apto ainda definido (reserva feita por telefone antes do
+        // check-in) mostra o número da reserva em vez de "APTO ?".
+        const labelApto = res.apto ? `APTO ${res.apto}` : (res.codigoReserva ? `RES ${escapeHtml(res.codigoReserva)}` : "APTO ?");
+        let label = res.tipo === "hospede" ? `<b>${labelApto}</b>` :
+            (res.tipo === "externo" ? "<b>EXT</b>" :
+            (res.tipo === "roomservice" ? `<b>APTO ${res.apto || "?"}</b>` :
             "<b>PASS</b>"));
         let classePag = res.pagamento === 'pago' ? 'pg-confirmado' : (res.pagamento === 'pendente' ? 'pg-pendente' : '');
         let textoPag = (res.tipo === 'externo' && res.avulsa) ? escapeHtml(res.avulsa) : (res.pagamento || "-");

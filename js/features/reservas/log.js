@@ -64,6 +64,7 @@ function _resumir(dados) {
         id:              dados.id              || '',
         nomes:           dados.nomes           || '',
         apto:            dados.apto            || '',
+        codigoReserva:   dados.codigoReserva   || '',
         horario:         dados.horario         || '',
         tipo:            dados.tipo            || '',
         paxs:            dados.paxs            || 0,
@@ -87,7 +88,7 @@ const CONFIG_ACAO = {
 };
 
 const LABELS_CAMPOS = {
-    nomes: 'Nome', apto: 'Apto', horario: 'Horário', tipo: 'Tipo',
+    nomes: 'Nome', apto: 'Apto', codigoReserva: 'Reserva', horario: 'Horário', tipo: 'Tipo',
     paxs: 'Adultos', chd: 'Crianças', obs: 'Obs', mesa: 'Mesa',
     bloqueado: 'Bloqueado', somenteHospedes: 'Só Hósp.',
 };

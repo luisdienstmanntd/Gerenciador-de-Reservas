@@ -101,8 +101,10 @@ export function validarReserva(dados) {
             erros.push("Room Service exige número de apartamento");
         }
 
-        if (dados.tipo === 'hospede' && !validarNaoVazio(dados.apto)) {
-            erros.push("Hóspede exige número de apartamento");
+        // Hóspede exige apto OU número da reserva (não os dois) — reservas feitas
+        // por telefone/WhatsApp antes do check-in não têm apto definido ainda.
+        if (dados.tipo === 'hospede' && !validarNaoVazio(dados.apto) && !validarNaoVazio(dados.codigoReserva)) {
+            erros.push("Hóspede exige número de apartamento ou número da reserva");
         }
     }
 
@@ -178,9 +180,16 @@ export function destacarCamposInvalidos(dados) {
         _marcar('nomes');
     }
 
-    // Apto obrigatório para hóspede e room service — vazio = inválido
-    if ((tipo === 'hospede' || tipo === 'roomservice') && !validarNaoVazio(dados.apto)) {
+    // Apto obrigatório para room service — vazio = inválido
+    if (tipo === 'roomservice' && !validarNaoVazio(dados.apto)) {
         _marcar('apto');
+    }
+
+    // Hóspede exige apto OU número da reserva — marca os dois só quando nenhum
+    // dos dois está preenchido (reserva feita antes do check-in não tem apto ainda)
+    if (tipo === 'hospede' && !validarNaoVazio(dados.apto) && !validarNaoVazio(dados.codigoReserva)) {
+        _marcar('apto');
+        _marcar('codigoReserva');
     }
 
     // Adultos obrigatório para todos — valor <= 0 = inválido

@@ -229,6 +229,7 @@ export async function salvarReserva(dados) {
             tipo: dados.tipo || 'hospede',
             nomes: dados.nomes ? dados.nomes.toUpperCase() : '',
             apto: dados.apto || '',
+            codigoReserva: dados.codigoReserva || '',
             whatsapp: dados.whatsapp || '',
             avulsa: dados.avulsa || '',
             paxs: parseInt(dados.paxs) || 0,

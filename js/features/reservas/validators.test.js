@@ -158,18 +158,18 @@ describe('validarReserva', () => {
 
     it('reprova hóspede sem apto (não é bloqueio)', () => {
         const resultado = validarReserva({ ...base, tipo: 'hospede', apto: '' });
-        expect(resultado.erros).toContain('Hóspede exige número de apartamento');
+        expect(resultado.erros).toContain('Hóspede exige número de apartamento ou número da reserva');
     });
 
     it('aprova bloqueio sem apto, mesmo com tipo hospede (default do form)', () => {
         const resultado = validarReserva({ ...base, tipo: 'hospede', nomes: '', apto: '', bloqueado: true });
         expect(resultado.valido).toBe(true);
-        expect(resultado.erros).not.toContain('Hóspede exige número de apartamento');
+        expect(resultado.erros).not.toContain('Hóspede exige número de apartamento ou número da reserva');
     });
 
     it('aprova somenteHospedes sem apto, mesmo com tipo hospede', () => {
         const resultado = validarReserva({ ...base, tipo: 'hospede', nomes: '', apto: '', somenteHospedes: true });
-        expect(resultado.erros).not.toContain('Hóspede exige número de apartamento');
+        expect(resultado.erros).not.toContain('Hóspede exige número de apartamento ou número da reserva');
     });
 
     it('reprova horário inválido', () => {
@@ -182,9 +182,14 @@ describe('validarReserva', () => {
         expect(resultado.erros).toContain('Quantidade de adultos inválida (mínimo 1)');
     });
 
-    it('exige apartamento para hóspede', () => {
+    it('exige apartamento OU código de reserva para hóspede', () => {
         const resultado = validarReserva({ ...base, tipo: 'hospede', apto: '' });
-        expect(resultado.erros).toContain('Hóspede exige número de apartamento');
+        expect(resultado.erros).toContain('Hóspede exige número de apartamento ou número da reserva');
+    });
+
+    it('aceita hóspede com código de reserva mas sem apto (pré check-in)', () => {
+        const resultado = validarReserva({ ...base, tipo: 'hospede', apto: '', codigoReserva: '12345' });
+        expect(resultado.erros).not.toContain('Hóspede exige número de apartamento ou número da reserva');
     });
 
     it('exige apartamento para room service', () => {
@@ -195,7 +200,7 @@ describe('validarReserva', () => {
     it('não exige apartamento para externo/passante', () => {
         const resultado = validarReserva({ ...base, tipo: 'passante', apto: '' });
         expect(resultado.erros).not.toContain('Room Service exige número de apartamento');
-        expect(resultado.erros).not.toContain('Hóspede exige número de apartamento');
+        expect(resultado.erros).not.toContain('Hóspede exige número de apartamento ou número da reserva');
     });
 
     it('reprova telefone em formato inválido quando preenchido', () => {

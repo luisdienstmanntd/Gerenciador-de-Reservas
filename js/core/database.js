@@ -91,6 +91,7 @@ class DatabaseService {
             tipo: hospede.tipo || 'hospede',
             nomes: hospede.nome || '',
             apto: hospede.apto || '',
+            codigoReserva: hospede.codigo_reserva || '',
             whatsapp: hospede.telefone || '',
             avulsa: row.avulsa || '',
             paxs: row.paxs || 0,
@@ -109,9 +110,11 @@ class DatabaseService {
 
     /**
      * Encontra o hóspede correspondente aos dados da reserva, ou cria um novo.
-     * Mesma regra de dedup em cascata usada na migração de dados (Fase 4,
-     * scripts/migrar-dados.mjs — resolverHospedeId), confirmada com o dono do projeto:
-     *   - hóspede/roomservice → apto+nome
+     * Regra de dedup em cascata (documentada desde a Fase 2, ver
+     * supabase/migrations/20260709133321_initial_schema.sql):
+     *   - hóspede/roomservice → apto+nome, ou codigo_reserva+nome quando ainda não
+     *     há apto definido (reserva feita por telefone/WhatsApp antes do check-in —
+     *     a recepção anota o número da reserva até saber o apto de destino)
      *   - externo/passante    → telefone+nome
      * @private
      */
@@ -123,8 +126,13 @@ class DatabaseService {
         const isHospedeOuRoom = tipo === 'hospede' || tipo === 'roomservice';
 
         let query = this.client.from('hospedes').select('id').eq('nome', nome).eq('tipo', tipo);
-        if (isHospedeOuRoom && dados.apto) query = query.eq('apto', dados.apto);
-        if (!isHospedeOuRoom && dados.whatsapp) query = query.eq('telefone', dados.whatsapp);
+        if (isHospedeOuRoom && dados.apto) {
+            query = query.eq('apto', dados.apto);
+        } else if (isHospedeOuRoom && dados.codigoReserva) {
+            query = query.eq('codigo_reserva', dados.codigoReserva);
+        } else if (!isHospedeOuRoom && dados.whatsapp) {
+            query = query.eq('telefone', dados.whatsapp);
+        }
 
         const { data: existentes, error: erroConsulta } = await query.limit(1);
         if (erroConsulta) throw erroConsulta;
@@ -135,6 +143,7 @@ class DatabaseService {
             .insert({
                 nome,
                 apto: isHospedeOuRoom ? (dados.apto || null) : null,
+                codigo_reserva: isHospedeOuRoom ? (dados.codigoReserva || null) : null,
                 telefone: dados.whatsapp || null,
                 tipo,
             })
