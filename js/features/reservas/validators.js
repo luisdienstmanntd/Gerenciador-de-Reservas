@@ -93,13 +93,17 @@ export function validarReserva(dados) {
         erros.push("Quantidade de crianças inválida (0-10)");
     }
 
-    // Validações específicas por tipo
-    if (dados.tipo === 'roomservice' && !validarNaoVazio(dados.apto)) {
-        erros.push("Room Service exige número de apartamento");
-    }
+    // Validações específicas por tipo — não se aplicam a bloqueios (BLOQUEADO/SÓ
+    // HÓSPEDES não têm hóspede de verdade associado), mesma exceção já usada
+    // acima pro nome do cliente.
+    if (!dados.bloqueado && !dados.somenteHospedes) {
+        if (dados.tipo === 'roomservice' && !validarNaoVazio(dados.apto)) {
+            erros.push("Room Service exige número de apartamento");
+        }
 
-    if (dados.tipo === 'hospede' && !validarNaoVazio(dados.apto)) {
-        erros.push("Hóspede exige número de apartamento");
+        if (dados.tipo === 'hospede' && !validarNaoVazio(dados.apto)) {
+            erros.push("Hóspede exige número de apartamento");
+        }
     }
 
     if (dados.whatsapp && !validarTelefone(dados.whatsapp)) {

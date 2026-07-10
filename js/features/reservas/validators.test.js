@@ -156,6 +156,22 @@ describe('validarReserva', () => {
         expect(resultado.erros).not.toContain('Nome do cliente é obrigatório');
     });
 
+    it('reprova hóspede sem apto (não é bloqueio)', () => {
+        const resultado = validarReserva({ ...base, tipo: 'hospede', apto: '' });
+        expect(resultado.erros).toContain('Hóspede exige número de apartamento');
+    });
+
+    it('aprova bloqueio sem apto, mesmo com tipo hospede (default do form)', () => {
+        const resultado = validarReserva({ ...base, tipo: 'hospede', nomes: '', apto: '', bloqueado: true });
+        expect(resultado.valido).toBe(true);
+        expect(resultado.erros).not.toContain('Hóspede exige número de apartamento');
+    });
+
+    it('aprova somenteHospedes sem apto, mesmo com tipo hospede', () => {
+        const resultado = validarReserva({ ...base, tipo: 'hospede', nomes: '', apto: '', somenteHospedes: true });
+        expect(resultado.erros).not.toContain('Hóspede exige número de apartamento');
+    });
+
     it('reprova horário inválido', () => {
         const resultado = validarReserva({ ...base, horario: '99:99' });
         expect(resultado.erros).toContain('Horário inválido');
