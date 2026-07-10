@@ -92,43 +92,15 @@ Substituídas as regras do Firestore por políticas RLS do Postgres.
 
 ---
 
-## Fase 6 — Heartbeat via GitHub Actions (evitar pausa por inatividade)
+## Fase 6 — Heartbeat via GitHub Actions (evitar pausa por inatividade) ✅ Concluída (2026-07-10)
 
 Supabase free tier pausa projetos após 7 dias sem atividade de banco de dados. Solução: workflow agendado que faz uma query simples periodicamente.
 
-- [ ] Criar tabela de heartbeat:
-```sql
-create table heartbeat (
-  id serial primary key,
-  checado_em timestamptz default now()
-);
-```
-
-- [ ] Criar arquivo `.github/workflows/supabase-heartbeat.yml`:
-```yaml
-name: Supabase Heartbeat
-
-on:
-  schedule:
-    - cron: '0 12 * * 1,4' # roda toda segunda e quinta às 12h UTC
-  workflow_dispatch: # permite rodar manualmente também
-
-jobs:
-  ping:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Ping Supabase
-        run: |
-          curl -X POST "${{ secrets.SUPABASE_URL }}/rest/v1/heartbeat" \
-            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
-            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
-            -H "Content-Type: application/json" \
-            -d '{}'
-```
-
-- [ ] Adicionar `SUPABASE_URL` e `SUPABASE_ANON_KEY` como **GitHub Secrets** no repositório (nunca no código)
-- [ ] Criar rotina de limpeza (opcional): deletar registros de heartbeat com mais de 30 dias, para não acumular lixo na tabela
-- [ ] Rodar o workflow manualmente uma vez (`workflow_dispatch`) para validar que funciona antes de confiar no cron
+- [x] Tabela `heartbeat` criada (`supabase/migrations/20260710120000_heartbeat.sql`) — RLS habilitado, mas liberada pro papel `anon` (diferente de todas as outras tabelas): sem dado sensível, e o workflow roda fora de qualquer sessão de usuário logado, não faz sentido exigir login só pra isso
+- [x] `.github/workflows/supabase-heartbeat.yml` criado — ping (`POST /heartbeat`) toda segunda e quinta às 12h UTC, mais `workflow_dispatch` pra rodar manualmente
+- [x] **Decisão que diverge do plano original:** `SUPABASE_URL` e a publishable key ficam direto no workflow (`env:`), não como GitHub Secrets. Mesma lógica já validada na Fase 1 — essa chave não é segredo (a proteção é RLS), então guardá-la como Secret só adicionaria um passo manual sem ganho real de segurança
+- [x] Rotina de limpeza incluída (não opcional) — segundo step do workflow apaga heartbeats com mais de 30 dias, evita acumular lixo na tabela
+- [x] Workflow rodado manualmente (`workflow_dispatch`) e validado com sucesso antes de confiar no cron
 
 ---
 

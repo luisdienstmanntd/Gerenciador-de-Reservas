@@ -1,0 +1,38 @@
+name: Supabase Heartbeat
+
+# O Supabase free tier pausa o projeto após 7 dias sem atividade de banco de dados.
+# Este workflow só existe pra manter o projeto acordado — ver Fase 6 do plano_de_ação.md
+# e supabase/migrations/20260710120000_heartbeat.sql.
+#
+# SUPABASE_URL e a publishable key abaixo não são segredo (mesma lógica já usada em
+# js/core/supabaseClient.js desde a Fase 1) — a proteção real é RLS, que só libera
+# acesso à tabela `heartbeat` (nenhuma outra).
+
+on:
+  schedule:
+    - cron: '0 12 * * 1,4' # roda toda segunda e quinta às 12h UTC
+  workflow_dispatch: # permite rodar manualmente também, pra validar
+
+env:
+  SUPABASE_URL: https://fiamtckdglzdrynmrlpj.supabase.co
+  SUPABASE_KEY: sb_publishable_y1q0B_PIHkTz_Zk_HQhOHQ_3wPRRiS1
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase (mantém o projeto ativo)
+        run: |
+          curl -sf -X POST "$SUPABASE_URL/rest/v1/heartbeat" \
+            -H "apikey: $SUPABASE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_KEY" \
+            -H "Content-Type: application/json" \
+            -H "Prefer: return=minimal" \
+            -d '{}'
+
+      - name: Limpa heartbeats com mais de 30 dias
+        run: |
+          CORTE=$(date -u -d '30 days ago' +%Y-%m-%dT%H:%M:%SZ)
+          curl -sf -X DELETE "$SUPABASE_URL/rest/v1/heartbeat?checado_em=lt.${CORTE}" \
+            -H "apikey: $SUPABASE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_KEY"
