@@ -103,6 +103,7 @@ class DatabaseService {
             menuDegustacao: row.menu_degustacao || false,
             inicioMesa: row.inicio_mesa || null,
             fimMesa: row.fim_mesa || null,
+            bloqueioOrigemId: row.bloqueio_origem_id || null,
         };
     }
 
@@ -186,6 +187,7 @@ class DatabaseService {
             somente_hospedes: dados.somenteHospedes || false,
             pagamento: dados.pagamento || null,
             menu_degustacao: dados.menuDegustacao || false,
+            bloqueio_origem_id: dados.bloqueioOrigemId || null,
         };
     }
 
@@ -218,6 +220,18 @@ class DatabaseService {
         const { data: rows, error } = await this.client
             .from('reservas').select('*, hospedes(*)')
             .eq('data', data).eq('original_base', originalBase);
+        if (error) throw error;
+        return rows.map(r => this._paraReservaApp(r));
+    }
+
+    /**
+     * Busca bloqueios automáticos gerados por uma reserva específica (reserva grande
+     * que bloqueou a próxima linha do bloco). Usado pra desfazer o bloqueio quando a
+     * reserva de origem deixa de ter 4+ pessoas.
+     */
+    async buscarBloqueiosAutomaticos(reservaOrigemId) {
+        const { data: rows, error } = await this.client
+            .from('reservas').select('*, hospedes(*)').eq('bloqueio_origem_id', reservaOrigemId);
         if (error) throw error;
         return rows.map(r => this._paraReservaApp(r));
     }

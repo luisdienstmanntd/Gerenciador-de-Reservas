@@ -20,7 +20,7 @@ import {
 } from '../../core/state.js';
 import { registrarLog } from './log.js';
 import { db } from '../../core/database.js';
-import { notificarErro } from '../../core/notificacao.js';
+import { notificarErro, notificarAviso } from '../../core/notificacao.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HELPERS INTERNOS
@@ -57,6 +57,107 @@ export function _calcularPosicaoLivre(reservasBloco, posicaoDesejada = 0) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// BLOQUEIO AUTOMÁTICO — reserva grande (4+ adultos) bloqueia a próxima linha
+// ─────────────────────────────────────────────────────────────────────────────
+
+const PAX_MINIMO_BLOQUEIO_AUTOMATICO = 4;
+
+/** Total de linhas visíveis (base + extras) de um bloco — mesmo cálculo de removerLinhaDoBloco(). */
+function _totalLinhasBloco(hr) {
+    const baseLinhas = new Set(getHorariosPadrao()).has(hr) ? 3 : 1;
+    const extras = getLinhasExtras()[hr] !== undefined ? getLinhasExtras()[hr] : 0;
+    return baseLinhas + extras;
+}
+
+/**
+ * Regra de negócio: o padrão é atender 2 pessoas por linha sem atrasar a cozinha.
+ * Uma reserva com 4+ adultos consome a capacidade de duas linhas — bloqueia a
+ * próxima linha livre do mesmo bloco automaticamente.
+ *
+ * Nunca força um bloqueio que atropele outra reserva: se a próxima linha já tem
+ * dono (reserva real ou outro bloqueio) ou não existe (fora do range visual do
+ * bloco), só avisa a recepção — a decisão de abrir mais uma linha fica com ela.
+ *
+ * @param {string} reservaId  - ID da reserva grande que originou a checagem
+ * @param {string} data
+ * @param {string} originalBase - Bloco/horário da reserva
+ * @param {number} posicao      - Posição da reserva dentro do bloco
+ * @param {number} paxs         - Adultos da reserva (crianças não contam)
+ */
+async function _verificarBloqueioAutomatico(reservaId, data, originalBase, posicao, paxs) {
+    if (paxs < PAX_MINIMO_BLOQUEIO_AUTOMATICO) return;
+
+    const posAlvo = posicao + 1;
+    if (posAlvo >= _totalLinhasBloco(originalBase)) return; // não há próxima linha no bloco
+
+    const blocoReservas = await db.buscarReservasPorBloco(data, originalBase);
+    const naPosAlvo = blocoReservas.find(r => r.posicao === posAlvo);
+
+    if (naPosAlvo && naPosAlvo.bloqueioOrigemId === reservaId) {
+        return; // já bloqueado por esta mesma reserva — idempotente
+    }
+
+    if (naPosAlvo && (naPosAlvo.nomes || naPosAlvo.bloqueado || naPosAlvo.somenteHospedes)) {
+        notificarAviso(`Horário ${originalBase}: reserva com ${paxs} pessoas, mas a próxima linha já está ocupada — bloqueie manualmente se necessário.`);
+        return;
+    }
+
+    const colunasBloqueio = {
+        data, horario: originalBase, originalBase, posicao: posAlvo,
+        nomes: '', tipo: 'hospede', paxs: 0, chd: 0,
+        bloqueado: true,
+        obs: 'BLOQUEIO AUTOMÁTICO — RESERVA COM 4+ PESSOAS NA LINHA ANTERIOR',
+        bloqueioOrigemId: reservaId,
+    };
+
+    if (naPosAlvo) {
+        await db.atualizarReserva(naPosAlvo.id, colunasBloqueio);
+    } else {
+        await db.criarReserva(colunasBloqueio);
+    }
+    notificarAviso(`Próxima linha do horário ${originalBase} bloqueada automaticamente (reserva com ${paxs} pessoas).`);
+}
+
+/**
+ * Remove qualquer bloqueio automático gerado por uma reserva — chamado quando ela
+ * deixa de ter 4+ pessoas ou muda de bloco/horário/posição. A exclusão da própria
+ * reserva de origem já limpa isso sozinha via ON DELETE CASCADE no banco (não
+ * precisa chamar esta função em excluirReserva()).
+ */
+async function _removerBloqueioAutomatico(reservaId) {
+    const bloqueios = await db.buscarBloqueiosAutomaticos(reservaId);
+    for (const b of bloqueios) {
+        await db.excluirReserva(b.id);
+    }
+}
+
+/**
+ * Reavalia o bloqueio automático de uma reserva depois de criada/editada/movida.
+ * Só recria o bloqueio quando algo relevante mudou (evita atropelar um desbloqueio
+ * manual feito pela recepção numa edição de campo não relacionado, tipo a OBS).
+ *
+ * @param {string} reservaId
+ * @param {Object|null} dadosAntes - Estado anterior no formato achatado (null = criação)
+ * @param {Object} reservaData     - Estado novo, mesmo formato achatado
+ */
+async function _reconciliarBloqueioAutomatico(reservaId, dadosAntes, reservaData) {
+    const mudouDeLinha = !dadosAntes
+        || dadosAntes.data !== reservaData.data
+        || (dadosAntes.originalBase || dadosAntes.horario) !== reservaData.originalBase
+        || dadosAntes.posicao !== reservaData.posicao;
+
+    const eraGrande = (dadosAntes?.paxs || 0) >= PAX_MINIMO_BLOQUEIO_AUTOMATICO;
+    const ehGrande = (reservaData.paxs || 0) >= PAX_MINIMO_BLOQUEIO_AUTOMATICO;
+
+    if (mudouDeLinha || (eraGrande && !ehGrande)) {
+        await _removerBloqueioAutomatico(reservaId);
+    }
+    if (ehGrande && (mudouDeLinha || !eraGrande)) {
+        await _verificarBloqueioAutomatico(reservaId, reservaData.data, reservaData.originalBase, reservaData.posicao, reservaData.paxs);
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // RESERVAS — CRUD
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -86,7 +187,9 @@ export async function salvarReserva(dados) {
         };
 
         let docRef;
+        let dadosAntesReserva = null;
         if (dados.id) {
+            dadosAntesReserva = await db.getReservaPorId(dados.id);
             await db.atualizarReserva(dados.id, reservaData);
             docRef = dados.id;
         } else {
@@ -114,6 +217,8 @@ export async function salvarReserva(dados) {
         if (reservaData.tipo === 'roomservice') {
             await atribuirMesa(docRef, 'ROOM');
         }
+
+        await _reconciliarBloqueioAutomatico(docRef, dadosAntesReserva, reservaData);
 
         // Log
         if (dados.id) {
@@ -181,6 +286,11 @@ export async function salvarApenasHorario(dados) {
                 original_base: novoOriginalBase,
                 posicao: novaPosicao,
             }).eq('id', dados.id);
+
+            await _reconciliarBloqueioAutomatico(dados.id, dadosAtuais, {
+                data, originalBase: novoOriginalBase, posicao: novaPosicao, paxs: dadosAtuais.paxs,
+            });
+
             await registrarLog('EDITAR', dadosAntes, { ...dadosAntes, horario: novoHorario, originalBase: novoOriginalBase, posicao: novaPosicao });
             return dados.id;
 
@@ -307,6 +417,10 @@ export async function alterarData(id, novaData) {
         data: novaData,
         posicao: novaPosicao,
     }).eq('id', id);
+
+    await _reconciliarBloqueioAutomatico(id, dadosAntes, {
+        data: novaData, originalBase, posicao: novaPosicao, paxs: dadosAntes.paxs,
+    });
 
     const dadosDepois = { ...dadosAntes, data: novaData, posicao: novaPosicao };
     await registrarLog('EDITAR', dadosAntes, dadosDepois);
