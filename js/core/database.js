@@ -110,20 +110,43 @@ class DatabaseService {
 
     /**
      * Encontra o hóspede correspondente aos dados da reserva, ou cria um novo.
-     * Regra de dedup em cascata (documentada desde a Fase 2, ver
-     * supabase/migrations/20260709133321_initial_schema.sql):
+     *
+     * Editando uma reserva que JÁ tem hóspede vinculado (hospedeIdExistente):
+     * atualiza o mesmo cadastro em vez de buscar/criar outro. Isso é o que faz o
+     * fluxo "reservou com código, apto foi definido depois" funcionar sem duplicar
+     * cadastro — a recepção edita a reserva preenchendo o apto, e o mesmo hóspede é
+     * atualizado (não perde o codigo_reserva original, que só deixa de aparecer na
+     * grade porque a exibição prioriza apto quando os dois existem — ver render.js).
+     *
+     * Criação nova (sem hóspede vinculado ainda): dedup em cascata (documentada
+     * desde a Fase 2, ver supabase/migrations/20260709133321_initial_schema.sql):
      *   - hóspede/roomservice → apto+nome, ou codigo_reserva+nome quando ainda não
-     *     há apto definido (reserva feita por telefone/WhatsApp antes do check-in —
-     *     a recepção anota o número da reserva até saber o apto de destino)
+     *     há apto definido (reserva feita por telefone/WhatsApp antes do check-in)
      *   - externo/passante    → telefone+nome
+     *
+     * @param {Object} dados
+     * @param {string|null} [hospedeIdExistente] - hospede_id já vinculado à reserva
+     *   sendo editada (null numa criação nova)
      * @private
      */
-    async _resolverHospedeId(dados) {
+    async _resolverHospedeId(dados, hospedeIdExistente = null) {
         if (!dados.nomes || !dados.nomes.trim()) return null; // slot vazio ou bloqueio — sem hóspede
 
         const nome = dados.nomes.trim().toUpperCase();
         const tipo = dados.tipo || 'hospede';
         const isHospedeOuRoom = tipo === 'hospede' || tipo === 'roomservice';
+
+        if (hospedeIdExistente) {
+            const { error: erroUpdate } = await this.client.from('hospedes').update({
+                nome,
+                apto: isHospedeOuRoom ? (dados.apto || null) : null,
+                codigo_reserva: isHospedeOuRoom ? (dados.codigoReserva || null) : null,
+                telefone: dados.whatsapp || null,
+                tipo,
+            }).eq('id', hospedeIdExistente);
+            if (erroUpdate) throw erroUpdate;
+            return hospedeIdExistente;
+        }
 
         let query = this.client.from('hospedes').select('id').eq('nome', nome).eq('tipo', tipo);
         if (isHospedeOuRoom && dados.apto) {
@@ -174,10 +197,12 @@ class DatabaseService {
      * Converte o objeto achatado que a UI usa para criar/atualizar uma reserva nas
      * colunas reais de `reservas`, resolvendo hospede_id e garantindo mesa_identificador
      * como efeitos colaterais (ambos exigem ida ao banco).
+     * @param {Object} dados
+     * @param {string|null} [hospedeIdExistente] - Repassado pra _resolverHospedeId
      * @private
      */
-    async _paraColunasReserva(dados) {
-        const hospedeId = await this._resolverHospedeId(dados);
+    async _paraColunasReserva(dados, hospedeIdExistente = null) {
+        const hospedeId = await this._resolverHospedeId(dados, hospedeIdExistente);
         const mesaId = dados.mesa && dados.mesa !== '' && dados.mesa !== '-' ? dados.mesa : null;
         if (mesaId) await this.garantirMesaExiste(mesaId);
 
@@ -261,7 +286,10 @@ class DatabaseService {
     }
 
     async atualizarReserva(id, dados) {
-        const colunas = await this._paraColunasReserva(dados);
+        // Busca o hospede_id já vinculado, se houver — pra _resolverHospedeId()
+        // atualizar o mesmo cadastro em vez de buscar/criar outro (ver seu docstring).
+        const { data: atual } = await this.client.from('reservas').select('hospede_id').eq('id', id).maybeSingle();
+        const colunas = await this._paraColunasReserva(dados, atual?.hospede_id || null);
         const { error } = await this.client.from('reservas').update(colunas).eq('id', id);
         if (error) throw error;
     }
