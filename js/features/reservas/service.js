@@ -83,14 +83,16 @@ function _totalLinhasBloco(hr) {
  * @param {string} originalBase - Bloco/horário da reserva
  * @param {number} posicao      - Posição da reserva dentro do bloco
  * @param {number} paxs         - Adultos da reserva (crianças não contam)
+ * @param {Array<Object>|null} [blocoPreCarregado] - Reservas do bloco já buscadas por quem
+ *   chamou (ex: salvarReserva já consulta o bloco antes de criar) — evita repetir a consulta.
  */
-async function _verificarBloqueioAutomatico(reservaId, data, originalBase, posicao, paxs) {
+async function _verificarBloqueioAutomatico(reservaId, data, originalBase, posicao, paxs, blocoPreCarregado = null) {
     if (paxs < PAX_MINIMO_BLOQUEIO_AUTOMATICO) return;
 
     const posAlvo = posicao + 1;
     if (posAlvo >= _totalLinhasBloco(originalBase)) return; // não há próxima linha no bloco
 
-    const blocoReservas = await db.buscarReservasPorBloco(data, originalBase);
+    const blocoReservas = blocoPreCarregado || await db.buscarReservasPorBloco(data, originalBase);
     const naPosAlvo = blocoReservas.find(r => r.posicao === posAlvo);
 
     if (naPosAlvo && naPosAlvo.bloqueioOrigemId === reservaId) {
@@ -139,8 +141,9 @@ async function _removerBloqueioAutomatico(reservaId) {
  * @param {string} reservaId
  * @param {Object|null} dadosAntes - Estado anterior no formato achatado (null = criação)
  * @param {Object} reservaData     - Estado novo, mesmo formato achatado
+ * @param {Array<Object>|null} [blocoPreCarregado] - Repassado pra _verificarBloqueioAutomatico
  */
-async function _reconciliarBloqueioAutomatico(reservaId, dadosAntes, reservaData) {
+async function _reconciliarBloqueioAutomatico(reservaId, dadosAntes, reservaData, blocoPreCarregado = null) {
     const mudouDeLinha = !dadosAntes
         || dadosAntes.data !== reservaData.data
         || (dadosAntes.originalBase || dadosAntes.horario) !== reservaData.originalBase
@@ -153,7 +156,7 @@ async function _reconciliarBloqueioAutomatico(reservaId, dadosAntes, reservaData
         await _removerBloqueioAutomatico(reservaId);
     }
     if (ehGrande && (mudouDeLinha || !eraGrande)) {
-        await _verificarBloqueioAutomatico(reservaId, reservaData.data, reservaData.originalBase, reservaData.posicao, reservaData.paxs);
+        await _verificarBloqueioAutomatico(reservaId, reservaData.data, reservaData.originalBase, reservaData.posicao, reservaData.paxs, blocoPreCarregado);
     }
 }
 
@@ -188,6 +191,7 @@ export async function salvarReserva(dados) {
 
         let docRef;
         let dadosAntesReserva = null;
+        let blocoPreCarregado = null;
         if (dados.id) {
             dadosAntesReserva = await db.getReservaPorId(dados.id);
             await db.atualizarReserva(dados.id, reservaData);
@@ -195,6 +199,7 @@ export async function salvarReserva(dados) {
         } else {
             // Calcula posicao livre no bloco antes de salvar nova reserva
             const snapBloco = await db.buscarReservasPorBloco(reservaData.data, reservaData.originalBase);
+            blocoPreCarregado = snapBloco;
 
             const posicaoFinal = _calcularPosicaoLivre(snapBloco, reservaData.posicao);
             if (posicaoFinal !== reservaData.posicao) {
@@ -218,13 +223,17 @@ export async function salvarReserva(dados) {
             await atribuirMesa(docRef, 'ROOM');
         }
 
-        await _reconciliarBloqueioAutomatico(docRef, dadosAntesReserva, reservaData);
+        // A reserva em si já foi gravada — o Realtime já dispara a atualização da grade
+        // a partir daqui. Bloqueio automático e log de auditoria rodam em segundo plano
+        // (não bloqueiam o retorno) para a tela não ficar esperando por eles; ambos já
+        // tratam os próprios erros internamente, então um catch aqui é só rede de segurança.
+        _reconciliarBloqueioAutomatico(docRef, dadosAntesReserva, reservaData, blocoPreCarregado)
+            .catch(e => console.error('❌ Erro ao reconciliar bloqueio automático:', e));
 
-        // Log
         if (dados.id) {
-            await registrarLog('EDITAR', { id: dados.id, ...dados }, { id: docRef, ...reservaData });
+            registrarLog('EDITAR', { id: dados.id, ...dados }, { id: docRef, ...reservaData });
         } else {
-            await registrarLog('CRIAR', null, { id: docRef, ...reservaData });
+            registrarLog('CRIAR', null, { id: docRef, ...reservaData });
         }
 
         return docRef;
