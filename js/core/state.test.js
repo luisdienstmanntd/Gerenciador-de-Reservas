@@ -71,7 +71,7 @@ describe('getTodasReservas / setTodasReservas', () => {
 
 describe('getConfig', () => {
     it('retorna valores padrão quando não há configuração salva', () => {
-        expect(getConfig()).toEqual({ capacidade: 30, mesas: 18 });
+        expect(getConfig()).toEqual({ capacidade: 30, mesas: 18, bloqueioAutomatico: true });
     });
 
     it('retorna a configuração salva no localStorage', () => {

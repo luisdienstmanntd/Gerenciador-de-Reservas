@@ -17,6 +17,7 @@ import {
     setLinhasExtras,
     removerLinhaExtra,
     getHorariosPadrao,
+    getConfig,
 } from '../../core/state.js';
 import { registrarLog } from './log.js';
 import { db } from '../../core/database.js';
@@ -189,6 +190,12 @@ async function _removerBloqueioAutomatico(reservaId) {
  *   (só é válido quando o bloco não mudou — ver uso abaixo)
  */
 async function _reconciliarBloqueioAutomatico(reservaId, dadosAntes, reservaData, blocoPreCarregado = null) {
+    // Configurável em Configurações do Sistema (por navegador/tablet, mesmo padrão
+    // de capacidade/mesas). Desligado: não cria nem remove bloqueio automático —
+    // bloqueios já existentes ficam como estão, a recepção desbloqueia manualmente
+    // se quiser.
+    if (getConfig().bloqueioAutomatico === false) return;
+
     const mudouDeLinha = !dadosAntes
         || dadosAntes.data !== reservaData.data
         || (dadosAntes.originalBase || dadosAntes.horario) !== reservaData.originalBase

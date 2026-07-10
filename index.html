@@ -638,6 +638,17 @@
                 <small>A última mesa sempre será "Room Service"</small>
             </div>
 
+            <div class="config-linha">
+                <div class="config-linha-topo">
+                    <label for="toggleBloqueioAutomatico">Bloqueio Automático de Reservas Grandes</label>
+                    <label class="switch">
+                        <input type="checkbox" id="toggleBloqueioAutomatico">
+                        <span class="slider-round"></span>
+                    </label>
+                </div>
+                <small>Bloqueia sozinho a(s) próxima(s) linha(s) do horário quando uma reserva atinge 4+ hóspedes</small>
+            </div>
+
             <div style="margin-top: 30px; display: flex; gap: 10px;">
                 <button class="btn-main save-btn" onclick="salvarConfiguracoes()">SALVAR CONFIGURAÇÕES</button>
                 <button class="btn-main cancel-btn" onclick="navegar('reservas')">↩VOLTAR</button>

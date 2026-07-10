@@ -44,7 +44,8 @@ export function getConfig() {
     }
     return {
         capacidade: 30,
-        mesas: 18
+        mesas: 18,
+        bloqueioAutomatico: true
     };
 }
 

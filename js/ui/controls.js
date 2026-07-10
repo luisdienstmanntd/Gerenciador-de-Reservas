@@ -264,26 +264,34 @@ export function carregarConfiguracoes() {
     const inputMesas = document.getElementById('configMesas');
     const toggleCapacidade = document.getElementById('toggleConfigCapacidade');
     const toggleMesas = document.getElementById('toggleConfigMesas');
+    const toggleBloqueioAutomatico = document.getElementById('toggleBloqueioAutomatico');
 
     if (inputCapacidade) { inputCapacidade.value = config.capacidade; inputCapacidade.disabled = true; }
     if (inputMesas)      { inputMesas.value = config.mesas; inputMesas.disabled = true; }
     if (toggleCapacidade) toggleCapacidade.checked = false;
     if (toggleMesas)      toggleMesas.checked = false;
+    // Diferente de capacidade/mesas: é liga/desliga direto, sem trava — não é um
+    // valor sensível que precise de confirmação extra pra editar.
+    if (toggleBloqueioAutomatico) toggleBloqueioAutomatico.checked = config.bloqueioAutomatico !== false;
 }
 
 /**
  * Salva configurações do restaurante no localStorage
  * ✅ v7.8: Offline. Silencioso. Lido por getConfig() em state.js.
  * ✅ v8.8: Re-trava os campos e desliga os switches depois de salvar.
+ * ✅ v8.9: bloqueioAutomatico — liga/desliga o bloqueio automático de reservas
+ *          grandes (service.js), sem trava (não é valor sensível).
  */
 export function salvarConfiguracoes() {
     const inputCapacidade = document.getElementById('configCapacidade');
     const inputMesas = document.getElementById('configMesas');
+    const toggleBloqueioAutomatico = document.getElementById('toggleBloqueioAutomatico');
 
     const capacidade = parseInt(inputCapacidade?.value) || 30;
     const mesas = parseInt(inputMesas?.value) || 18;
+    const bloqueioAutomatico = toggleBloqueioAutomatico ? toggleBloqueioAutomatico.checked : true;
 
-    const config = { capacidade, mesas };
+    const config = { capacidade, mesas, bloqueioAutomatico };
     localStorage.setItem('osteria_config', JSON.stringify(config));
 
     console.log('✅ Configurações salvas:', config);
