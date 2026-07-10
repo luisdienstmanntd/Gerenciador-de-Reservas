@@ -70,13 +70,26 @@ function _totalLinhasBloco(hr) {
 }
 
 /**
+ * Quantas linhas extras uma reserva consome, além da própria — cada linha cobre 2
+ * pessoas. 4-5 pessoas → 1 linha extra; 6-7 → 2; 8-9 → 3; e assim por diante.
+ * Retorna 0 (nenhuma linha extra) pra reservas abaixo de 4 pessoas.
+ */
+function _linhasExtrasNecessarias(paxs) {
+    return Math.max(0, Math.floor(paxs / 2) - 1);
+}
+
+/**
  * Regra de negócio: o padrão é atender 2 pessoas por linha sem atrasar a cozinha.
- * Uma reserva com 4+ adultos consome a capacidade de duas linhas — bloqueia a
- * próxima linha livre do mesmo bloco automaticamente.
+ * Uma reserva grande consome a capacidade de mais de uma linha — bloqueia as
+ * próximas linhas livres do mesmo bloco automaticamente, na quantidade calculada
+ * por _linhasExtrasNecessarias().
  *
- * Nunca força um bloqueio que atropele outra reserva: se a próxima linha já tem
- * dono (reserva real ou outro bloqueio) ou não existe (fora do range visual do
- * bloco), só avisa a recepção — a decisão de abrir mais uma linha fica com ela.
+ * Nunca força um bloqueio que atropele outra reserva ou pule uma linha ocupada:
+ * a varredura para na primeira linha que já tem dono (reserva real ou bloqueio de
+ * outra origem) ou que não existe (fora do range visual do bloco) — só avisa a
+ * recepção nesses casos, a decisão de abrir mais linha fica com ela. Bloqueia o
+ * que der antes de parar (ex: bloco com só mais 1 linha livre → bloqueia só essa 1,
+ * mesmo que a reserva precisasse de 2).
  *
  * @param {string} reservaId  - ID da reserva grande que originou a checagem
  * @param {string} data
@@ -87,46 +100,63 @@ function _totalLinhasBloco(hr) {
  *   chamou (ex: salvarReserva já consulta o bloco antes de criar) — evita repetir a consulta.
  */
 async function _verificarBloqueioAutomatico(reservaId, data, originalBase, posicao, paxs, blocoPreCarregado = null) {
-    if (paxs < PAX_MINIMO_BLOQUEIO_AUTOMATICO) return;
+    const linhasNecessarias = _linhasExtrasNecessarias(paxs);
+    if (linhasNecessarias === 0) return;
 
-    const posAlvo = posicao + 1;
-    if (posAlvo >= _totalLinhasBloco(originalBase)) return; // não há próxima linha no bloco
-
+    const totalLinhas = _totalLinhasBloco(originalBase);
     const blocoReservas = blocoPreCarregado || await db.buscarReservasPorBloco(data, originalBase);
-    const naPosAlvo = blocoReservas.find(r => r.posicao === posAlvo);
 
-    // Já bloqueada E ativa por esta mesma reserva — nada a fazer. Checa `bloqueado`
-    // além do vínculo: desbloquearReserva() só limpa `bloqueado`, não o vínculo
-    // (bloqueioOrigemId) — sem checar `bloqueado` aqui, uma reserva desbloqueada
-    // manualmente e depois editada (ex: 4 → 5 pessoas) nunca seria re-bloqueada.
-    if (naPosAlvo && naPosAlvo.bloqueado && naPosAlvo.bloqueioOrigemId === reservaId) {
-        return;
+    let novasBloqueadas = 0;
+    let parouPorOcupada = false;
+
+    for (let i = 1; i <= linhasNecessarias; i++) {
+        const posAlvo = posicao + i;
+        if (posAlvo >= totalLinhas) break; // acabaram as linhas do bloco
+
+        const naPosAlvo = blocoReservas.find(r => r.posicao === posAlvo);
+
+        // Já bloqueada E ativa por esta mesma reserva — segue conferindo a próxima.
+        // Checa `bloqueado` além do vínculo: desbloquearReserva() só limpa
+        // `bloqueado`, não o vínculo (bloqueioOrigemId) — sem checar `bloqueado`
+        // aqui, uma reserva desbloqueada manualmente e depois editada (ex: 4 → 5
+        // pessoas) nunca seria re-bloqueada.
+        if (naPosAlvo && naPosAlvo.bloqueado && naPosAlvo.bloqueioOrigemId === reservaId) {
+            continue;
+        }
+
+        // Ocupada por outra coisa (reserva real, ou bloqueio de outra origem) —
+        // nunca atropela nem pula pra bloquear a linha seguinte. Uma linha
+        // vinculada a ESTA reserva mas desbloqueada manualmente (bloqueado:false)
+        // NÃO conta como "ocupada por outra coisa" — cai pro bloco abaixo, que
+        // re-bloqueia.
+        if (naPosAlvo && (naPosAlvo.nomes || naPosAlvo.bloqueado || naPosAlvo.somenteHospedes)
+            && naPosAlvo.bloqueioOrigemId !== reservaId) {
+            parouPorOcupada = true;
+            break;
+        }
+
+        const colunasBloqueio = {
+            data, horario: originalBase, originalBase, posicao: posAlvo,
+            nomes: '', tipo: 'hospede', paxs: 0, chd: 0,
+            bloqueado: true,
+            obs: 'BLOQUEIO AUTOMÁTICO — RESERVA GRANDE NA LINHA ANTERIOR',
+            bloqueioOrigemId: reservaId,
+        };
+
+        if (naPosAlvo) {
+            await db.atualizarReserva(naPosAlvo.id, colunasBloqueio);
+        } else {
+            await db.criarReserva(colunasBloqueio);
+        }
+        novasBloqueadas++;
     }
 
-    // Ocupada por outra coisa (reserva real, ou bloqueio de outra origem) — nunca
-    // atropela, só avisa. Uma linha vinculada a ESTA reserva mas desbloqueada
-    // manualmente (bloqueado:false) NÃO conta como "ocupada por outra coisa" — cai
-    // para o bloco abaixo, que re-bloqueia.
-    if (naPosAlvo && (naPosAlvo.nomes || naPosAlvo.bloqueado || naPosAlvo.somenteHospedes)
-        && naPosAlvo.bloqueioOrigemId !== reservaId) {
-        notificarAviso(`Horário ${originalBase}: reserva com ${paxs} pessoas, mas a próxima linha já está ocupada — bloqueie manualmente se necessário.`);
-        return;
+    if (parouPorOcupada) {
+        notificarAviso(`Horário ${originalBase}: reserva com ${paxs} pessoas precisaria de ${linhasNecessarias} linha(s) extra(s), mas uma delas já está ocupada — bloqueie manualmente se necessário.`);
     }
-
-    const colunasBloqueio = {
-        data, horario: originalBase, originalBase, posicao: posAlvo,
-        nomes: '', tipo: 'hospede', paxs: 0, chd: 0,
-        bloqueado: true,
-        obs: 'BLOQUEIO AUTOMÁTICO — RESERVA COM 4+ PESSOAS NA LINHA ANTERIOR',
-        bloqueioOrigemId: reservaId,
-    };
-
-    if (naPosAlvo) {
-        await db.atualizarReserva(naPosAlvo.id, colunasBloqueio);
-    } else {
-        await db.criarReserva(colunasBloqueio);
+    if (novasBloqueadas > 0) {
+        notificarSucesso(`${novasBloqueadas} linha(s) do horário ${originalBase} bloqueada(s) automaticamente (reserva com ${paxs} pessoas).`);
     }
-    notificarSucesso(`Próxima linha do horário ${originalBase} bloqueada automaticamente (reserva com ${paxs} pessoas).`);
 }
 
 /**
