@@ -1,5 +1,5 @@
 /* =========================================================================================
-   OSTERIA DI LUCCA - RENDER.JS (v6.1)
+   OSTERIA DI LUCCA - RENDER.JS (v6.2)
    RESPONSABILIDADE: Renderização da Interface (Grid e Cards)
    ✅ v4.0: Adicionado data-timer-id na linha do timer ativo
    ✅ v4.1: Substituído window.linhasExtras por getLinhasExtras() (arquitetura correta)
@@ -22,6 +22,8 @@
    ✅ v6.0: Escapa nomes/obs/avulsa com escapeHtml() antes de inserir no innerHTML — corrige XSS armazenado
    ✅ v6.1: Reserva cancelada (soft-delete) renderiza como linha disponível — não conta mais
             como reserva ativa em atualizarMiniCards()/filtro/renderizarLinha()
+   ✅ v6.2: Card "CANCELAMENTOS" no header da tela de Reservas — só aparece quando há pelo
+            menos 1 cancelamento no dia, mesmo padrão de Crianças/Room/Degustação
    ========================================================================================= */
 
 import { getHorariosPadrao, getLinhasExtras, getFiltroAtivo } from '../core/state.js';
@@ -40,11 +42,13 @@ export function atualizarMiniCards(reservas) {
         roomservice: 0,
         menuDegustacao: 0,
         tempoTotal: 0,
-        mesasFinalizadas: 0
+        mesasFinalizadas: 0,
+        cancelamentos: 0
     };
 
     reservas.forEach(r => {
-        if (r.bloqueado || r.somenteHospedes || !r.nomes || r.canceladoEm) return;
+        if (r.canceladoEm) { totais.cancelamentos++; return; }
+        if (r.bloqueado || r.somenteHospedes || !r.nomes) return;
 
         let qtdAdultos = parseInt(r.paxs) || 0;
         let qtdCriancas = parseInt(r.chd) || 0;
@@ -81,6 +85,7 @@ export function atualizarMiniCards(reservas) {
     const elRoom = document.getElementById('dashRoomService');
     const elDeg  = document.getElementById('dashMenuDegustacao');
     const elTempo = document.getElementById('countTempo');
+    const elCancelamentos = document.getElementById('dashCancelamentos');
 
     if (elTotal) elTotal.innerText = totais.totalPax;
     if (elCriancas) elCriancas.innerText = totais.criancas;
@@ -89,12 +94,14 @@ export function atualizarMiniCards(reservas) {
     if (elPass) elPass.innerText = totais.passantes;
     if (elRoom) elRoom.innerText = totais.roomservice;
     if (elDeg)  elDeg.innerText  = totais.menuDegustacao;
+    if (elCancelamentos) elCancelamentos.innerText = totais.cancelamentos;
 
     // Oculta cards condicionais quando não há registros
     if (elCriancas) elCriancas.closest('.mini-card').style.display = totais.criancas      > 0 ? '' : 'none';
     if (elRoom)     elRoom.closest('.mini-card').style.display     = totais.roomservice   > 0 ? '' : 'none';
     if (elDeg)      elDeg.closest('.mini-card').style.display      = totais.menuDegustacao > 0 ? '' : 'none';
-    
+    if (elCancelamentos) elCancelamentos.closest('.mini-card').style.display = totais.cancelamentos > 0 ? '' : 'none';
+
     if (elTempo) {
         let tempoMedio = totais.mesasFinalizadas > 0 
             ? Math.round(totais.tempoTotal / totais.mesasFinalizadas) 
