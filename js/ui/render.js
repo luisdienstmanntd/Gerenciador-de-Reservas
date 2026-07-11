@@ -1,5 +1,5 @@
 /* =========================================================================================
-   OSTERIA DI LUCCA - RENDER.JS (v6.3)
+   OSTERIA DI LUCCA - RENDER.JS (v6.4)
    RESPONSABILIDADE: Renderização da Interface (Grid e Cards)
    ✅ v4.0: Adicionado data-timer-id na linha do timer ativo
    ✅ v4.1: Substituído window.linhasExtras por getLinhasExtras() (arquitetura correta)
@@ -26,6 +26,12 @@
             menos 1 cancelamento no dia, mesmo padrão de Crianças/Room/Degustação
    ✅ v6.3: Card CANCELAMENTOS vira filtro clicável — mostra as reservas canceladas com
             dados completos (selo "CANCELADA"), não clicáveis (registro histórico)
+   ✅ v6.4: BUG FIX — reserva ativa podia sumir da grade sem filtro nenhum ativo (bug #58).
+            Causa: cancelar libera a posição pra reuso (service.js), mas a reserva cancelada
+            antiga mantém aquela mesma posicao pra sempre — múltiplas linhas (canceladas +
+            ativa) podiam disputar a mesma célula da grade, e a cancelada às vezes "vencia"
+            por acidente. filtradasBase/linhasEditadas/linhasMigradas passam a ignorar
+            reservas canceladas por completo — elas só aparecem no filtro "cancelados"
    ========================================================================================= */
 
 import { getHorariosPadrao, getLinhasExtras, getFiltroAtivo } from '../core/state.js';
@@ -203,7 +209,7 @@ export function renderizarGrid(reservas) {
             if (isEditado) {
                 // ── Bloco de horário editado ──
                 const linhasEditadas = reservas.filter(r =>
-                    (r.originalBase || r.horario) === hrBloco
+                    (r.originalBase || r.horario) === hrBloco && !r.canceladoEm
                 );
                 if (linhasEditadas.length === 0) return;
 
@@ -223,6 +229,12 @@ export function renderizarGrid(reservas) {
                 const hrBase = hrBloco;
 
                 const filtradasBase = reservas.filter(r => {
+                    // ✅ Cancelada nunca participa do "slotting" por posição — sua posição já
+                    // foi/pode ser reaproveitada por uma reserva nova (_calcularPosicaoLivre em
+                    // service.js), então mais de uma linha pode ter a mesma posicao aqui. Sem
+                    // esse filtro, a reserva ativa podia perder a disputa pra uma "fantasma"
+                    // cancelada e sumir da grade sem filtro nenhum ativo.
+                    if (r.canceladoEm) return false;
                     if (r.originalBase === hrBase || (!r.originalBase && r.horario === hrBase)) {
                         if (!r.nomes && !r.bloqueado && !r.somenteHospedes &&
                             r.horario && !horariosPadraoSet.has(r.horario)) return false;
@@ -265,6 +277,7 @@ export function renderizarGrid(reservas) {
                 let linhasOrdenadas = slotsBase.map((res, index) => ({ res, idxOrig: index }));
 
                 const linhasMigradas = reservas.filter(r =>
+                    !r.canceladoEm &&
                     r.originalBase === hrBase &&
                     r.horario && r.horario !== hrBase &&
                     horariosPadraoSet.has(r.horario) &&
