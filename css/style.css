@@ -1931,6 +1931,12 @@ body.dark-theme #bottom-nav {
   color: #d4a373;
   letter-spacing: 0.3px;
 }
+.home-obs-cancelada {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: #e74c3c;
+  letter-spacing: 0.3px;
+}
 
 
 

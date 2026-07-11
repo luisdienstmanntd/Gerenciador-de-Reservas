@@ -1,5 +1,5 @@
 /* =========================================================================================
-   OSTERIA DI LUCCA - HOME.JS v2.6
+   OSTERIA DI LUCCA - HOME.JS v2.7
    ✅ v1.1: onSnapshot em tempo real
    ✅ v1.2: Gauge de taxa de ocupação
    ✅ v1.3: rosca 360° ocupação com legenda
@@ -24,6 +24,8 @@
             deixavam um "degrau" visual entre hóspede/externo/passante (bug #49)
    ✅ v2.6: Reservas canceladas não contam mais nos KPIs; novo card "Cancelamentos"
             mostra quantas ocorreram no dia (soft-delete — histórico completo no Log)
+   ✅ v2.7: Reserva cancelada aparece em "Observações da Noite" (ex: "20:30 - CANCELADA -
+            NOME"), mesmo sem obs/degustação registrada
    ========================================================================================= */
 
 import { db } from '../core/database.js';
@@ -462,9 +464,11 @@ function _renderizarObsNoite(reservas) {
 
     // ✅ v2.2: Inclui reservas com obs OU com menuDegustacao.
     // Antes: filtrava apenas r.obs — reservas com Menu Degustação sem obs ficavam invisíveis.
+    // ✅ v2.6: Inclui também reservas canceladas — o restaurante precisa ver quem cancelou,
+    // mesmo sem obs/degustação registrada.
     const comObs = reservas
         .filter(r => r.nomes && !r.bloqueado && !r.somenteHospedes &&
-            (r.obs?.trim() || r.menuDegustacao))
+            (r.obs?.trim() || r.menuDegustacao || r.canceladoEm))
         .sort((a, b) => (a.horario || '').localeCompare(b.horario || ''));
 
     if (comObs.length === 0) {
@@ -477,9 +481,11 @@ function _renderizarObsNoite(reservas) {
 
     const itemHtml = comObs.map(r => {
         const linhas = [];
+        if (r.canceladoEm)    linhas.push(`<span class="home-obs-cancelada">❌ CANCELADA</span>`);
         if (r.menuDegustacao) linhas.push(`<span class="home-obs-deg">🍽️ Menu Degustação</span>`);
         if (r.obs?.trim())    linhas.push(`<span>${escapeHtml(r.obs)}</span>`);
-        const mesaLabel = r.mesa && r.mesa !== '' && r.mesa !== '-'
+        // Cancelada não tem mesa relevante (nunca chegou a sentar) — sempre mostra o horário.
+        const mesaLabel = (!r.canceladoEm && r.mesa && r.mesa !== '' && r.mesa !== '-')
             ? (r.mesa === 'ROOM' ? 'RS' : `Mesa ${r.mesa}`)
             : r.horario;
         return `
