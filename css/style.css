@@ -775,6 +775,24 @@ body.dark-theme .pg-pendente {
   vertical-align: middle;
 }
 
+/* ✅ Filtro "Cancelamentos" — linha histórica, não clicável (bug #57) */
+.linha-cancelada {
+  opacity: 0.6;
+  cursor: default;
+}
+.badge-cancelada {
+  display: inline-block;
+  font-size: 0.62rem;
+  font-weight: 800;
+  background: #4a1a1a;
+  color: #e74c3c;
+  padding: 1px 5px;
+  border-radius: 3px;
+  margin-right: 5px;
+  letter-spacing: 0.5px;
+  vertical-align: middle;
+}
+
 /* --- MODAIS --- */
 .modal {
   display: none;

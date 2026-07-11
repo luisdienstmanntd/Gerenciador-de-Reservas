@@ -1,5 +1,5 @@
 /* =========================================================================================
-   OSTERIA DI LUCCA - RENDER.JS (v6.2)
+   OSTERIA DI LUCCA - RENDER.JS (v6.3)
    RESPONSABILIDADE: Renderização da Interface (Grid e Cards)
    ✅ v4.0: Adicionado data-timer-id na linha do timer ativo
    ✅ v4.1: Substituído window.linhasExtras por getLinhasExtras() (arquitetura correta)
@@ -24,6 +24,8 @@
             como reserva ativa em atualizarMiniCards()/filtro/renderizarLinha()
    ✅ v6.2: Card "CANCELAMENTOS" no header da tela de Reservas — só aparece quando há pelo
             menos 1 cancelamento no dia, mesmo padrão de Crianças/Room/Degustação
+   ✅ v6.3: Card CANCELAMENTOS vira filtro clicável — mostra as reservas canceladas com
+            dados completos (selo "CANCELADA"), não clicáveis (registro histórico)
    ========================================================================================= */
 
 import { getHorariosPadrao, getLinhasExtras, getFiltroAtivo } from '../core/state.js';
@@ -124,6 +126,9 @@ export function renderizarGrid(reservas) {
     
     if (filtro) {
         reservasFiltradas = reservas.filter(r => {
+            // ✅ Filtro "cancelados" é o inverso de todos os outros — mostra exatamente
+            // as reservas que os outros filtros excluem (r.canceladoEm), com dados completos.
+            if (filtro === 'cancelados') return !!r.canceladoEm && !!r.nomes;
             if (r.bloqueado || r.somenteHospedes || !r.nomes || r.canceladoEm) return false;
             if (filtro === 'todos') return true;
             if (filtro === 'criancas') return parseInt(r.chd || 0) > 0;
@@ -170,7 +175,7 @@ export function renderizarGrid(reservas) {
                 const tdHora = idx === 0
                     ? `<td class="linha-horario" rowspan="${reservasDoSlot.length}">${hrSlot}</td>`
                     : '';
-                html += renderizarLinha(res, res.horario, res.posicao, tdHora, hrSlot);
+                html += renderizarLinha(res, res.horario, res.posicao, tdHora, hrSlot, filtro === 'cancelados');
             });
             html += `<tr class="separador-horario"><td colspan="6"></td></tr>`;
         });
@@ -304,10 +309,11 @@ export function renderizarGrid(reservas) {
  * ✅ v5.5: Células vazias usam data-* em vez de onclick inline
  *          Evita duplo disparo: onclick inline + event delegation do init.js
  */
-function renderizarLinha(res, horarioVisual, posicao, tdHora, hrBase) {
-    // Reserva cancelada (soft-delete) renderiza como linha disponível — o registro
-    // continua no banco pra análise/log, só não ocupa mais a grade visualmente.
-    if (res && ((res.nomes && !res.canceladoEm) || res.bloqueado || res.somenteHospedes)) {
+function renderizarLinha(res, horarioVisual, posicao, tdHora, hrBase, mostrarCancelada = false) {
+    // Reserva cancelada (soft-delete) normalmente renderiza como linha disponível — o
+    // registro continua no banco pra análise/log, só não ocupa mais a grade visualmente.
+    // Exceção: filtro "cancelados" (mostrarCancelada=true) — aí mostra os dados completos.
+    if (res && ((res.nomes && (!res.canceladoEm || mostrarCancelada)) || res.bloqueado || res.somenteHospedes)) {
         let adultos = parseInt(res.paxs) || 0;
         let criancas = parseInt(res.chd) || 0;
         const isB = res.bloqueado || res.somenteHospedes;
@@ -360,15 +366,22 @@ function renderizarLinha(res, horarioVisual, posicao, tdHora, hrBase) {
         let classePag = res.pagamento === 'pago' ? 'pg-confirmado' : (res.pagamento === 'pendente' ? 'pg-pendente' : '');
         let textoPag = (res.tipo === 'externo' && res.avulsa) ? escapeHtml(res.avulsa) : (res.pagamento || "-");
 
+        // Cancelada no filtro "cancelados": mostra dados completos, mas não é clicável
+        // (registro histórico, não faz sentido reabrir pra editar/cancelar de novo).
+        const isCancelada = !!res.canceladoEm;
+        const classeClicavel = isCancelada ? 'linha-cancelada' : `reserva-clicavel border-${res.tipo}`;
+        const dataId = isCancelada ? '' : `data-id="${res.id}"`;
+        const badgeCancelada = isCancelada ? `<span class="badge-cancelada">❌ CANCELADA</span> ` : '';
+
         return `
 <tr>
     ${tdHora}
-    <td class="reserva-clicavel border-${res.tipo}" data-id="${res.id}">
-        ${label} — ${escapeHtml(res.nomes)} ${res.menuDegustacao ? `<span class="badge-deg">🍽 DEG</span>` : ''}${res.obs ? `<span class="obs-exibicao">${escapeHtml(res.obs)}</span>` : ""}
+    <td class="${classeClicavel}" ${dataId}>
+        ${badgeCancelada}${label} — ${escapeHtml(res.nomes)} ${res.menuDegustacao ? `<span class="badge-deg">🍽 DEG</span>` : ''}${res.obs ? `<span class="obs-exibicao">${escapeHtml(res.obs)}</span>` : ""}
     </td>
     <td class="col-pax"><div class="td-content">${adultos}</div></td>
     <td class="col-chd"><div class="td-content">${criancas}</div></td>
-    <td class="celula-mesa" data-id-mesa="${res.id}" style="cursor: pointer;">
+    <td class="celula-mesa"${isCancelada ? '' : ` data-id-mesa="${res.id}" style="cursor: pointer;"`}>
         <div class="td-content">${conteudoMesa}</div>
     </td>
     <td class="col-av"><div class="td-content ${classePag}">${textoPag}</div></td>
