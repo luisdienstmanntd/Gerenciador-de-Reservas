@@ -37,7 +37,8 @@
 import { getTodasReservas, getDataAtual } from "../../core/state.js";
 import {
   salvarReserva,
-  excluirReserva,
+  cancelarReserva,
+  _calcularDepositoRetido,
   desbloquearReserva,
   salvarApenasHorario,
   alterarData,
@@ -360,8 +361,19 @@ export class ReservaModal {
     document.getElementById("btnResumoCancelar")?.addEventListener("click", () => {
       // ✅ v3.2: window.modalConfirmar substitui confirm() nativo — regra 5 (nunca usar confirm)
       // window.modalConfirmar é exposto por init.js v2.0 via exponerFuncoesGlobais()
-      window.modalConfirmar(`Cancelar reserva de ${escapeHtml(reserva.nomes)}?`, async () => {
-        await excluirReserva(id);
+      // ✅ Cancelamento é soft-delete (mantém histórico pra análise) — não usa mais
+      // excluirReserva(). Externo com <48h de antecedência perde o adiantamento de R$200,
+      // avisado já na confirmação pra recepção comunicar o cliente.
+      let mensagem = `Cancelar reserva de ${escapeHtml(reserva.nomes)}?`;
+      const depositoRetido = _calcularDepositoRetido(reserva);
+      if (depositoRetido === true) {
+        mensagem += " ⚠️ Menos de 48h de antecedência — o cliente perde o adiantamento de R$200.";
+      } else if (depositoRetido === false) {
+        mensagem += " ✅ Dentro do prazo de 48h — o adiantamento será devolvido.";
+      }
+
+      window.modalConfirmar(mensagem, async () => {
+        await cancelarReserva(id);
         this.fechar();
       });
     }, { once: true });

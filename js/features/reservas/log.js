@@ -1,5 +1,5 @@
 /* =========================================================================================
-   OSTERIA DI LUCCA - LOG.JS v3.0
+   OSTERIA DI LUCCA - LOG.JS v3.1
    ✅ v1.4: Padroniza error handling — usa notificacao.js
    ✅ v2.0: Timeline profissional — layout otimizado para tablet e PC de recepção
             Linha vertical conectando eventos, agrupamento por hora, ícones SVG por ação,
@@ -8,6 +8,8 @@
             'reservas_log'. FK de reserva_id foi removida (ver migration
             20260709161500) — um log precisa sobreviver à exclusão da reserva que
             o originou.
+   ✅ v3.1: Ação CANCELAR (soft-delete, bug #57) — badge roxo próprio, campos
+            canceladoEm/depositoRetido aparecem no diff expandido.
    ========================================================================================= */
 
 import { db } from '../../core/database.js';
@@ -73,6 +75,8 @@ function _resumir(dados) {
         mesa:            dados.mesa            || '',
         bloqueado:       dados.bloqueado       || false,
         somenteHospedes: dados.somenteHospedes || false,
+        canceladoEm:     dados.canceladoEm     || '',
+        depositoRetido:  dados.depositoRetido,
     };
 }
 
@@ -85,10 +89,12 @@ const CONFIG_ACAO = {
     EDITAR:      { cor: '#f39c12', label: 'EDITADO',      icone: _iconeLapis()   },
     EXCLUIR:     { cor: '#e74c3c', label: 'EXCLUÍDO',     icone: _iconeLixeira() },
     DESBLOQUEAR: { cor: '#3498db', label: 'DESBLOQUEADO', icone: _iconeCadeado() },
+    CANCELAR:    { cor: '#8e44ad', label: 'CANCELADO',    icone: _iconeLixeira() },
 };
 
 const LABELS_CAMPOS = {
     nomes: 'Nome', apto: 'Apto', codigoReserva: 'Reserva', horario: 'Horário', tipo: 'Tipo',
+    canceladoEm: 'Cancelado em', depositoRetido: 'Depósito retido',
     paxs: 'Adultos', chd: 'Crianças', obs: 'Obs', mesa: 'Mesa',
     bloqueado: 'Bloqueado', somenteHospedes: 'Só Hósp.',
 };

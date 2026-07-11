@@ -1,5 +1,5 @@
 /* =========================================================================================
-   OSTERIA DI LUCCA - RESERVAS.SERVICE.JS (v4.0)
+   OSTERIA DI LUCCA - RESERVAS.SERVICE.JS (v4.2)
    ✅ v2.8-v3.11: histórico Firestore — ver git log para versões anteriores.
    ✅ v4.0: Fase 5 da migração Firestore → Supabase. Todas as operações de escrita/leitura
             passam a falar com o Supabase. `firestore.batch()` (atômico) não tem equivalente
@@ -9,6 +9,13 @@
             isso sozinho — risco real baixo. Ver plano_de_ação.md §Fase 5.
             _calcularPosicaoLivre() muda de assinatura: recebe array simples de reservas
             (formato achatado de sempre) em vez de um QuerySnapshot do Firestore.
+   ✅ v4.1: Bloqueio automático de reserva grande (4+ pessoas) — ver bug #52.
+   ✅ v4.2: cancelarReserva() — soft-delete com histórico (bug #57). Substitui a exclusão
+            de vez no botão "CANCELAR RESERVA" do resumo. _calcularDepositoRetido()
+            calcula automaticamente se o cliente Externo perde o adiantamento de R$200
+            (menos de 48h de antecedência). _calcularPosicaoLivre() passa a ignorar
+            reservas canceladas ao determinar posições ocupadas — a linha fica livre
+            de novo pra uma reserva nova.
    ========================================================================================= */
 
 import {
@@ -48,7 +55,9 @@ async function _getClient() {
 export function _calcularPosicaoLivre(reservasBloco, posicaoDesejada = 0) {
     const ocupadas = [];
     reservasBloco.forEach(r => {
-        if (r.nomes || r.bloqueado || r.somenteHospedes) {
+        // Reserva cancelada libera a posição pra uma reserva nova reaproveitar —
+        // ela continua existindo no banco (soft-delete), só não "trava" o slot.
+        if ((r.nomes && !r.canceladoEm) || r.bloqueado || r.somenteHospedes) {
             ocupadas.push(r.posicao ?? 0);
         }
     });
@@ -313,6 +322,54 @@ export async function excluirReserva(id) {
     } catch (error) {
         console.error('❌ Erro ao excluir reserva:', error);
         notificarErro('Erro ao excluir reserva. Tente novamente.');
+        throw error;
+    }
+}
+
+const PRAZO_CANCELAMENTO_HORAS = 48;
+
+/**
+ * Calcula se um cancelamento agora, pra uma reserva de externo, perde o
+ * adiantamento de R$200 — menos de 48h de antecedência = perde.
+ * @param {Object} reserva - Reserva no formato achatado (precisa de tipo/data/horario)
+ * @returns {boolean|null} true = perde o adiantamento, false = devolve, null = não se aplica
+ */
+export function _calcularDepositoRetido(reserva) {
+    if (reserva.tipo !== 'externo') return null;
+    const dataHoraReserva = new Date(`${reserva.data}T${reserva.horario}`);
+    const horasDeAntecedencia = (dataHoraReserva - new Date()) / 3600000;
+    return horasDeAntecedencia < PRAZO_CANCELAMENTO_HORAS;
+}
+
+/**
+ * Cancela uma reserva — soft-delete: mantém o registro no banco (histórico pra
+ * análise, visível no Log do dia), mas some da grade/KPIs como reserva ativa.
+ * Diferente de excluirReserva(), que apaga de vez (uso: erro de digitação).
+ *
+ * Pra reservas de Externo, calcula automaticamente se o cliente perde o
+ * adiantamento de R$200 (menos de 48h de antecedência).
+ *
+ * @param {string} id
+ * @returns {Promise<{depositoRetido: boolean|null}>}
+ */
+export async function cancelarReserva(id) {
+    if (!id) throw new Error('ID obrigatório');
+    try {
+        const dadosAntes = await db.getReservaPorId(id) || { id };
+        const depositoRetido = _calcularDepositoRetido(dadosAntes);
+
+        await db.cancelarReserva(id, depositoRetido);
+        await registrarLog('CANCELAR', dadosAntes, {
+            ...dadosAntes,
+            canceladoEm: new Date().toISOString(),
+            depositoRetido,
+        });
+
+        console.log('✅ Reserva cancelada:', id, '| depósito retido:', depositoRetido);
+        return { depositoRetido };
+    } catch (error) {
+        console.error('❌ Erro ao cancelar reserva:', error);
+        notificarErro('Erro ao cancelar reserva. Tente novamente.');
         throw error;
     }
 }

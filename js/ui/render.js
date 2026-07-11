@@ -1,5 +1,5 @@
 /* =========================================================================================
-   OSTERIA DI LUCCA - RENDER.JS (v5.9)
+   OSTERIA DI LUCCA - RENDER.JS (v6.1)
    RESPONSABILIDADE: Renderização da Interface (Grid e Cards)
    ✅ v4.0: Adicionado data-timer-id na linha do timer ativo
    ✅ v4.1: Substituído window.linhasExtras por getLinhasExtras() (arquitetura correta)
@@ -20,6 +20,8 @@
    ✅ v5.9: Reservas reais têm prioridade sobre docs vazios na mesma posição ao preencher slotsBase
             Evita que doc vazio fantasma sobrescreva reserva real quando ambos estão na mesma posição
    ✅ v6.0: Escapa nomes/obs/avulsa com escapeHtml() antes de inserir no innerHTML — corrige XSS armazenado
+   ✅ v6.1: Reserva cancelada (soft-delete) renderiza como linha disponível — não conta mais
+            como reserva ativa em atualizarMiniCards()/filtro/renderizarLinha()
    ========================================================================================= */
 
 import { getHorariosPadrao, getLinhasExtras, getFiltroAtivo } from '../core/state.js';
@@ -42,7 +44,7 @@ export function atualizarMiniCards(reservas) {
     };
 
     reservas.forEach(r => {
-        if (r.bloqueado || r.somenteHospedes || !r.nomes) return;
+        if (r.bloqueado || r.somenteHospedes || !r.nomes || r.canceladoEm) return;
 
         let qtdAdultos = parseInt(r.paxs) || 0;
         let qtdCriancas = parseInt(r.chd) || 0;
@@ -115,7 +117,7 @@ export function renderizarGrid(reservas) {
     
     if (filtro) {
         reservasFiltradas = reservas.filter(r => {
-            if (r.bloqueado || r.somenteHospedes || !r.nomes) return false;
+            if (r.bloqueado || r.somenteHospedes || !r.nomes || r.canceladoEm) return false;
             if (filtro === 'todos') return true;
             if (filtro === 'criancas') return parseInt(r.chd || 0) > 0;
             if (filtro === 'menuDegustacao') return r.menuDegustacao === true;
@@ -296,7 +298,9 @@ export function renderizarGrid(reservas) {
  *          Evita duplo disparo: onclick inline + event delegation do init.js
  */
 function renderizarLinha(res, horarioVisual, posicao, tdHora, hrBase) {
-    if (res && (res.nomes || res.bloqueado || res.somenteHospedes)) {
+    // Reserva cancelada (soft-delete) renderiza como linha disponível — o registro
+    // continua no banco pra análise/log, só não ocupa mais a grade visualmente.
+    if (res && ((res.nomes && !res.canceladoEm) || res.bloqueado || res.somenteHospedes)) {
         let adultos = parseInt(res.paxs) || 0;
         let criancas = parseInt(res.chd) || 0;
         const isB = res.bloqueado || res.somenteHospedes;

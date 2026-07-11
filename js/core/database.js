@@ -105,6 +105,8 @@ class DatabaseService {
             inicioMesa: row.inicio_mesa || null,
             fimMesa: row.fim_mesa || null,
             bloqueioOrigemId: row.bloqueio_origem_id || null,
+            canceladoEm: row.cancelado_em || null,
+            depositoRetido: row.deposito_retido,
         };
     }
 
@@ -296,6 +298,22 @@ class DatabaseService {
 
     async excluirReserva(id) {
         const { error } = await this.client.from('reservas').delete().eq('id', id);
+        if (error) throw error;
+    }
+
+    /**
+     * Cancela uma reserva (soft-delete) — mantém a linha no banco pra análise,
+     * mas marca `cancelado_em` pra ela parar de contar como reserva ativa (grade,
+     * KPIs, Dashboard). `depositoRetido` é calculado por quem chama (service.js),
+     * com base no prazo de 48h — só relevante pra tipo='externo'.
+     * @param {string} id
+     * @param {boolean|null} depositoRetido
+     */
+    async cancelarReserva(id, depositoRetido) {
+        const { error } = await this.client.from('reservas').update({
+            cancelado_em: new Date().toISOString(),
+            deposito_retido: depositoRetido,
+        }).eq('id', id);
         if (error) throw error;
     }
 

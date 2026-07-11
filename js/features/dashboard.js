@@ -1,5 +1,5 @@
 /* =========================================================================================
-   OSTERIA DI LUCCA - DASHBOARD.JS v3.9
+   OSTERIA DI LUCCA - DASHBOARD.JS v3.15
    ✅ v3.8: Padroniza error handling — usa notificacao.js
    ✅ v3.9: Bug #7 — usa buscarReservasPorPeriodo() de service.js — elimina acesso direto ao Firestore
    ✅ v3.10: ocupacaoHorario construído a partir de getHorariosPadrao() — elimina array hardcoded (Manutenção #6)
@@ -11,6 +11,9 @@
              "Período" (exclui dias com eventos fechados que distorceriam a análise) (bug #48)
    ✅ v3.14: Remove borderRadius das séries empilhadas (chartHorario e chartDiaSemana) — mesmo
              "degrau" visual do bug #49
+   ✅ v3.15: Card CANCELAMENTOS — conta reservas canceladas (soft-delete) no período, fora
+             de qualquer KPI/gráfico de reserva ativa (bug #57). Corrige de quebra um id
+             desalinhado: #kpiCancelados exibia CRIANÇAS por engano — renomeado p/ #kpiCriancas
    ========================================================================================= */
 
 import { buscarReservasPorPeriodo, buscarReservasPorData } from './reservas/service.js';
@@ -34,7 +37,7 @@ let datasEspecificas = [];    // usado no modo 'especificas' — datas avulsas a
 function processarDashboard(reservas, diasNoPeriodo = 1) {
     console.log("📊 Dashboard processando", reservas.length, "reservas em", diasNoPeriodo, "dias");
 
-    let kpis = { totalPax: 0, adultos: 0, criancas: 0, tempoTotalMinutos: 0, mesasFinalizadasCount: 0 };
+    let kpis = { totalPax: 0, adultos: 0, criancas: 0, tempoTotalMinutos: 0, mesasFinalizadasCount: 0, cancelamentos: 0 };
     let mixCliente = { hospede: 0, externo: 0, passante: 0, roomservice: 0 };
     // ✅ v3.11: ocupacaoHorario agora separa por tipo (hospede/externo/passante) — Room
     // Service fica de fora dessa quebra específica (decisão do dono do projeto)
@@ -48,6 +51,9 @@ function processarDashboard(reservas, diasNoPeriodo = 1) {
     let porDiaSemana = DIAS_SEMANA.map(() => ({ hospede: 0, externo: 0, passante: 0 }));
 
     reservas.forEach(r => {
+        // Cancelada (soft-delete) conta separadamente — não entra em nenhum KPI/gráfico
+        // de reserva ativa, mas o restaurante precisa ver que aconteceu (bug #57).
+        if (r.canceladoEm) { kpis.cancelamentos++; return; }
         if (r.somenteHospedes && !r.nomes) return;
         if (!r.nomes) return;
 
@@ -98,17 +104,18 @@ function processarDashboard(reservas, diasNoPeriodo = 1) {
     let mesaTop = Object.keys(usoMesas).reduce((a, b) => usoMesas[a] > usoMesas[b] ? a : b);
     if (usoMesas[mesaTop] === 0) mesaTop = "-";
 
-    atualizarKpisNaTela(taxaOcupacao, kpis.totalPax, tempoMedio, mesaTop, kpis.criancas);
+    atualizarKpisNaTela(taxaOcupacao, kpis.totalPax, tempoMedio, mesaTop, kpis.criancas, kpis.cancelamentos);
     renderizarGraficosAvancados(ocupacaoHorario, mixCliente, porDiaSemana, usoMesas);
 }
 
-function atualizarKpisNaTela(ocupacao, total, tempo, mesaTop, criancas) {
+function atualizarKpisNaTela(ocupacao, total, tempo, mesaTop, criancas, cancelamentos) {
     const el = {
         ocupacao: document.getElementById('kpiOcupacao'),
         total: document.getElementById('kpiTotalPax'),
         tempo: document.getElementById('kpiTempoMedio'),
         mesa: document.getElementById('kpiMesaTop'),
-        criancas: document.getElementById('kpiCancelados'),
+        criancas: document.getElementById('kpiCriancas'),
+        cancelamentos: document.getElementById('kpiCancelamentos'),
         opTotal: document.getElementById('dashTotalPax')
     };
 
@@ -121,6 +128,7 @@ function atualizarKpisNaTela(ocupacao, total, tempo, mesaTop, criancas) {
     if (el.tempo) el.tempo.innerText = tempo > 0 ? tempo + ' min' : '--';
     if (el.mesa) el.mesa.innerText = mesaTop !== "-" ? 'Mesa ' + mesaTop : '--';
     if (el.criancas) el.criancas.innerText = criancas;
+    if (el.cancelamentos) el.cancelamentos.innerText = cancelamentos;
 }
 
 function renderizarGraficosAvancados(dadosHorario, dadosTipo, dadosDiaSemana, dadosMesas) {

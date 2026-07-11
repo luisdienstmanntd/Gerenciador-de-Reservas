@@ -1,5 +1,5 @@
 /* =========================================================================================
-   OSTERIA DI LUCCA - HOME.JS v2.1
+   OSTERIA DI LUCCA - HOME.JS v2.6
    ✅ v1.1: onSnapshot em tempo real
    ✅ v1.2: Gauge de taxa de ocupação
    ✅ v1.3: rosca 360° ocupação com legenda
@@ -22,6 +22,8 @@
             (hóspede/externo/passante), mesma quebra do Dashboard (bug #45)
    ✅ v2.5: Remove borderRadius das séries empilhadas — cantos arredondados por segmento
             deixavam um "degrau" visual entre hóspede/externo/passante (bug #49)
+   ✅ v2.6: Reservas canceladas não contam mais nos KPIs; novo card "Cancelamentos"
+            mostra quantas ocorreram no dia (soft-delete — histórico completo no Log)
    ========================================================================================= */
 
 import { db } from '../core/database.js';
@@ -71,9 +73,10 @@ export async function carregarHome() {
     _unsubscribeHome = db.escutarReservasPorData(hoje, async (reservasHoje) => {
         console.log(`📡 Home: ${reservasHoje.length} reservas recebidas`);
 
-        const reaisHoje = reservasHoje.filter(r => r.nomes && !r.bloqueado && !r.somenteHospedes);
+        const reaisHoje = reservasHoje.filter(r => r.nomes && !r.bloqueado && !r.somenteHospedes && !r.canceladoEm);
+        const cancelamentosHoje = reservasHoje.filter(r => r.canceladoEm).length;
 
-        _renderizarKPIs(reaisHoje);
+        _renderizarKPIs(reaisHoje, cancelamentosHoje);
         _atualizarClonesKpiTicker();
         if (!_tickerInicializado) { _tickerInicializado = true; _iniciarKpiTicker(); }
 
@@ -82,7 +85,7 @@ export async function carregarHome() {
 
         try {
             const reaisSemana = (await db.getReservasPorPeriodo(hoje, _somarDias(hoje, 6)))
-                .filter(r => r.nomes && !r.bloqueado && !r.somenteHospedes);
+                .filter(r => r.nomes && !r.bloqueado && !r.somenteHospedes && !r.canceladoEm);
             _renderizarGraficos(reaisHoje, reaisSemana, hoje);
         } catch (e) {
             console.error('❌ Erro ao carregar semana:', e);
@@ -96,7 +99,7 @@ export async function carregarHome() {
 // ─────────────────────────────────────────────────────────────────────────────
 // KPIs
 // ─────────────────────────────────────────────────────────────────────────────
-function _renderizarKPIs(reservas) {
+function _renderizarKPIs(reservas, cancelamentos = 0) {
     let totalPax = 0, hospedes = 0, externos = 0, passantes = 0, roomservice = 0, criancas = 0, degustacao = 0;
 
     reservas.forEach(r => {
@@ -123,12 +126,13 @@ function _renderizarKPIs(reservas) {
     _setKPI('home-kpi-roomservice', roomservice);
     _setKPI('home-kpi-criancas',    criancas);
     _setKPI('home-kpi-degustacao',  degustacao);
+    _setKPI('home-kpi-cancelamentos', cancelamentos);
 
     // Oculta cards condicionais quando não há registros
-    ['home-kpi-criancas', 'home-kpi-roomservice', 'home-kpi-degustacao'].forEach(id => {
+    ['home-kpi-criancas', 'home-kpi-roomservice', 'home-kpi-degustacao', 'home-kpi-cancelamentos'].forEach(id => {
         const el = document.getElementById(id);
         if (el) {
-            const totais_map = { 'home-kpi-criancas': criancas, 'home-kpi-roomservice': roomservice, 'home-kpi-degustacao': degustacao };
+            const totais_map = { 'home-kpi-criancas': criancas, 'home-kpi-roomservice': roomservice, 'home-kpi-degustacao': degustacao, 'home-kpi-cancelamentos': cancelamentos };
             el.closest('.home-kpi-card').style.display = totais_map[id] > 0 ? '' : 'none';
         }
     });
