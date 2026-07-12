@@ -38,6 +38,7 @@ import { getTodasReservas, getDataAtual } from "../../core/state.js";
 import {
   salvarReserva,
   cancelarReserva,
+  excluirReserva,
   _calcularDepositoRetido,
   desbloquearReserva,
   salvarApenasHorario,
@@ -340,7 +341,10 @@ export class ReservaModal {
         <button type="button" id="btnResumoEditar"    style="padding:14px;background:#f39c12;color:#fff;border:none;border-radius:8px;font-weight:900;font-size:1rem;cursor:pointer;letter-spacing:1px;">EDITAR RESERVA</button>
         <button type="button" id="btnResumoHorario"   style="padding:14px;background:#3498db;color:#fff;border:none;border-radius:8px;font-weight:900;font-size:1rem;cursor:pointer;letter-spacing:1px;">ALTERAR HORÁRIO</button>
         <button type="button" id="btnResumoData"      style="padding:14px;background:#8e44ad;color:#fff;border:none;border-radius:8px;font-weight:900;font-size:1rem;cursor:pointer;letter-spacing:1px;">ALTERAR DATA</button>
-        <button type="button" id="btnResumoCancelar"  style="padding:14px;background:#e74c3c;color:#fff;border:none;border-radius:8px;font-weight:900;font-size:1rem;cursor:pointer;letter-spacing:1px;">CANCELAR RESERVA</button>
+        <div style="display:flex;gap:12px;">
+          <button type="button" id="btnResumoCancelar" style="flex:1;padding:14px;background:#e74c3c;color:#fff;border:none;border-radius:8px;font-weight:900;font-size:1rem;cursor:pointer;letter-spacing:1px;">CANCELAR RESERVA</button>
+          <button type="button" id="btnResumoExcluir"  style="flex:1;padding:14px;background:#7f1d1d;color:#fff;border:none;border-radius:8px;font-weight:900;font-size:1rem;cursor:pointer;letter-spacing:1px;">EXCLUIR</button>
+        </div>
         <button type="button" id="btnResumoFechar"    style="padding:14px;background:transparent;color:var(--texto-principal);border:2px solid var(--borda,#555);border-radius:8px;font-weight:700;font-size:1rem;cursor:pointer;letter-spacing:1px;">FECHAR</button>
       </div>
     `;
@@ -400,6 +404,19 @@ export class ReservaModal {
 
       window.modalConfirmar(mensagem, async () => {
         await cancelarReserva(id);
+        this.fechar();
+      });
+    }, { once: true });
+
+    document.getElementById("btnResumoExcluir")?.addEventListener("click", () => {
+      // ✅ EXCLUIR é diferente de CANCELAR: apaga a reserva de vez do banco (sem
+      // manter cancelado_em/deposito_retido, sem aparecer no filtro "Cancelamentos")
+      // — uso pretendido é erro de digitação de quem registrou a reserva, não
+      // desistência do cliente. Só fica rastreável pelo log de alterações (EXCLUIR).
+      const mensagem = `Excluir reserva de ${escapeHtml(reserva.nomes)}? Isso apaga o registro definitivamente (diferente de cancelar) — use só em caso de erro de digitação. A exclusão fica registrada no log.`;
+
+      window.modalConfirmar(mensagem, async () => {
+        await excluirReserva(id);
         this.fechar();
       });
     }, { once: true });
