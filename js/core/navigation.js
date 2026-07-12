@@ -120,6 +120,18 @@ function navegar(tela) {
     if (tela === 'configuracoes' && typeof window.carregarConfiguracoes === 'function') {
         window.carregarConfiguracoes();
     }
+
+    // Log de Alterações abre já com as alterações do dia carregadas — o botão
+    // BUSCAR continua existindo só pra consultar outras datas. Data no fuso local
+    // (toISOString é UTC — depois das 21h viraria "amanhã").
+    if (tela === 'logs') {
+        const dataInput = document.getElementById('dataFiltroLog');
+        if (dataInput && !dataInput.value) {
+            const h = new Date();
+            dataInput.value = `${h.getFullYear()}-${String(h.getMonth() + 1).padStart(2, '0')}-${String(h.getDate()).padStart(2, '0')}`;
+        }
+        if (typeof window.carregarLogs === 'function') window.carregarLogs();
+    }
 }
 
 // ── Label de data no header da home ────────────────────────────────────────

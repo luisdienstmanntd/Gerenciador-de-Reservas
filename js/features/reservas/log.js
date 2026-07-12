@@ -10,6 +10,11 @@
             o originou.
    ✅ v3.1: Ação CANCELAR (soft-delete, bug #57) — badge roxo próprio, campos
             canceladoEm/depositoRetido aparecem no diff expandido.
+   ✅ v3.2: Diff mostra SOMENTE os campos alterados (antes listava todos, com os iguais
+            esmaecidos); a dica do card adianta quais campos mudaram. Datas do filtro
+            passam a usar o dia LOCAL — new Date().toISOString() é UTC, então depois das
+            21h (Gramado, UTC-3) "hoje" virava amanhã e o dia aparecia vazio; os limites
+            da consulta (00:00–23:59 locais) são convertidos pra UTC na query.
    ========================================================================================= */
 
 import { db } from '../../core/database.js';
@@ -205,6 +210,12 @@ function _injetarCSS() {
 // CARREGAMENTO
 // ─────────────────────────────────────────────────────────────────────────────
 
+/** Data de hoje no fuso LOCAL (YYYY-MM-DD) — toISOString() é UTC e vira "amanhã" após as 21h. */
+function _hojeLocal() {
+    const h = new Date();
+    return `${h.getFullYear()}-${String(h.getMonth() + 1).padStart(2, '0')}-${String(h.getDate()).padStart(2, '0')}`;
+}
+
 export async function carregarLogs() {
     _injetarCSS();
 
@@ -214,14 +225,18 @@ export async function carregarLogs() {
     container.innerHTML = '<div style="text-align:center;padding:50px;opacity:.45;"><div style="font-size:1.6rem;margin-bottom:10px;">⏳</div><div style="font-size:.82rem;font-weight:600;letter-spacing:1px;">CARREGANDO...</div></div>';
 
     const inputData = document.getElementById('dataFiltroLog');
-    const data = inputData?.value || new Date().toISOString().split('T')[0];
+    const data = inputData?.value || _hojeLocal();
+    if (inputData && !inputData.value) inputData.value = data;
 
     try {
         await db.aguardarInicializacao();
         const client = db.getClient();
 
-        const inicioDia = data + 'T00:00:00.000Z';
-        const fimDia    = data + 'T23:59:59.999Z';
+        // Limites do dia no fuso LOCAL, convertidos pra UTC na query — criado_em é
+        // timestamptz. Com limites em UTC puro, alterações após as 21h (UTC-3) caíam
+        // no dia seguinte do filtro.
+        const inicioDia = new Date(data + 'T00:00:00').toISOString();
+        const fimDia    = new Date(data + 'T23:59:59.999').toISOString();
 
         const { data: rows, error } = await client.from('reservas_log')
             .select('*')
@@ -303,13 +318,18 @@ function _renderizarItem(log) {
           '</div>'
         : '';
 
-    // Diff
-    var temDiff       = log.acao === 'EDITAR' && log.dadosAntes && log.dadosDepois;
-    var diffHtml      = temDiff ? _renderizarDiff(log) : '';
+    // Diff — só existe quando a edição alterou de fato algum campo rastreado.
+    // A dica já adianta QUAIS campos mudaram; o expandido mostra só esses (v3.2).
+    var camposAlterados = (log.acao === 'EDITAR' && log.dadosAntes && log.dadosDepois)
+        ? _camposAlterados(log.dadosAntes, log.dadosDepois)
+        : [];
+    var temDiff       = camposAlterados.length > 0;
+    var diffHtml      = temDiff ? _renderizarDiff(log, camposAlterados) : '';
     var clicavelClass = temDiff ? 'tl-clicavel' : '';
     var onclickAttr   = temDiff ? 'onclick="expandirLog(\'' + log.id + '\')"' : '';
+    var nomesCampos   = camposAlterados.map(function(c) { return LABELS_CAMPOS[c]; }).join(', ');
     var dicaHtml      = temDiff
-        ? '<div class="tl-dica">' + _iconeLapis() + ' <span>toque para ver comparação</span></div>'
+        ? '<div class="tl-dica">' + _iconeLapis() + ' <span>Alterou: ' + nomesCampos + ' — toque para detalhes</span></div>'
         : '';
 
     return (
@@ -339,36 +359,36 @@ function _renderizarItem(log) {
 // DIFF EXPANDIDO
 // ─────────────────────────────────────────────────────────────────────────────
 
-function _renderizarDiff(log) {
+/** Campos rastreados cujo valor mudou entre antes e depois, na ordem de LABELS_CAMPOS. */
+function _camposAlterados(antes, depois) {
+    return Object.keys(LABELS_CAMPOS).filter(function(c) {
+        return String(antes[c] != null ? antes[c] : '') !== String(depois[c] != null ? depois[c] : '');
+    });
+}
+
+function _renderizarDiff(log, camposAlterados) {
     var antes  = log.dadosAntes  || {};
     var depois = log.dadosDepois || {};
-    var campos = Object.keys(LABELS_CAMPOS);
-    var mudancas = new Set(campos.filter(function(c) { return String(antes[c]) !== String(depois[c]); }));
 
-    // Alterados primeiro, iguais depois
-    var ordenados = campos.filter(function(c) { return  mudancas.has(c); })
-        .concat(campos.filter(function(c) { return !mudancas.has(c); }));
-
-    var linhas = ordenados.map(function(c) {
-        var isAlterado = mudancas.has(c);
-        var rowClass   = isAlterado ? 'linha-alterada' : 'linha-igual';
-        var vAntes     = String(antes[c]  != null ? antes[c]  : '') || '—';
-        var vDepois    = String(depois[c] != null ? depois[c] : '') || '—';
+    // ✅ v3.2: só os campos que mudaram — os iguais são ruído (antes apareciam esmaecidos)
+    var linhas = camposAlterados.map(function(c) {
+        var vAntes  = String(antes[c]  != null ? antes[c]  : '') || '—';
+        var vDepois = String(depois[c] != null ? depois[c] : '') || '—';
         return (
-            '<tr class="' + rowClass + '">' +
+            '<tr class="linha-alterada">' +
                 '<td class="col-campo">' + LABELS_CAMPOS[c] + '</td>' +
-                '<td class="' + (isAlterado ? 'col-antes' : '') + '">' + vAntes  + '</td>' +
-                '<td class="' + (isAlterado ? 'col-depois' : '') + '">' + vDepois + '</td>' +
+                '<td class="col-antes">' + vAntes  + '</td>' +
+                '<td class="col-depois">' + vDepois + '</td>' +
             '</tr>'
         );
     }).join('');
 
-    var qtd = mudancas.size;
+    var qtd = camposAlterados.length;
     var subtitulo = qtd === 1 ? '1 campo alterado' : qtd + ' campos alterados';
 
     return (
         '<div id="diff-' + log.id + '" class="tl-diff">' +
-            '<div class="tl-diff-cabecalho">Comparação — ' + subtitulo + '</div>' +
+            '<div class="tl-diff-cabecalho">Alterações — ' + subtitulo + '</div>' +
             '<table class="tl-diff-tabela">' +
                 '<thead><tr>' +
                     '<th>Campo</th>' +
