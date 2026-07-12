@@ -374,6 +374,27 @@ export async function cancelarReserva(id) {
     }
 }
 
+/**
+ * Desfaz o cancelamento de uma reserva — volta a ocupar o local/data/horário
+ * de origem (nunca alterados pelo cancelamento) e some do filtro "Cancelamentos".
+ * O cancelamento em si só continua rastreável pelo log de alterações.
+ * @param {string} id
+ */
+export async function restaurarReserva(id) {
+    if (!id) throw new Error('ID obrigatório');
+    try {
+        const dadosAntes = await db.getReservaPorId(id) || { id };
+        await db.restaurarReserva(id);
+        await registrarLog('RESTAURAR', dadosAntes, { ...dadosAntes, canceladoEm: null, depositoRetido: null });
+
+        console.log('✅ Cancelamento desfeito:', id);
+    } catch (error) {
+        console.error('❌ Erro ao desfazer cancelamento:', error);
+        notificarErro('Erro ao desfazer cancelamento. Tente novamente.');
+        throw error;
+    }
+}
+
 export async function desbloquearReserva(id) {
     if (!id) throw new Error('ID obrigatório');
     const client = await _getClient();

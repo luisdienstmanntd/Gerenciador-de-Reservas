@@ -42,6 +42,7 @@ import {
   desbloquearReserva,
   salvarApenasHorario,
   alterarData,
+  restaurarReserva,
 } from "./service.js";
 import { validarReserva, formatarTelefone, limparHighlightCampos, escapeHtml } from "./validators.js";
 
@@ -266,6 +267,31 @@ export class ReservaModal {
     if (titulo) titulo.innerText = `${reserva.horario} — ${reserva.nomes || ""}`;
 
     this._ocultarConteudoModal();
+
+    // ✅ Reserva cancelada (soft-delete): único fluxo possível é desfazer o cancelamento —
+    // volta ao local/data/horário de origem (nunca alterados pelo cancelamento). O registro
+    // de cancelamento some da reserva e passa a existir só no log de alterações.
+    if (reserva.canceladoEm) {
+      const resumoCancelada = document.createElement("div");
+      resumoCancelada.id = "resumoReserva";
+      resumoCancelada.innerHTML = `
+        <div style="display:flex;flex-direction:column;gap:12px;padding:10px 0;">
+          <div style="text-align:center;padding:10px 14px;background:rgba(231,76,60,0.12);border-radius:8px;font-size:0.82rem;font-weight:700;color:#e74c3c;letter-spacing:0.5px;">❌ RESERVA CANCELADA</div>
+          <button type="button" id="btnResumoDesfazerCancelamento" style="padding:14px;background:#27ae60;color:#fff;border:none;border-radius:8px;font-weight:900;font-size:1rem;cursor:pointer;letter-spacing:1px;">DESFAZER CANCELAMENTO</button>
+          <button type="button" id="btnResumoFechar" style="padding:14px;background:transparent;color:var(--texto-principal);border:2px solid var(--borda,#555);border-radius:8px;font-weight:700;font-size:1rem;cursor:pointer;letter-spacing:1px;">FECHAR</button>
+        </div>
+      `;
+      if (titulo) titulo.after(resumoCancelada);
+      document.getElementById("btnResumoDesfazerCancelamento")?.addEventListener("click", () => {
+        window.modalConfirmar(`Desfazer o cancelamento da reserva de ${escapeHtml(reserva.nomes)}? Ela volta a ocupar ${reserva.horario} normalmente.`, async () => {
+          await restaurarReserva(id);
+          this.fechar();
+        });
+      }, { once: true });
+      document.getElementById("btnResumoFechar")?.addEventListener("click", () => this.fechar(), { once: true });
+      this._mostrarModal();
+      return;
+    }
 
     // ✅ Mesa finalizada: apenas mensagem + fechar
     if (reserva.fimMesa) {

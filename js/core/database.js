@@ -318,6 +318,22 @@ class DatabaseService {
     }
 
     /**
+     * Desfaz o cancelamento (soft-delete) de uma reserva — limpa `cancelado_em`
+     * e `deposito_retido`, restaurando a reserva ao local/data/horário de origem
+     * (que nunca foram alterados pelo cancelamento). O registro do cancelamento
+     * só permanece visível no log de alterações (reservas_log), não mais na
+     * própria linha da reserva.
+     * @param {string} id
+     */
+    async restaurarReserva(id) {
+        const { error } = await this.client.from('reservas').update({
+            cancelado_em: null,
+            deposito_retido: null,
+        }).eq('id', id);
+        if (error) throw error;
+    }
+
+    /**
      * Escuta reservas de uma data em tempo real via Supabase Realtime.
      * Igual ao comportamento antigo do Firestore: a cada mudança, refaz a busca inteira
      * e entrega a lista completa (não tenta reconciliar diffs incrementalmente).

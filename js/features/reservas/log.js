@@ -90,6 +90,7 @@ const CONFIG_ACAO = {
     EXCLUIR:     { cor: '#e74c3c', label: 'EXCLUÍDO',     icone: _iconeLixeira() },
     DESBLOQUEAR: { cor: '#3498db', label: 'DESBLOQUEADO', icone: _iconeCadeado() },
     CANCELAR:    { cor: '#8e44ad', label: 'CANCELADO',    icone: _iconeLixeira() },
+    RESTAURAR:   { cor: '#27ae60', label: 'RESTAURADO',   icone: _iconeCheck()   },
 };
 
 const LABELS_CAMPOS = {

@@ -775,10 +775,10 @@ body.dark-theme .pg-pendente {
   vertical-align: middle;
 }
 
-/* ✅ Filtro "Cancelamentos" — linha histórica, não clicável (bug #57) */
+/* ✅ Filtro "Cancelamentos" — linha histórica, clicável pra permitir desfazer cancelamento */
 .linha-cancelada {
   opacity: 0.6;
-  cursor: default;
+  cursor: pointer;
 }
 .badge-cancelada {
   display: inline-block;

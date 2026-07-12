@@ -379,11 +379,11 @@ function renderizarLinha(res, horarioVisual, posicao, tdHora, hrBase, mostrarCan
         let classePag = res.pagamento === 'pago' ? 'pg-confirmado' : (res.pagamento === 'pendente' ? 'pg-pendente' : '');
         let textoPag = (res.tipo === 'externo' && res.avulsa) ? escapeHtml(res.avulsa) : (res.pagamento || "-");
 
-        // Cancelada no filtro "cancelados": mostra dados completos, mas não é clicável
-        // (registro histórico, não faz sentido reabrir pra editar/cancelar de novo).
+        // Cancelada no filtro "cancelados": mostra dados completos e é clicável —
+        // abre o modal com a opção de DESFAZER CANCELAMENTO.
         const isCancelada = !!res.canceladoEm;
-        const classeClicavel = isCancelada ? 'linha-cancelada' : `reserva-clicavel border-${res.tipo}`;
-        const dataId = isCancelada ? '' : `data-id="${res.id}"`;
+        const classeClicavel = isCancelada ? 'linha-cancelada reserva-clicavel' : `reserva-clicavel border-${res.tipo}`;
+        const dataId = `data-id="${res.id}"`;
         const badgeCancelada = isCancelada ? `<span class="badge-cancelada">❌ CANCELADA</span> ` : '';
 
         return `
