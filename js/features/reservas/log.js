@@ -64,6 +64,10 @@ function _paraLogApp(row) {
 function _resumir(dados) {
     return {
         id:              dados.id              || '',
+        // A data da noite é essencial pra análise: após EXCLUIR (linha apagada) ou
+        // RESTAURAR (cancelamento limpo da linha), o log é a única fonte histórica —
+        // sem a data, é impossível saber pra qual noite era a reserva (REVISAO_TECNICA.md A2).
+        data:            dados.data            || '',
         nomes:           dados.nomes           || '',
         apto:            dados.apto            || '',
         codigoReserva:   dados.codigoReserva   || '',
@@ -94,7 +98,7 @@ const CONFIG_ACAO = {
 };
 
 const LABELS_CAMPOS = {
-    nomes: 'Nome', apto: 'Apto', codigoReserva: 'Reserva', horario: 'Horário', tipo: 'Tipo',
+    data: 'Data', nomes: 'Nome', apto: 'Apto', codigoReserva: 'Reserva', horario: 'Horário', tipo: 'Tipo',
     canceladoEm: 'Cancelado em', depositoRetido: 'Depósito retido',
     paxs: 'Adultos', chd: 'Crianças', obs: 'Obs', mesa: 'Mesa',
     bloqueado: 'Bloqueado', somenteHospedes: 'Só Hósp.',
