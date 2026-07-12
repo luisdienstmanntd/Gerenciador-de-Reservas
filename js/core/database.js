@@ -324,11 +324,14 @@ class DatabaseService {
      * só permanece visível no log de alterações (reservas_log), não mais na
      * própria linha da reserva.
      * @param {string} id
+     * @param {number} posicao - Posição recalculada por service.js (a original pode
+     *   ter sido reaproveitada por outra reserva enquanto esta esteve cancelada)
      */
-    async restaurarReserva(id) {
+    async restaurarReserva(id, posicao) {
         const { error } = await this.client.from('reservas').update({
             cancelado_em: null,
             deposito_retido: null,
+            posicao,
         }).eq('id', id);
         if (error) throw error;
     }

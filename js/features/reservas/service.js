@@ -384,8 +384,24 @@ export async function restaurarReserva(id) {
     if (!id) throw new Error('ID obrigatório');
     try {
         const dadosAntes = await db.getReservaPorId(id) || { id };
-        await db.restaurarReserva(id);
-        await registrarLog('RESTAURAR', dadosAntes, { ...dadosAntes, canceladoEm: null, depositoRetido: null });
+
+        // Enquanto cancelada, a posição dela fica livre (_calcularPosicaoLivre ignora
+        // canceladas) e uma reserva nova pode tê-la ocupado. Restaurar na mesma posição
+        // sobreporia as duas na mesma célula da grade — mesma colisão do bug corrigido
+        // em f686423, no sentido inverso. Recalcula como alterarData() faz.
+        const originalBase = dadosAntes.originalBase || dadosAntes.horario;
+        let novaPosicao = dadosAntes.posicao ?? 0;
+        if (dadosAntes.data && originalBase) {
+            // A própria reserva ainda está cancelada neste momento, então não conta a si mesma.
+            const snapBloco = await db.buscarReservasPorBloco(dadosAntes.data, originalBase);
+            novaPosicao = _calcularPosicaoLivre(snapBloco, novaPosicao);
+            if (novaPosicao !== dadosAntes.posicao) {
+                console.log(`ℹ️ restaurarReserva: posição ${dadosAntes.posicao} ocupada — usando ${novaPosicao}`);
+            }
+        }
+
+        await db.restaurarReserva(id, novaPosicao);
+        await registrarLog('RESTAURAR', dadosAntes, { ...dadosAntes, canceladoEm: null, depositoRetido: null, posicao: novaPosicao });
 
         console.log('✅ Cancelamento desfeito:', id);
     } catch (error) {
