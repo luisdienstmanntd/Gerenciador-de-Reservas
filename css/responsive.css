@@ -1,0 +1,426 @@
+/* =========================================================================================
+   OSTERIA DI LUCCA - CSS/RESPONSIVE.CSS
+   Media queries — mobile landscape/portrait e bottombar
+   Extraído de style.css v4.4 (dividido em 8 arquivos temáticos — a ORDEM dos <link> no
+   index.html preserva a cascata original; não reordenar sem revisar conflitos).
+   ========================================================================================= */
+
+/* --- MEDIA QUERIES --- */
+@media (max-width: 1300px) {
+    .modal-content { 
+        padding: 20px; 
+    }
+    .modal-actions { 
+        grid-template-columns: 1fr; 
+    }
+    .delete-btn { 
+        grid-column: span 1; 
+    }
+    .charts-grid { 
+        grid-template-columns: 1fr !important; 
+    }
+}
+
+@media (max-width: 900px) {
+    .charts-grid {
+        grid-template-columns: 1fr !important;
+    }
+    
+    .cards-header {
+        flex-wrap: wrap;
+    }
+    
+    .mini-card {
+        min-width: 80px;
+    }
+}
+
+/* ==========================================================================
+   MOBILE LANDSCAPE — sidebar oculta, botão ☰ abre/fecha com overlay
+   ========================================================================== */
+@media (max-width: 900px) and (orientation: landscape) {
+    .top-bar-unica { flex-wrap: wrap; }
+    .left-group    { width: 100%; }
+    .cards-header  { width: 100%; }
+
+    .sidebar {
+        width: 220px !important;
+        left: -220px;
+        transition: left 0.28s ease;
+    }
+    .sidebar:hover {
+        width: 220px !important;
+        left: -220px;
+    }
+    .sidebar.sb-aberta {
+        left: 0 !important;
+    }
+
+    .main-content {
+        margin-left: 0 !important;
+    }
+
+    #sb-btn-toggle {
+        display: flex;
+    }
+
+    /* bottombar oculta no landscape */
+    #bottom-nav { display: none !important; }
+
+    /* Oculta colunas CHD e AV */
+    .col-chd,
+    .col-av {
+        display: none !important;
+        width: 0 !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+    }
+
+    /* Força tabela a preencher toda a largura disponível */
+    .tabela-reservas {
+        table-layout: auto !important;
+        width: 100% !important;
+    }
+
+    /* Larguras das 4 colunas visíveis */
+    .tabela-reservas th:nth-child(1) { width: 44px; }
+    .tabela-reservas th:nth-child(2) { width: auto; }
+    .tabela-reservas th:nth-child(3) { width: 44px; }
+    .tabela-reservas th:nth-child(5) { width: 110px; }
+}
+
+/* ==========================================================================
+   MOBILE PORTRAIT — bottombar fixa, sem sidebar
+   ========================================================================== */
+@media (max-width: 767px) and (orientation: portrait) {
+
+    /* Esconde sidebar completamente */
+    .sidebar {
+        display: none !important;
+    }
+
+    .main-content {
+        margin-left: 0 !important;
+        padding-bottom: 56px; /* espaço para a bottombar (56px) */
+    }
+
+    /* Botão ☰ da sidebar oculto — não faz sentido sem sidebar */
+    #sb-btn-toggle { display: none !important; }
+
+    /* bottombar visível */
+    #bottom-nav { display: flex !important; }
+
+    /* ── Bottombar compacta ── */
+    #bottom-nav {
+        height: 56px;
+    }
+    #bottom-nav .bn-item {
+        font-size: 9px;
+        padding: 5px 2px;
+        gap: 2px;
+    }
+    #bottom-nav .bn-item svg {
+        width: 20px;
+        height: 20px;
+    }
+
+    /* ── Top-bar de reservas: linha única, compacta ── */
+    .top-bar-unica {
+        flex-wrap: nowrap;
+        align-items: center;
+        padding: 6px 8px;
+        gap: 6px;
+        min-height: 0;
+    }
+
+    /* Mini-cards: scroll horizontal, sem quebra de linha */
+    .cards-header {
+        flex: 1;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        gap: 6px;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none; /* Firefox */
+        min-width: 0;
+    }
+    .cards-header::-webkit-scrollbar { display: none; } /* Chrome/Safari */
+
+    /* Cada mini-card: compacto e tocável */
+    .mini-card {
+        min-width: 64px;
+        height: 48px;
+        padding: 4px 8px;
+        flex-shrink: 0;
+    }
+    .mini-card span {
+        font-size: 8px;
+    }
+    .mini-card b {
+        font-size: 1.1rem;
+    }
+
+    /* Oculta T. MÉDIO — pouco útil em mobile */
+    .mini-card.tempo {
+        display: none !important;
+    }
+
+    /* Seletor de data: à direita, compacto */
+    .left-group {
+        flex-shrink: 0;
+        width: auto;
+        margin-left: 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .sino-wrap {
+        display: flex;
+        width: 32px;
+        height: 32px;
+    }
+    .filtro-data {
+        font-size: 12px;
+        padding: 5px 4px;
+        min-width: 0;
+        width: 120px;
+    }
+
+    /* ── Grid de reservas: 4 colunas visíveis ── */
+
+    /* Remove padding excessivo do container */
+    .table-container {
+        padding: 0 0 8px 0;
+        overflow-x: hidden;
+    }
+
+    /* Oculta colunas CHD e AV por classe — funciona mesmo com rowspan na col HORA */
+    .col-chd,
+    .col-av {
+        display: none !important;
+        width: 0 !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+    }
+
+    /* Força tabela a preencher toda a largura disponível */
+    .tabela-reservas {
+        table-layout: auto !important;
+        width: 100% !important;
+    }
+
+    /* Larguras das 4 colunas visíveis */
+    .tabela-reservas th:nth-child(1) { width: 44px; }   /* HORA */
+    .tabela-reservas th:nth-child(2) { width: auto; padding-left: 8px; } /* DADOS — expande */
+    .tabela-reservas th:nth-child(3) { width: 44px; }   /* PAX */
+    .tabela-reservas th:nth-child(5) { width: 110px; }  /* MESA + timer */
+
+    /* Tipografia e altura das linhas */
+    .tabela-reservas thead th {
+        font-size: 9px;
+        padding: 6px 2px;
+        height: 32px;
+    }
+    .tabela-reservas tr {
+        height: 44px; /* toque mínimo */
+    }
+    .tabela-reservas td {
+        height: 44px;
+        font-size: 11px;
+    }
+
+    /* Coluna HORA */
+    .linha-horario {
+        font-size: 11px;
+        font-weight: 700;
+    }
+
+    /* Coluna DADOS: label + nome compactos */
+    .reserva-clicavel {
+        font-size: 11px;
+        padding-left: 8px !important;
+    }
+
+    /* Coluna MESA: compacta */
+    .td-content {
+        font-size: 11px;
+    }
+    .timer-mesa {
+        font-size: 0.6rem;
+    }
+
+    /* ── Tela Home: portrait mobile ── */
+
+    /* Padding da tela-home */
+    #tela-home {
+        padding: 6px 8px 8px !important;
+    }
+
+    /* Ticker KPI: mais compacto que o padrao <=1200px */
+    #kpi-ticker-wrap {
+        height: 72px !important;
+        margin-bottom: 6px !important;
+    }
+    #kpi-ticker-inner .home-kpi-card {
+        width: 120px !important;
+        height: 64px !important;
+        padding: 8px 12px !important;
+        gap: 8px !important;
+    }
+    .home-kpi-label {
+        font-size: 9px !important;
+    }
+    .home-kpi-valor {
+        font-size: 1.4rem !important;
+    }
+
+    /* Graficos: coluna unica, alturas reduzidas */
+    .home-grid {
+        grid-template-columns: 1fr !important;
+        gap: 6px !important;
+        margin-bottom: 6px !important;
+    }
+    .home-card {
+        padding: 10px !important;
+    }
+    .home-card-titulo {
+        font-size: 0.75rem !important;
+        margin-bottom: 6px !important;
+    }
+
+    /* Gauge: container e canvas reduzidos */
+    .home-card:has(#home-chart-gauge) > div:first-of-type {
+        height: 120px !important;
+    }
+
+    /* Barras PAX: container reduzido */
+    .home-card:has(#home-chart-barras) > div {
+        height: 160px !important;
+    }
+
+    /* Giro de Mesa: fonte compacta */
+    #home-giro {
+        font-size: 11px;
+    }
+
+    /* Row dupla: coluna unica, oculta card semanal */
+    .home-row-dupla {
+        grid-template-columns: 1fr !important;
+        gap: 6px !important;
+        margin-top: 6px !important;
+    }
+    /* Oculta "Previsao 7 dias" */
+    .home-row-dupla > .home-card:first-child {
+        display: none !important;
+    }
+    /* Observacoes: altura maxima compacta */
+    .home-card-obs {
+        max-height: 60px;
+        overflow-y: auto;
+    }
+
+    /* ── Modal de reserva: portrait mobile ── */
+    #modalReserva {
+        padding: 10px;
+        align-items: flex-end; /* ancora na base da tela */
+    }
+    #modalReserva .modal-content {
+        width: 95vw;
+        max-width: 95vw;
+        max-height: 85vh;
+        overflow-y: auto;
+        border-radius: 16px 16px 12px 12px;
+        padding: 16px 16px 0;
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* Inputs e selects: font 13px, mais fácil de tocar */
+    #formReserva input:not([type="checkbox"]),
+    #formReserva select,
+    #formReserva textarea {
+        font-size: 13px !important;
+        padding: 9px !important;
+    }
+    #formReserva label {
+        font-size: 0.7rem !important;
+        margin-top: 8px !important;
+    }
+
+    /* Botões SALVAR/CANCELAR/EXCLUIR fixos no rodapé */
+    #modalReserva .modal-actions {
+        position: sticky;
+        bottom: 0;
+        background: var(--card-bg);
+        padding: 10px 0 14px;
+        margin-top: 12px;
+        /* garante que fica sobre o conteúdo ao rolar */
+        z-index: 2;
+        /* sombra sutil separando do form */
+        box-shadow: 0 -4px 12px rgba(0,0,0,0.08);
+    }
+
+    /* Modal de mesa: também 95vw no portrait */
+    #modalMesa {
+        padding: 10px;
+        align-items: flex-end;
+    }
+    #modalMesa .modal-content {
+        width: 95vw;
+        max-width: 95vw;
+        max-height: 85vh;
+        overflow-y: auto;
+        border-radius: 16px 16px 12px 12px;
+    }
+}
+
+/* ==========================================================================
+   BOTTOMBAR — barra de navegação inferior (portrait mobile)
+   ========================================================================== */
+#bottom-nav {
+    display: none; /* oculto por padrão — ativado só em portrait */
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    background: var(--sidebar-bg, #1e1e1e);
+    border-top: 1px solid rgba(255,255,255,0.08);
+    z-index: 11000;
+    align-items: stretch;
+    justify-content: space-around;
+}
+
+#bottom-nav .bn-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    background: transparent;
+    border: none;
+    color: rgba(255,255,255,0.5);
+    font-size: 0.6rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    cursor: pointer;
+    padding: 6px 2px;
+    transition: color 0.18s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+
+#bottom-nav .bn-item svg {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+}
+
+#bottom-nav .bn-item.active,
+#bottom-nav .bn-item:active {
+    color: var(--primaria, #6c63ff);
+}
+
+body.dark-theme #bottom-nav {
+    background: #000;
+}

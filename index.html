@@ -16,7 +16,17 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"
         integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ"
         crossorigin="anonymous"></script>
-    <link rel="stylesheet" href="css/style.css">
+    <!-- CSS dividido em arquivos temáticos (antes: um único style.css de 2150 linhas).
+         ⚠️ A ORDEM dos <link> importa — preserva a cascata do arquivo original.
+         Não reordenar sem revisar conflitos de especificidade. -->
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/layout.css">
+    <link rel="stylesheet" href="css/reservas.css">
+    <link rel="stylesheet" href="css/modais.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="css/mesas-timers.css">
+    <link rel="stylesheet" href="css/responsive.css">
+    <link rel="stylesheet" href="css/home.css">
 </head>
 <body>
 

@@ -1,0 +1,94 @@
+/* =========================================================================================
+   OSTERIA DI LUCCA - CSS/DASHBOARD.CSS
+   Painel Analítico — KPIs e gráficos
+   Extraído de style.css v4.4 (dividido em 8 arquivos temáticos — a ORDEM dos <link> no
+   index.html preserva a cascata original; não reordenar sem revisar conflitos).
+   ========================================================================================= */
+
+/* --- KPIs DO DASHBOARD (CARDS SUPERIORES) --- */
+.dashboard-kpis {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 15px;
+    margin-bottom: 25px;
+    padding: 20px;
+}
+
+.kpi-card {
+    background: var(--card-bg);
+    padding: 15px;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px var(--shadow);
+    border: 1px solid var(--border);
+    text-align: center;
+    transition: transform 0.2s ease;
+}
+
+.kpi-card:hover {
+    transform: translateY(-2px);
+}
+
+.kpi-card h4 {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    color: var(--texto);
+    opacity: 0.7;
+    margin: 0 0 8px 0;
+    font-weight: 700;
+}
+
+.kpi-card .value {
+    font-size: 1.8rem;
+    font-weight: 900;
+    color: var(--primaria);
+    margin: 0;
+}
+
+body.dark-theme .kpi-card .value {
+    color: var(--texto);
+}
+
+@media (max-width: 1300px) {
+    .dashboard-kpis {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (max-width: 767px) {
+    .dashboard-kpis {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* --- DASHBOARD GRÁFICOS --- */
+.charts-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, 1fr) !important;
+  gap: 20px !important;
+  width: 100%;
+  padding: 20px;
+}
+
+.chart-card {
+  background: var(--card-bg);
+  padding: 15px;
+  border-radius: 10px;
+  box-shadow: 0 4px 6px var(--shadow);
+  border: 1px solid var(--border);
+  width: 100%;
+}
+
+.chart-card h3 {
+  margin: 0 0 15px 0;
+  font-size: 1rem;
+  color: var(--texto);
+  text-align: center;
+  opacity: 0.8;
+}
+
+.chart-container {
+  position: relative;
+  height: 250px;
+  width: 100%;
+}
+

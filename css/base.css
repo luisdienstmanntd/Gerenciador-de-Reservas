@@ -1,0 +1,87 @@
+/* ==========================================================================
+   OSTERIA DI LUCCA - STYLE.CSS v4.4 (MENU CORRIGIDO)
+   🔧 ATUALIZAÇÃO: Sidebar sem transição no estado inicial
+   ========================================================================== */
+
+:root {
+  /* Paleta de Cores (Modo Claro Padrão) */
+  --primaria: #4a1a1a;
+  --secundaria: #d4a373;
+  --sidebar-bg: #1e1e1e;
+  --fundo: #e8ebef;
+  --card-bg: #ffffff;
+  --border: #dddddd;
+  --texto: #333333;
+
+  /* Cores de Status */
+  --hospede: #3498db;
+  --externo: #f39c12;
+  --passante: #95a5a6;
+  --roomservice: #9b59b6;
+  --menu: #27ae60;
+  --vermelho: #e74c3c;
+
+  /* UI Elements */
+  --shadow: rgba(0, 0, 0, 0.15);
+  --hover-line: #f1f4f8;
+  --input-bg: #ffffff;
+}
+
+/* --- MODO ESCURO (VARIÁVEIS REAJUSTADAS) --- */
+body.dark-theme {
+  --primaria: #4a1a1a;
+  --fundo: #121212 !important;
+  --card-bg: #1e1e1e !important;
+  --sidebar-bg: #000000 !important;
+  --texto: #e0e0e0 !important; /* Texto Cinza Claro para contraste */
+  --border: #333333 !important;
+  --shadow: rgba(0, 0, 0, 0.5);
+  --hover-line: #2c2c2c !important;
+  --input-bg: #2c2c2c !important;
+}
+
+/* --- RESET BÁSICO E TIPOGRAFIA --- */
+* {
+  box-sizing: border-box;
+}
+.hidden {
+  display: none !important;
+}
+
+/* Cada tela da aplicação ocupa todo o espaço disponível */
+.view {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+body {
+  font-family:
+    "Inter",
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
+  background-color: var(--fundo);
+  color: var(--texto);
+  margin: 0;
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+  transition:
+    background-color 0.3s,
+    color 0.3s;
+
+  /* Renderização de fonte moderna */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Espaçamento moderno para títulos e botões */
+button,
+.mini-card span,
+th {
+  letter-spacing: -0.02em;
+}
+

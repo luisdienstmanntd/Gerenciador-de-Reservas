@@ -1,0 +1,250 @@
+/* =========================================================================================
+   OSTERIA DI LUCCA - CSS/RESERVAS.CSS
+   Tabela/grade de reservas, badges (DEG, CANCELADA), cards do header
+   Extraído de style.css v4.4 (dividido em 8 arquivos temáticos — a ORDEM dos <link> no
+   index.html preserva a cascata original; não reordenar sem revisar conflitos).
+   ========================================================================================= */
+
+/* --- TABELA DE RESERVAS --- */
+.table-container {
+  padding: 20px;
+  overflow-x: auto;
+}
+
+.tabela-reservas {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--card-bg);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 6px var(--shadow);
+  table-layout: fixed;
+  transition: background-color 0.3s;
+}
+
+/* Cabeçalho da Tabela (Sticky Corrigido) */
+.tabela-reservas thead th {
+  background: var(--primaria) !important;
+  color: #fff !important;
+  padding: 10px 5px;
+  font-size: 0.8rem;
+  text-align: center;
+  border-bottom: 2px solid #ddd;
+  height: 40px;
+  position: sticky;
+  top: 1px;
+  z-index: 1000;
+}
+
+/* ⭐ LARGURAS DAS COLUNAS - ORDEM: HORA | DADOS | PAX | CHD | MESA | PAG */
+.tabela-reservas th:nth-child(1) {
+  width: 70px;
+} /* HORA */
+.tabela-reservas th:nth-child(2) {
+  width: auto;
+  text-align: left;
+  padding-left: 15px;
+} /* DADOS DA RESERVA */
+.tabela-reservas th:nth-child(3) {
+  width: 60px;
+} /* PAX */
+.tabela-reservas th:nth-child(4) {
+  width: 60px;
+} /* CHD */
+.tabela-reservas th:nth-child(5) {
+  width: 110px;
+} /* MESA (com relógio) */
+.tabela-reservas th:nth-child(6) {
+  width: 80px;
+} /* PAG */
+
+.tabela-reservas tr {
+  height: 50px;
+  display: table-row;
+}
+.tabela-reservas tr.separador-horario {
+  height: 6px !important;
+}
+.tabela-reservas tr.separador-horario td {
+  height: 6px !important;
+  padding: 0 !important;
+  border: none !important;
+  background: var(--border) !important;
+}
+
+.tabela-reservas td {
+  padding: 0;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+  height: 50px;
+  display: table-cell;
+}
+
+/* Cor roxa para Room Service na coluna MESA */
+.mesa-room {
+  color: var(--roomservice) !important;
+  font-weight: 900;
+}
+
+/* Conteúdo das Células */
+.td-content {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  width: 100%;
+  text-align: center;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--texto);
+}
+
+.linha-horario {
+  background-color: var(--fundo);
+  font-weight: 700;
+  cursor: pointer;
+  border-right: 2px solid var(--border);
+  text-align: center;
+  font-size: 0.9rem;
+  display: table-cell;
+  vertical-align: middle;
+  color: var(--texto);
+  transition: all 0.2s ease;
+}
+.linha-horario:hover {
+  color: var(--secundaria);
+  background-color: var(--hover-line);
+}
+
+.reserva-clicavel {
+  cursor: pointer;
+  font-size: 0.85rem;
+  text-align: left;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  padding-left: 15px !important;
+  color: var(--texto);
+  font-weight: 400;
+  transition: background-color 0.2s ease;
+}
+.reserva-clicavel:hover {
+  background-color: var(--hover-line);
+}
+.reserva-vazia {
+  color: var(--menu);
+  font-weight: 600;
+  border-left: 4px dashed #ccc;
+  opacity: 0.6;
+  font-size: 0.8rem;
+  padding-left: 15px !important;
+}
+
+/* Bordas Laterais por Tipo */
+.border-hospede {
+  border-left: 4px solid var(--hospede);
+}
+.border-externo {
+  border-left: 4px solid var(--externo);
+}
+.border-passante {
+  border-left: 4px solid var(--passante);
+}
+.border-roomservice {
+  border-left: 4px solid var(--roomservice);
+}
+
+/* Status de Bloqueio */
+.reserva-bloqueada {
+  background-color: #ffebee;
+  color: #c0392b;
+  font-weight: bold;
+  text-align: center !important;
+  justify-content: center !important;
+  padding-left: 0 !important;
+}
+.reserva-somente-hospedes {
+  background-color: #e3f2fd;
+  color: #2980b9;
+  font-weight: bold;
+  text-align: center !important;
+  justify-content: center !important;
+  padding-left: 0 !important;
+}
+
+body.dark-theme .reserva-bloqueada {
+  background-color: #4a1a1a;
+  color: #ffadad;
+}
+body.dark-theme .reserva-somente-hospedes {
+  background-color: #1a3a5a;
+  color: #90caf9;
+}
+
+/* Timer e Pagamento */
+.timer-mesa {
+  display: block;
+  font-size: 0.65rem;
+  color: var(--vermelho);
+  font-weight: 700;
+  margin-top: 2px;
+  line-height: 1;
+}
+.timer-finalizado {
+  color: #7f8c8d !important;
+}
+.pg-confirmado {
+  color: #27ae60;
+}
+.pg-pendente {
+  color: #c0392b;
+}
+body.dark-theme .pg-confirmado {
+  color: #2ecc71;
+}
+body.dark-theme .pg-pendente {
+  color: #e74c3c;
+}
+
+.obs-exibicao {
+  display: inline-block;
+  font-size: 0.65rem;
+  background: #fff3cd;
+  color: #856404;
+  padding: 1px 4px;
+  border-radius: 3px;
+  margin-left: 5px;
+}
+/* ✅ v4.9: Badge Menu Degustação — discreto, ao lado do nome */
+.badge-deg {
+  display: inline-block;
+  font-size: 0.62rem;
+  font-weight: 800;
+  background: #4a1a1a;
+  color: #d4a373;
+  padding: 1px 5px;
+  border-radius: 3px;
+  margin-left: 5px;
+  letter-spacing: 0.5px;
+  vertical-align: middle;
+}
+
+/* ✅ Filtro "Cancelamentos" — linha histórica, clicável pra permitir desfazer cancelamento */
+.linha-cancelada {
+  opacity: 0.6;
+  cursor: pointer;
+}
+.badge-cancelada {
+  display: inline-block;
+  font-size: 0.62rem;
+  font-weight: 800;
+  background: #4a1a1a;
+  color: #e74c3c;
+  padding: 1px 5px;
+  border-radius: 3px;
+  margin-right: 5px;
+  letter-spacing: 0.5px;
+  vertical-align: middle;
+}
+

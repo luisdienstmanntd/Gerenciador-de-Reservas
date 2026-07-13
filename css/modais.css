@@ -1,0 +1,245 @@
+/* =========================================================================================
+   OSTERIA DI LUCCA - CSS/MODAIS.CSS
+   Todos os modais (reserva, mesa, confirmação, gerenciar linhas)
+   Extraído de style.css v4.4 (dividido em 8 arquivos temáticos — a ORDEM dos <link> no
+   index.html preserva a cascata original; não reordenar sem revisar conflitos).
+   ========================================================================================= */
+
+/* --- MODAIS --- */
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 10000;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(5px);
+  align-items: center;
+  justify-content: center;
+  padding: 25px;
+}
+.modal-content {
+  background-color: var(--card-bg);
+  padding: 25px;
+  width: 100%;
+  max-width: 400px;
+  border-radius: 16px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+  max-height: 95vh;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  color: var(--texto);
+}
+.modal-compacto {
+  max-width: 320px !important;
+}
+.modal-content h3 {
+  border-bottom: 1px solid var(--border);
+  text-align: center;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  color: var(--primaria);
+}
+
+/* Correção de Contraste Dark Mode (Títulos) */
+body.dark-theme .modal-content h3,
+body.dark-theme #textoHorario {
+  color: var(--texto) !important;
+}
+
+/* Histórico de Observações */
+.historico-box {
+  padding: 10px;
+  background-color: var(--fundo);
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  color: var(--texto);
+  margin-bottom: 10px;
+  font-style: italic;
+  font-size: 0.9rem;
+}
+
+/* Controles do Modal */
+.header-controls-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 15px;
+  background: var(--fundo);
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+.control-group-row {
+  display: flex;
+  gap: 15px;
+}
+.control-group {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.control-group input {
+  width: auto !important;
+  margin: 0;
+  cursor: pointer;
+}
+.control-group label {
+  margin: 0 !important;
+  cursor: pointer;
+  font-size: 0.7rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  color: var(--texto);
+}
+
+/* Formulário Modal */
+#formReserva label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  font-weight: 900;
+  margin-top: 10px;
+  display: block;
+  color: var(--texto);
+  opacity: 0.8;
+}
+#formReserva input:not([type="checkbox"]),
+#formReserva select,
+#formReserva textarea {
+  width: 100%;
+  padding: 10px;
+  margin-top: 5px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--input-bg);
+  color: var(--texto);
+  font-size: 0.95rem;
+}
+
+/* Seletor de Hora */
+.time-picker-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+  padding: 10px;
+}
+.time-display-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+.time-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.btn-time {
+  width: 50px;
+  height: 40px;
+  background-color: var(--primaria);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1.2rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s ease;
+}
+
+.btn-time:hover {
+  background-color: #6a2a2a;
+}
+
+/* Relógio (Ajuste Dark Mode) */
+.time-value {
+  font-size: 2.5rem;
+  font-weight: 900;
+  color: var(--primaria);
+  margin: 5px 0;
+  min-width: 60px;
+  text-align: center;
+}
+body.dark-theme .time-value {
+  color: var(--texto) !important;
+}
+.time-separator {
+  font-size: 2.5rem;
+  font-weight: 900;
+  color: var(--primaria);
+  margin-top: -10px;
+}
+body.dark-theme .time-separator {
+  color: var(--texto) !important;
+}
+
+/* Botões do Modal */
+.modal-actions {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 10px;
+  margin-top: 20px;
+}
+.modal-compacto .modal-actions {
+  grid-template-columns: 1fr !important;
+  width: 100% !important;
+  margin-top: 20px;
+}
+.btn-main {
+  padding: 12px;
+  border: none;
+  border-radius: 10px;
+  font-weight: 900;
+  cursor: pointer;
+  text-transform: uppercase;
+  font-size: 0.85rem;
+  transition: all 0.2s ease;
+}
+
+.btn-main:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px var(--shadow);
+}
+
+.btn-main:active {
+  transform: translateY(0);
+}
+
+.save-btn {
+  background: var(--menu);
+  color: white;
+}
+.cancel-btn {
+  background: #95a5a6;
+  color: white;
+}
+.delete-btn {
+  background: var(--vermelho);
+  color: white;
+  grid-column: span 2;
+  margin-top: 5px;
+}
+.modal-compacto .delete-btn {
+  grid-column: span 1;
+}
+
+/* Botões específicos do modal de mesa */
+#btnIniciarAtendimento {
+  grid-column: span 1;
+  background: var(--menu);
+}
+#btnTrocarMesa {
+  grid-column: span 1;
+  background: #f39c12;
+}
+#btnCancelarMesa {
+  grid-column: span 1;
+}
+

@@ -1,0 +1,170 @@
+/* =========================================================================================
+   OSTERIA DI LUCCA - CSS/MESAS-TIMERS.CSS
+   Grid de mesas e cores dos timers de atendimento
+   Extraído de style.css v4.4 (dividido em 8 arquivos temáticos — a ORDEM dos <link> no
+   index.html preserva a cascata original; não reordenar sem revisar conflitos).
+   ========================================================================================= */
+
+/* --- GRID DE MESAS --- */
+.grid-mesas {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 15px;
+}
+.btn-mesa {
+  padding: 15px 0;
+  background-color: var(--primaria);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 900;
+  font-size: 1.2rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-mesa:hover {
+  background-color: #6a2a2a;
+  transform: scale(1.05);
+}
+
+.btn-mesa:active {
+  transform: scale(0.98);
+}
+
+/* Classes Utilitárias do Modal */
+.pax-row {
+  display: flex !important;
+  flex-direction: row !important;
+  gap: 15px !important;
+  margin-top: 10px !important;
+  width: 100% !important;
+}
+.pax-column {
+  flex: 1 !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+.pax-column-check {
+  flex: 0 0 auto !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 6px !important;
+}
+.label-check-menu {
+  font-size: 0.7rem !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.5px !important;
+  opacity: 0.75 !important;
+  margin-bottom: 0 !important;
+  white-space: nowrap !important;
+}
+#checkMenuDegustacao {
+  width: 22px !important;
+  height: 22px !important;
+  cursor: pointer !important;
+  accent-color: var(--primaria, #d4a373) !important;
+  margin: 0 !important;
+}
+/* ✅ v4.8: Oculta checkbox "Menu Degustação" quando tipo = roomservice.
+   Classe .tipo-roomservice aplicada em #modalReserva por modal.js _toggleCampos().
+   CSS é invulnerável ao forEach de reset (que só afeta style.display dos filhos). */
+#modalReserva.tipo-roomservice .pax-column-check {
+  display: none !important;
+}
+.externo-row {
+  display: flex !important;
+  gap: 15px !important;
+  width: 100% !important;
+}
+
+/* =========================================================================================
+   CORES DOS TIMERS (v4.0)
+   Verde (0-90min) → Amarelo (90-115min) → Vermelho (115min+)
+   ========================================================================================= */
+
+.timer-verde {
+    color: #27ae60 !important; /* Verde */
+    font-weight: 700;
+    transition: color 0.3s ease;
+}
+
+.timer-amarelo {
+    color: #f39c12 !important; /* Amarelo/Laranja */
+    font-weight: 700;
+    transition: color 0.3s ease;
+    animation: pulseWarning 2s infinite;
+}
+
+.timer-vermelho {
+    color: #e74c3c !important; /* Vermelho */
+    font-weight: 900;
+    transition: color 0.3s ease;
+    animation: pulseDanger 1.5s infinite;
+}
+
+/* Animação de alerta para amarelo */
+@keyframes pulseWarning {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.8;
+        transform: scale(1.05);
+    }
+}
+
+/* Animação de alerta crítico para vermelho */
+@keyframes pulseDanger {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.9;
+        transform: scale(1.1);
+    }
+}
+
+/* Timer piscante para Room Service (45min+) */
+.timer-piscante {
+    animation: piscarRoomService 0.8s infinite !important;
+}
+
+@keyframes piscarRoomService {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0; }
+}
+
+/* Timer padrão (sem cor definida) */
+[data-timer-id] {
+    font-family: 'Courier New', monospace;
+    font-size: 0.95em;
+    letter-spacing: 0.5px;
+}
+
+/* Animações da Notificação Room Service */
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -60%);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, -50%);
+    }
+}
+
+@keyframes slideOut {
+    from {
+        opacity: 1;
+        transform: translate(-50%, -50%);
+    }
+    to {
+        opacity: 0;
+        transform: translate(-50%, -40%);
+    }
+}
+
