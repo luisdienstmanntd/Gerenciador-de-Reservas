@@ -36,6 +36,8 @@
              classes .resumo-btn/.resumo-linha-dupla (css/modais.css) no lugar de estilo
              inline por botão. Visual "cartão neutro + acento colorido" em vez de botão
              sólido pintado, alvo de toque maior (min 52px) — pensado pra tablet
+   ✅ v3.14: abrirNova() (seletor de ação da linha disponível) migrado pro mesmo padrão
+             .resumo-btn/ICONES — ícones novos "nova" (+) e "bloquear" (cadeado)
    ========================================================================================= */
 
 import { getTodasReservas, getDataAtual } from "../../core/state.js";
@@ -66,6 +68,8 @@ const ICONES = {
   excluir: _icone('<path d="M4 7h16"/><path d="M10 11v6M14 11v6"/><path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/><path d="M9 7V4h6v3"/>'),
   desfazer: _icone('<path d="M3 10h9a5 5 0 0 1 0 10h-1"/><path d="M7 6L3 10l4 4"/>'),
   check: _icone('<path d="M4 12l5 5L20 6"/>'),
+  nova: _icone('<path d="M12 5v14M5 12h14"/>'),
+  bloquear: _icone('<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>'),
 };
 
 export class ReservaModal {
@@ -191,11 +195,17 @@ export class ReservaModal {
     const resumo = document.createElement("div");
     resumo.id = "resumoReserva";
     resumo.innerHTML = `
-      <div style="display:flex;flex-direction:column;gap:12px;padding:10px 0;">
-        <button type="button" id="btnAcaoNova"     style="padding:14px;background:#27ae60;color:#fff;border:none;border-radius:8px;font-weight:900;font-size:1rem;cursor:pointer;letter-spacing:1px;">NOVA RESERVA</button>
-        <button type="button" id="btnAcaoBloquear" style="padding:14px;background:#e74c3c;color:#fff;border:none;border-radius:8px;font-weight:900;font-size:1rem;cursor:pointer;letter-spacing:1px;">BLOQUEAR</button>
-        <button type="button" id="btnAcaoHorario"  style="padding:14px;background:#f39c12;color:#fff;border:none;border-radius:8px;font-weight:900;font-size:1rem;cursor:pointer;letter-spacing:1px;">ALTERAR HORÁRIO</button>
-        <button type="button" id="btnAcaoFechar"   style="padding:14px;background:transparent;color:var(--texto-principal);border:2px solid var(--borda,#555);border-radius:8px;font-weight:700;font-size:1rem;cursor:pointer;letter-spacing:1px;">FECHAR</button>
+      <div class="resumo-lista">
+        <button type="button" id="btnAcaoNova" class="resumo-btn resumo-btn--sucesso">
+          <span class="resumo-btn-icone">${ICONES.nova}</span>Nova reserva
+        </button>
+        <button type="button" id="btnAcaoBloquear" class="resumo-btn resumo-btn--danger">
+          <span class="resumo-btn-icone">${ICONES.bloquear}</span>Bloquear
+        </button>
+        <button type="button" id="btnAcaoHorario" class="resumo-btn resumo-btn--info">
+          <span class="resumo-btn-icone">${ICONES.horario}</span>Alterar horário
+        </button>
+        <button type="button" id="btnAcaoFechar" class="resumo-btn resumo-btn--ghost">Fechar</button>
       </div>
     `;
     if (titulo) titulo.after(resumo);
