@@ -243,3 +243,123 @@ body.dark-theme .time-separator {
   grid-column: span 1;
 }
 
+
+/* =========================================================================================
+   MENU DE RESUMO DA RESERVA — ações (Editar/Alterar Horário/Data/Cancelar/Excluir/Fechar)
+   Estilo "cartão neutro + acento colorido" (ícone + faixa lateral) em vez de botão sólido
+   pintado inteiro — visual mais discreto e profissional, alvo de toque generoso (tablet).
+   ========================================================================================= */
+.resumo-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 4px 0 2px;
+}
+.resumo-linha-dupla {
+  display: flex;
+  gap: 10px;
+}
+.resumo-linha-dupla .resumo-btn {
+  flex: 1;
+}
+
+.resumo-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 52px;
+  padding: 13px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--card-bg);
+  color: var(--texto);
+  font-family: inherit;
+  font-size: 0.93rem;
+  font-weight: 600;
+  letter-spacing: 0.1px;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+.resumo-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px var(--shadow);
+}
+.resumo-btn:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.resumo-btn-icone {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  color: var(--acento, var(--texto));
+}
+.resumo-btn-icone svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* Acento por ação — faixa lateral + cor do ícone, corpo do botão continua neutro */
+.resumo-btn--primary {
+  --acento: var(--secundaria);
+  border-left: 3px solid var(--acento);
+  font-weight: 700;
+}
+.resumo-btn--info {
+  --acento: var(--hospede);
+  border-left: 3px solid var(--acento);
+}
+.resumo-btn--roxo {
+  --acento: #8e44ad;
+  border-left: 3px solid var(--acento);
+}
+.resumo-btn--danger {
+  --acento: var(--vermelho);
+  border-left: 3px solid var(--acento);
+  color: var(--acento);
+}
+.resumo-btn--danger-forte {
+  --acento: var(--vermelho);
+  background: rgba(231, 76, 60, 0.1);
+  border-color: rgba(231, 76, 60, 0.35);
+  color: var(--acento);
+}
+.resumo-btn--ghost {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--texto);
+  font-weight: 600;
+  justify-content: center;
+}
+.resumo-btn--ghost .resumo-btn-icone {
+  display: none;
+}
+
+.resumo-aviso {
+  text-align: center;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  color: var(--vermelho);
+  background: rgba(231, 76, 60, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.resumo-btn--sucesso {
+  --acento: var(--menu);
+  border-left: 3px solid var(--acento);
+  font-weight: 700;
+}
+.resumo-aviso--neutro {
+  color: #7f8c8d;
+  background: rgba(127, 140, 141, 0.15);
+}

@@ -1,5 +1,5 @@
 /* =========================================================================================
-   OSTERIA DI LUCCA - RESERVAS/MODAL.JS v3.12
+   OSTERIA DI LUCCA - RESERVAS/MODAL.JS v3.13
    RESPONSABILIDADE: Gerenciamento Completo do Modal de Reservas
    ✅ v2.2: Ao clicar em reserva existente, exibe resumo com 3 botões
    ✅ v2.3: Ao clicar em linha disponível, exibe seletor de ação
@@ -32,6 +32,10 @@
    ✅ v3.10: Escapa reserva.nomes na mensagem de confirmação de CANCELAR RESERVA — corrige XSS armazenado
    ✅ v3.11: _limparFormulario() centraliza reset de isBloqueioExistente/obsOriginalBloqueio/
              bloqueadoOriginal/hospedesOriginal — remove fragilidade de estado da instância (Manutenção #5)
+   ✅ v3.13: Menu de resumo redesenhado — ícones SVG lineares (mesmo padrão de log.js) +
+             classes .resumo-btn/.resumo-linha-dupla (css/modais.css) no lugar de estilo
+             inline por botão. Visual "cartão neutro + acento colorido" em vez de botão
+             sólido pintado, alvo de toque maior (min 52px) — pensado pra tablet
    ========================================================================================= */
 
 import { getTodasReservas, getDataAtual } from "../../core/state.js";
@@ -46,6 +50,23 @@ import {
   restaurarReserva,
 } from "./service.js";
 import { validarReserva, formatarTelefone, limparHighlightCampos, escapeHtml } from "./validators.js";
+
+// =========================================================================
+// ÍCONES DO MENU DE RESUMO — linha fina (stroke), estilo neutro/profissional,
+// mesmo padrão de log.js (regra 6: SVG inline, sem depender de ícone externo)
+// =========================================================================
+function _icone(path) {
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${path}</svg>`;
+}
+const ICONES = {
+  editar: _icone('<path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/>'),
+  horario: _icone('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/>'),
+  calendario: _icone('<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/>'),
+  cancelar: _icone('<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5l5 5M14.5 9.5l-5 5"/>'),
+  excluir: _icone('<path d="M4 7h16"/><path d="M10 11v6M14 11v6"/><path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/><path d="M9 7V4h6v3"/>'),
+  desfazer: _icone('<path d="M3 10h9a5 5 0 0 1 0 10h-1"/><path d="M7 6L3 10l4 4"/>'),
+  check: _icone('<path d="M4 12l5 5L20 6"/>'),
+};
 
 export class ReservaModal {
   constructor() {
@@ -276,10 +297,12 @@ export class ReservaModal {
       const resumoCancelada = document.createElement("div");
       resumoCancelada.id = "resumoReserva";
       resumoCancelada.innerHTML = `
-        <div style="display:flex;flex-direction:column;gap:12px;padding:10px 0;">
-          <div style="text-align:center;padding:10px 14px;background:rgba(231,76,60,0.12);border-radius:8px;font-size:0.82rem;font-weight:700;color:#e74c3c;letter-spacing:0.5px;">❌ RESERVA CANCELADA</div>
-          <button type="button" id="btnResumoDesfazerCancelamento" style="padding:14px;background:#27ae60;color:#fff;border:none;border-radius:8px;font-weight:900;font-size:1rem;cursor:pointer;letter-spacing:1px;">DESFAZER CANCELAMENTO</button>
-          <button type="button" id="btnResumoFechar" style="padding:14px;background:transparent;color:var(--texto-principal);border:2px solid var(--borda,#555);border-radius:8px;font-weight:700;font-size:1rem;cursor:pointer;letter-spacing:1px;">FECHAR</button>
+        <div class="resumo-lista">
+          <div class="resumo-aviso">❌ Reserva cancelada</div>
+          <button type="button" id="btnResumoDesfazerCancelamento" class="resumo-btn resumo-btn--sucesso">
+            <span class="resumo-btn-icone">${ICONES.desfazer}</span>Desfazer cancelamento
+          </button>
+          <button type="button" id="btnResumoFechar" class="resumo-btn resumo-btn--ghost">Fechar</button>
         </div>
       `;
       if (titulo) titulo.after(resumoCancelada);
@@ -299,9 +322,9 @@ export class ReservaModal {
       const resumo = document.createElement("div");
       resumo.id = "resumoReserva";
       resumo.innerHTML = `
-        <div style="display:flex;flex-direction:column;gap:12px;padding:10px 0;">
-          <div style="text-align:center;padding:16px;background:rgba(127,140,141,0.15);border-radius:8px;font-weight:700;font-size:1rem;opacity:0.8;">✅ MESA FINALIZADA</div>
-          <button type="button" id="btnResumoFechar" style="padding:14px;background:transparent;color:var(--texto-principal);border:2px solid var(--borda,#555);border-radius:8px;font-weight:700;font-size:1rem;cursor:pointer;letter-spacing:1px;">FECHAR</button>
+        <div class="resumo-lista">
+          <div class="resumo-aviso resumo-aviso--neutro">${ICONES.check} Mesa finalizada</div>
+          <button type="button" id="btnResumoFechar" class="resumo-btn resumo-btn--ghost">Fechar</button>
         </div>
       `;
       if (titulo) titulo.after(resumo);
@@ -318,10 +341,12 @@ export class ReservaModal {
       const resumo = document.createElement("div");
       resumo.id = "resumoReserva";
       resumo.innerHTML = `
-        <div style="display:flex;flex-direction:column;gap:12px;padding:10px 0;">
-          <div style="text-align:center;padding:10px 14px;background:rgba(231,76,60,0.12);border-radius:8px;font-size:0.82rem;font-weight:700;color:#e74c3c;letter-spacing:0.5px;">⏱️ MESA EM ATENDIMENTO</div>
-          <button type="button" id="btnResumoEditar" style="padding:14px;background:#f39c12;color:#fff;border:none;border-radius:8px;font-weight:900;font-size:1rem;cursor:pointer;letter-spacing:1px;">EDITAR RESERVA</button>
-          <button type="button" id="btnResumoFechar" style="padding:14px;background:transparent;color:var(--texto-principal);border:2px solid var(--borda,#555);border-radius:8px;font-weight:700;font-size:1rem;cursor:pointer;letter-spacing:1px;">FECHAR</button>
+        <div class="resumo-lista">
+          <div class="resumo-aviso">⏱️ Mesa em atendimento</div>
+          <button type="button" id="btnResumoEditar" class="resumo-btn resumo-btn--primary">
+            <span class="resumo-btn-icone">${ICONES.editar}</span>Editar reserva
+          </button>
+          <button type="button" id="btnResumoFechar" class="resumo-btn resumo-btn--ghost">Fechar</button>
         </div>
       `;
       if (titulo) titulo.after(resumo);
@@ -337,15 +362,27 @@ export class ReservaModal {
     const resumo = document.createElement("div");
     resumo.id = "resumoReserva";
     resumo.innerHTML = `
-      <div style="display:flex;flex-direction:column;gap:12px;padding:10px 0;">
-        <button type="button" id="btnResumoEditar"    style="padding:14px;background:#f39c12;color:#fff;border:none;border-radius:8px;font-weight:900;font-size:1rem;cursor:pointer;letter-spacing:1px;">EDITAR RESERVA</button>
-        <button type="button" id="btnResumoHorario"   style="padding:14px;background:#3498db;color:#fff;border:none;border-radius:8px;font-weight:900;font-size:1rem;cursor:pointer;letter-spacing:1px;">ALTERAR HORÁRIO</button>
-        <button type="button" id="btnResumoData"      style="padding:14px;background:#8e44ad;color:#fff;border:none;border-radius:8px;font-weight:900;font-size:1rem;cursor:pointer;letter-spacing:1px;">ALTERAR DATA</button>
-        <div style="display:flex;gap:12px;">
-          <button type="button" id="btnResumoCancelar" style="flex:1;padding:14px;background:#e74c3c;color:#fff;border:none;border-radius:8px;font-weight:900;font-size:1rem;cursor:pointer;letter-spacing:1px;">CANCELAR RESERVA</button>
-          <button type="button" id="btnResumoExcluir"  style="flex:1;padding:14px;background:#7f1d1d;color:#fff;border:none;border-radius:8px;font-weight:900;font-size:1rem;cursor:pointer;letter-spacing:1px;">EXCLUIR</button>
+      <div class="resumo-lista">
+        <button type="button" id="btnResumoEditar" class="resumo-btn resumo-btn--primary">
+          <span class="resumo-btn-icone">${ICONES.editar}</span>Editar reserva
+        </button>
+        <div class="resumo-linha-dupla">
+          <button type="button" id="btnResumoHorario" class="resumo-btn resumo-btn--info">
+            <span class="resumo-btn-icone">${ICONES.horario}</span>Horário
+          </button>
+          <button type="button" id="btnResumoData" class="resumo-btn resumo-btn--roxo">
+            <span class="resumo-btn-icone">${ICONES.calendario}</span>Data
+          </button>
         </div>
-        <button type="button" id="btnResumoFechar"    style="padding:14px;background:transparent;color:var(--texto-principal);border:2px solid var(--borda,#555);border-radius:8px;font-weight:700;font-size:1rem;cursor:pointer;letter-spacing:1px;">FECHAR</button>
+        <div class="resumo-linha-dupla">
+          <button type="button" id="btnResumoCancelar" class="resumo-btn resumo-btn--danger">
+            <span class="resumo-btn-icone">${ICONES.cancelar}</span>Cancelar
+          </button>
+          <button type="button" id="btnResumoExcluir" class="resumo-btn resumo-btn--danger-forte">
+            <span class="resumo-btn-icone">${ICONES.excluir}</span>Excluir
+          </button>
+        </div>
+        <button type="button" id="btnResumoFechar" class="resumo-btn resumo-btn--ghost">Fechar</button>
       </div>
     `;
     if (titulo) titulo.after(resumo);
