@@ -15,6 +15,10 @@
 
             Persistência offline (enablePersistence do Firestore) NÃO foi recriada aqui —
             o Supabase não tem equivalente pronto; ver dívida técnica no prompt.md.
+   ✅ v2.1: _paraColunasReserva() não inclui mais mesa_identificador — mesa é gerenciada
+            só por atribuirMesa()/cancelarMesa() (service.js). Incluí-la aqui fazia
+            atualizarReserva() zerar a mesa já atribuída a cada edição da reserva,
+            porque o formulário nunca envia dados.mesa (bug reportado em produção)
    ========================================================================================= */
 
 import { supabase } from './supabaseClient.js';
@@ -197,20 +201,20 @@ class DatabaseService {
 
     /**
      * Converte o objeto achatado que a UI usa para criar/atualizar uma reserva nas
-     * colunas reais de `reservas`, resolvendo hospede_id e garantindo mesa_identificador
-     * como efeitos colaterais (ambos exigem ida ao banco).
+     * colunas reais de `reservas`, resolvendo hospede_id como efeito colateral (exige
+     * ida ao banco). NÃO inclui `mesa_identificador` — mesa é gerenciada só por
+     * atribuirMesa()/cancelarMesa() (service.js), nunca pelo formulário de reserva.
+     * Incluí-la aqui fazia o UPDATE zerar a mesa já atribuída a cada edição da
+     * reserva, porque o formulário nunca envia `dados.mesa` (bug reportado em produção).
      * @param {Object} dados
      * @param {string|null} [hospedeIdExistente] - Repassado pra _resolverHospedeId
      * @private
      */
     async _paraColunasReserva(dados, hospedeIdExistente = null) {
         const hospedeId = await this._resolverHospedeId(dados, hospedeIdExistente);
-        const mesaId = dados.mesa && dados.mesa !== '' && dados.mesa !== '-' ? dados.mesa : null;
-        if (mesaId) await this.garantirMesaExiste(mesaId);
 
         return {
             hospede_id: hospedeId,
-            mesa_identificador: mesaId,
             data: dados.data,
             horario: dados.horario,
             original_base: dados.originalBase || dados.horario,

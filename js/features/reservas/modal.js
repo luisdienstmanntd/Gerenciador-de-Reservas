@@ -38,9 +38,14 @@
              sólido pintado, alvo de toque maior (min 52px) — pensado pra tablet
    ✅ v3.14: abrirNova() (seletor de ação da linha disponível) migrado pro mesmo padrão
              .resumo-btn/ICONES — ícones novos "nova" (+) e "bloquear" (cadeado)
+   ✅ v3.15: btnConfirmarData chama recarregarReservas(getDataAtual()) após alterarData() —
+             corrige reserva "fantasma" que continuava na grade da data de origem até o
+             usuário trocar de data manualmente (Realtime não notifica o canal antigo
+             quando a própria coluna filtrada, `data`, muda de valor no UPDATE)
    ========================================================================================= */
 
 import { getTodasReservas, getDataAtual } from "../../core/state.js";
+import { recarregarReservas } from "./listener.js";
 import {
   salvarReserva,
   cancelarReserva,
@@ -928,6 +933,12 @@ export class ReservaModal {
       try {
         await alterarData(id, novaData);
         this.fechar();
+        // ✅ A Realtime do Supabase filtra por `data=eq.<data atual>` — quando a
+        // própria coluna filtrada muda de valor, o UPDATE some do escopo do filtro
+        // e o canal antigo nunca recebe o evento (a reserva "fica pra trás" na
+        // grade de origem até alguém recarregar). Força um refetch da data atual
+        // pra não depender dessa lacuna do Realtime.
+        recarregarReservas(getDataAtual());
       } catch (e) {
         if (btn) { btn.disabled = false; btn.innerText = "CONFIRMAR"; }
       }
