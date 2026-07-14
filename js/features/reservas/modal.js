@@ -42,6 +42,8 @@
              corrige reserva "fantasma" que continuava na grade da data de origem até o
              usuário trocar de data manualmente (Realtime não notifica o canal antigo
              quando a própria coluna filtrada, `data`, muda de valor no UPDATE)
+   ✅ v3.16: btnConfirmarData trata o erro semDisponibilidade de alterarData() — mesma
+             pergunta via modalConfirmar do bug #65, agora também na troca de data
    ========================================================================================= */
 
 import { getTodasReservas, getDataAtual } from "../../core/state.js";
@@ -930,8 +932,8 @@ export class ReservaModal {
       }
       const btn = document.getElementById("btnConfirmarData");
       if (btn) { btn.disabled = true; btn.innerText = "SALVANDO..."; }
-      try {
-        await alterarData(id, novaData);
+
+      const finalizarAlteracaoData = () => {
         this.fechar();
         // ✅ A Realtime do Supabase filtra por `data=eq.<data atual>` — quando a
         // própria coluna filtrada muda de valor, o UPDATE some do escopo do filtro
@@ -939,7 +941,23 @@ export class ReservaModal {
         // grade de origem até alguém recarregar). Força um refetch da data atual
         // pra não depender dessa lacuna do Realtime.
         recarregarReservas(getDataAtual());
+      };
+
+      try {
+        await alterarData(id, novaData);
+        finalizarAlteracaoData();
       } catch (e) {
+        // ✅ Sem linha base livre no horário desse bloco na data de destino — pergunta
+        // antes de criar uma linha nova, mesma lógica do bug #65 (ALTERAR HORÁRIO)
+        if (e.semDisponibilidade) {
+          window.modalConfirmar(
+            `Sem disponibilidade em ${novaData} — as linhas desse horário já estão ocupadas. Deseja criar uma nova linha para esta reserva?`,
+            async () => {
+              await alterarData(id, novaData, { permitirNovaLinha: true });
+              finalizarAlteracaoData();
+            }
+          );
+        }
         if (btn) { btn.disabled = false; btn.innerText = "CONFIRMAR"; }
       }
     }, { once: true });

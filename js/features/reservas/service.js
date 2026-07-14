@@ -1,5 +1,5 @@
 /* =========================================================================================
-   OSTERIA DI LUCCA - RESERVAS.SERVICE.JS (v4.3)
+   OSTERIA DI LUCCA - RESERVAS.SERVICE.JS (v4.4)
    ✅ v2.8-v3.11: histórico Firestore — ver git log para versões anteriores.
    ✅ v4.0: Fase 5 da migração Firestore → Supabase. Todas as operações de escrita/leitura
             passam a falar com o Supabase. `firestore.batch()` (atômico) não tem equivalente
@@ -23,6 +23,9 @@
             linhas base do destino estiverem todas ocupadas, lança erro `semDisponibilidade`
             em vez de criar linha nova direto — init.js pergunta antes via modalConfirmar
             (aceita opções.permitirNovaLinha pra prosseguir depois da confirmação)
+   ✅ v4.4: alterarData() ganha a mesma checagem de capacidade/aviso do v4.3 — mover uma
+            reserva pra uma data em que o mesmo horário já está com as linhas base cheias
+            também pergunta antes de criar linha nova (aceita opções.permitirNovaLinha)
    ========================================================================================= */
 
 import {
@@ -583,8 +586,9 @@ export async function adicionarObservacao(id, novaObs) {
  *
  * @param {string} id        - ID da reserva
  * @param {string} novaData  - Nova data no formato YYYY-MM-DD
+ * @param {{permitirNovaLinha?: boolean}} [opcoes]
  */
-export async function alterarData(id, novaData) {
+export async function alterarData(id, novaData, opcoes = {}) {
     if (!id) throw new Error('ID obrigatório');
     if (!novaData) throw new Error('Nova data é obrigatória');
 
@@ -599,6 +603,17 @@ export async function alterarData(id, novaData) {
     const snapBlocoDestino = await db.buscarReservasPorBloco(novaData, originalBase);
 
     const novaPosicao = _calcularPosicaoLivre(snapBlocoDestino, dadosAntes.posicao ?? 0);
+
+    // ✅ Mesma checagem de capacidade do bug #65 (salvarApenasHorario) — aqui o bloco
+    // (originalBase) não muda, só a data, então reaproveitar a posição antiga como
+    // desejada continua fazendo sentido. Mas se as linhas base do destino já estiverem
+    // todas ocupadas, também precisa perguntar antes de criar uma linha nova sozinha.
+    const capacidadeBase = _totalLinhasBloco(originalBase);
+    if (novaPosicao >= capacidadeBase && !opcoes.permitirNovaLinha) {
+        const erro = new Error(`Sem linha disponível em ${novaData} ${originalBase}`);
+        erro.semDisponibilidade = true;
+        throw erro;
+    }
 
     if (novaPosicao !== dadosAntes.posicao) {
         console.log(`ℹ️ alterarData: posição ${dadosAntes.posicao} ocupada no destino — usando ${novaPosicao}`);
