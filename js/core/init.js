@@ -1,5 +1,5 @@
 /* =========================================================================================
-   OSTERIA DI LUCCA - CORE/INIT.JS v2.1
+   OSTERIA DI LUCCA - CORE/INIT.JS v2.2
    ✅ v1.6: Padroniza error handling — usa notificacao.js
    ✅ v1.7: Listener de editar reserva usa dataset.id — elimina duplo disparo
             (onclick inline no render.js + bubbling para init.js causavam dois disparos)
@@ -12,6 +12,9 @@
             use o modal de confirmação não-bloqueante sem dependência circular.
    ✅ v2.1: Limpeza proativa de docs fantasmas — chama limparFantasmasDoDia() em background
             após o boot, para o dia atual. Elimina o 🔴 bug aberto de fantasmas pré-v3.0.
+   ✅ v2.2: Branch "Alterar horário" do btnSalvar trata o erro semDisponibilidade de
+            salvarApenasHorario() — pergunta via modalConfirmar antes de criar linha nova
+            quando o bloco de destino não tem linha base livre
    ========================================================================================= */
 
 import { setDataAtual, getDataAtual, removerLinhaExtra, getTodasReservas } from './state.js';
@@ -211,12 +214,34 @@ if (horario) reservaModal.abrirNova(horario, parseInt(posicao), hrBase);
 
                 const originalBaseAntes = dados.originalBase;
                 const tinhaId = !!dados.id;
-                await salvarApenasHorario(dados);
-                if (!tinhaId && originalBaseAntes) {
-                    removerLinhaExtra(originalBaseAntes);
-                    renderizarGrid(getTodasReservas());
+
+                const finalizar = () => {
+                    if (!tinhaId && originalBaseAntes) {
+                        removerLinhaExtra(originalBaseAntes);
+                        renderizarGrid(getTodasReservas());
+                    }
+                    reservaModal.fechar();
+                };
+
+                try {
+                    await salvarApenasHorario(dados);
+                    finalizar();
+                } catch (e) {
+                    // ✅ Sem linha base livre no horário de destino — pergunta antes de criar
+                    // uma linha nova, em vez de criar direto (regra 5: nunca usar confirm nativo)
+                    if (e.semDisponibilidade) {
+                        modalConfirmar(
+                            `Sem disponibilidade em ${dados.horario} — as linhas já estão ocupadas. Deseja criar uma nova linha para esta reserva?`,
+                            async () => {
+                                await salvarApenasHorario(dados, { permitirNovaLinha: true });
+                                finalizar();
+                            }
+                        );
+                        return;
+                    }
+                    notificarErro('Erro ao alterar horário. Tente novamente.');
+                    console.error('❌ Erro ao alterar horário:', e);
                 }
-                reservaModal.fechar();
                 return;
             }
 

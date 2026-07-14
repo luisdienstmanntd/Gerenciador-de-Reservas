@@ -1,5 +1,5 @@
 /* =========================================================================================
-   OSTERIA DI LUCCA - RESERVAS.SERVICE.JS (v4.2)
+   OSTERIA DI LUCCA - RESERVAS.SERVICE.JS (v4.3)
    ✅ v2.8-v3.11: histórico Firestore — ver git log para versões anteriores.
    ✅ v4.0: Fase 5 da migração Firestore → Supabase. Todas as operações de escrita/leitura
             passam a falar com o Supabase. `firestore.batch()` (atômico) não tem equivalente
@@ -16,6 +16,13 @@
             (menos de 48h de antecedência). _calcularPosicaoLivre() passa a ignorar
             reservas canceladas ao determinar posições ocupadas — a linha fica livre
             de novo pra uma reserva nova.
+   ✅ v4.3: salvarApenasHorario() — ao mudar reserva real de horário, busca posição livre
+            a partir de 0 no bloco de destino (não mais a partir da posição antiga, que não
+            tem relação nenhuma com o bloco novo — bug reportado: mover reserva de uma linha
+            extra criava linha nova no destino mesmo com as 3 linhas base livres). Se as
+            linhas base do destino estiverem todas ocupadas, lança erro `semDisponibilidade`
+            em vez de criar linha nova direto — init.js pergunta antes via modalConfirmar
+            (aceita opções.permitirNovaLinha pra prosseguir depois da confirmação)
    ========================================================================================= */
 
 import {
@@ -424,7 +431,7 @@ export async function desbloquearReserva(id) {
     console.log('✅ Reserva desbloqueada (update):', id);
 }
 
-export async function salvarApenasHorario(dados) {
+export async function salvarApenasHorario(dados, opcoes = {}) {
     const client = await _getClient();
     const novoHorario = dados.horario;
     const data = getDataAtual();
@@ -443,7 +450,23 @@ export async function salvarApenasHorario(dados) {
                 const snapBloco = await db.buscarReservasPorBloco(data, novoOriginalBase);
                 // Não exclui o próprio doc — no momento da query ele ainda está no bloco
                 // antigo, então todos os docs do novo bloco são concorrentes.
-                novaPosicao = _calcularPosicaoLivre(snapBloco, novaPosicao);
+                //
+                // ✅ Busca a partir da posição 0, não da posição antiga (dadosAtuais.posicao).
+                // A numeração de posição só faz sentido DENTRO do bloco onde foi calculada —
+                // usar a posição de origem como "desejada" aqui só funciona se ela por acaso
+                // já estiver livre no destino, senão passa direto por linhas base livres com
+                // índice menor. Bug reportado: mover uma reserva que estava numa linha extra
+                // (posição 3+) pra outro horário criava uma linha nova mesmo com as 3 linhas
+                // base do destino livres, porque a busca nunca considerava as posições 0-2.
+                novaPosicao = _calcularPosicaoLivre(snapBloco, 0);
+
+                const capacidadeBase = _totalLinhasBloco(novoOriginalBase);
+                if (novaPosicao >= capacidadeBase && !opcoes.permitirNovaLinha) {
+                    const erro = new Error(`Sem linha disponível em ${novoHorario}`);
+                    erro.semDisponibilidade = true;
+                    throw erro;
+                }
+
                 console.log(`✅ Nova posição no bloco ${novoOriginalBase}: ${novaPosicao}`);
             }
 
