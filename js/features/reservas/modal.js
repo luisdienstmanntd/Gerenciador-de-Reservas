@@ -44,6 +44,8 @@
              quando a própria coluna filtrada, `data`, muda de valor no UPDATE)
    ✅ v3.16: btnConfirmarData trata o erro semDisponibilidade de alterarData() — mesma
              pergunta via modalConfirmar do bug #65, agora também na troca de data
+   ✅ v3.17: Mensagem de "sem disponibilidade" revisada — data+horário/motivo/pergunta
+             em linhas separadas (_formatarDataBR), mesmo padrão de init.js v2.3
    ========================================================================================= */
 
 import { getTodasReservas, getDataAtual } from "../../core/state.js";
@@ -59,6 +61,11 @@ import {
   restaurarReserva,
 } from "./service.js";
 import { validarReserva, formatarTelefone, limparHighlightCampos, escapeHtml } from "./validators.js";
+
+/** Converte data ISO (YYYY-MM-DD) para exibição BR (DD/MM/AAAA). */
+function _formatarDataBR(dataIso) {
+  return (dataIso || "").split("-").reverse().join("/");
+}
 
 // =========================================================================
 // ÍCONES DO MENU DE RESUMO — linha fina (stroke), estilo neutro/profissional,
@@ -950,8 +957,9 @@ export class ReservaModal {
         // ✅ Sem linha base livre no horário desse bloco na data de destino — pergunta
         // antes de criar uma linha nova, mesma lógica do bug #65 (ALTERAR HORÁRIO)
         if (e.semDisponibilidade) {
+          const horarioBloco = reserva.originalBase || reserva.horario;
           window.modalConfirmar(
-            `Sem disponibilidade em ${novaData} — as linhas desse horário já estão ocupadas. Deseja criar uma nova linha para esta reserva?`,
+            `${_formatarDataBR(novaData)} ${horarioBloco}<br>Sem disponibilidade.<br>Deseja criar uma nova linha para esta reserva?`,
             async () => {
               await alterarData(id, novaData, { permitirNovaLinha: true });
               finalizarAlteracaoData();

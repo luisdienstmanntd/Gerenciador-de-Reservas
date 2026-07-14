@@ -1,5 +1,5 @@
 /* =========================================================================================
-   OSTERIA DI LUCCA - CORE/INIT.JS v2.2
+   OSTERIA DI LUCCA - CORE/INIT.JS v2.3
    ✅ v1.6: Padroniza error handling — usa notificacao.js
    ✅ v1.7: Listener de editar reserva usa dataset.id — elimina duplo disparo
             (onclick inline no render.js + bubbling para init.js causavam dois disparos)
@@ -15,6 +15,10 @@
    ✅ v2.2: Branch "Alterar horário" do btnSalvar trata o erro semDisponibilidade de
             salvarApenasHorario() — pergunta via modalConfirmar antes de criar linha nova
             quando o bloco de destino não tem linha base livre
+   ✅ v2.3: Mensagens de modalConfirmar revisadas — "sem disponibilidade" mostra
+            data+horário/motivo/pergunta em linhas separadas (_formatarDataBR); exclusão
+            de reserva mostra o nome entre aspas e deixa explícito que é definitivo,
+            diferente de um cancelamento
    ========================================================================================= */
 
 import { setDataAtual, getDataAtual, removerLinhaExtra, getTodasReservas } from './state.js';
@@ -26,7 +30,12 @@ import { atualizarTimers } from '../ui/timers.js';
 import { renderizarGrid } from '../ui/render.js';
 import { db } from './database.js';
 import { notificarErrosValidacao, notificarErro } from './notificacao.js';
-import { destacarCamposInvalidos } from '../features/reservas/validators.js';
+import { destacarCamposInvalidos, escapeHtml } from '../features/reservas/validators.js';
+
+/** Converte data ISO (YYYY-MM-DD) para exibição BR (DD/MM/AAAA). */
+function _formatarDataBR(dataIso) {
+    return (dataIso || '').split('-').reverse().join('/');
+}
 
 // Instâncias globais dos modais
 let reservaModal = null;
@@ -231,7 +240,7 @@ if (horario) reservaModal.abrirNova(horario, parseInt(posicao), hrBase);
                     // uma linha nova, em vez de criar direto (regra 5: nunca usar confirm nativo)
                     if (e.semDisponibilidade) {
                         modalConfirmar(
-                            `Sem disponibilidade em ${dados.horario} — as linhas já estão ocupadas. Deseja criar uma nova linha para esta reserva?`,
+                            `${_formatarDataBR(getDataAtual())} ${dados.horario}<br>Sem disponibilidade.<br>Deseja criar uma nova linha para esta reserva?`,
                             async () => {
                                 await salvarApenasHorario(dados, { permitirNovaLinha: true });
                                 finalizar();
@@ -270,7 +279,10 @@ if (horario) reservaModal.abrirNova(horario, parseInt(posicao), hrBase);
         btnExcluir.addEventListener('click', () => {
             const dados = reservaModal.obterDados();
             // ✅ v1.8: modalConfirmar() substitui confirm() nativo (regra 5 — nunca usar confirm)
-            modalConfirmar('Deseja realmente excluir esta reserva?', async () => {
+            const mensagemExcluir = dados.nomes
+                ? `Excluir reserva de "${escapeHtml(dados.nomes)}"?<br>Isso apaga o registro definitivamente (diferente de cancelamentos)`
+                : `Excluir esta reserva?<br>Isso apaga o registro definitivamente (diferente de cancelamentos)`;
+            modalConfirmar(mensagemExcluir, async () => {
                 try {
                     await excluirReserva(dados.id);
                     reservaModal.fechar();
