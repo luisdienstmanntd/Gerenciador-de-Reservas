@@ -1,5 +1,5 @@
 /* =========================================================================================
-   OSTERIA DI LUCCA - DASHBOARD.JS v3.15
+   OSTERIA DI LUCCA - DASHBOARD.JS v3.16
    ✅ v3.8: Padroniza error handling — usa notificacao.js
    ✅ v3.9: Bug #7 — usa buscarReservasPorPeriodo() de service.js — elimina acesso direto ao Firestore
    ✅ v3.10: ocupacaoHorario construído a partir de getHorariosPadrao() — elimina array hardcoded (Manutenção #6)
@@ -14,11 +14,13 @@
    ✅ v3.15: Card CANCELAMENTOS — conta reservas canceladas (soft-delete) no período, fora
              de qualquer KPI/gráfico de reserva ativa (bug #57). Corrige de quebra um id
              desalinhado: #kpiCancelados exibia CRIANÇAS por engano — renomeado p/ #kpiCriancas
+   ✅ v3.16: Gráfico "Uso de Mesas" usa o total de mesas da config (getConfig().mesas) em vez
+             de 18 fixo — mesas 19/20 apareciam sub-relatadas (bug #50)
    ========================================================================================= */
 
 import { buscarReservasPorPeriodo, buscarReservasPorData } from './reservas/service.js';
 import { notificarErro } from '../core/notificacao.js';
-import { getHorariosPadrao } from '../core/state.js';
+import { getHorariosPadrao, getConfig } from '../core/state.js';
 
 // --- VARIÁVEIS GLOBAIS ---
 let chartHorarioInstance = null;
@@ -28,6 +30,12 @@ let chartMesasInstance = null;
 
 const CAPACIDADE_NOITE = 30;
 const DIAS_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+
+// ✅ v3.16: total de mesas vem da config do sistema (bug #50) — mesmo padrão de mesas/modal.js
+function getTotalMesas() {
+    const config = getConfig();
+    return config.totalMesas || config.mesas || 18;
+}
 
 // ✅ v3.13: Consulta por período com exceções, ou por datas específicas (bug #48)
 let modoConsulta = 'periodo'; // 'periodo' | 'especificas'
@@ -45,7 +53,7 @@ function processarDashboard(reservas, diasNoPeriodo = 1) {
         getHorariosPadrao().map(h => [h, { hospede: 0, externo: 0, passante: 0 }])
     );
     let usoMesas = {};
-    for (let i = 1; i <= 18; i++) usoMesas[i] = 0;
+    for (let i = 1; i <= getTotalMesas(); i++) usoMesas[i] = 0;
 
     // ✅ v3.12: Movimento por dia da semana, separado por tipo de cliente (bug #47)
     let porDiaSemana = DIAS_SEMANA.map(() => ({ hospede: 0, externo: 0, passante: 0 }));
@@ -168,7 +176,7 @@ function renderizarGraficosAvancados(dadosHorario, dadosTipo, dadosDiaSemana, da
     const ctxMesas = document.getElementById('chartMesas');
     if (ctxMesas) {
         let mesasLabels = [], mesasValores = [];
-        for (let i = 1; i <= 18; i++) {
+        for (let i = 1; i <= getTotalMesas(); i++) {
             if (dadosMesas[i] > 0) { mesasLabels.push('Mesa ' + i); mesasValores.push(dadosMesas[i]); }
         }
         chartMesasInstance = new Chart(ctxMesas.getContext('2d'), {
