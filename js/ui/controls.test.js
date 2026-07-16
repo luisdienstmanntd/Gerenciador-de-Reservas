@@ -133,11 +133,16 @@ describe('alternarEdicaoConfig', () => {
 });
 
 describe('alternarEdicaoBloqueiosSemanais', () => {
-    it('mostra o botão "+ ADICIONAR REGRA" quando o switch liga e esconde quando desliga', () => {
-        document.body.innerHTML = '<button id="btnAdicionarRegraBloqueio" class="hidden"></button>';
+    it('mostra a lista de regras + botão "+ ADICIONAR REGRA" quando o switch liga e esconde quando desliga', () => {
+        document.body.innerHTML = `
+            <div id="listaBloqueiosSemanais" class="hidden"></div>
+            <button id="btnAdicionarRegraBloqueio" class="hidden"></button>
+        `;
         alternarEdicaoBloqueiosSemanais(true);
+        expect(document.getElementById('listaBloqueiosSemanais').classList.contains('hidden')).toBe(false);
         expect(document.getElementById('btnAdicionarRegraBloqueio').classList.contains('hidden')).toBe(false);
         alternarEdicaoBloqueiosSemanais(false);
+        expect(document.getElementById('listaBloqueiosSemanais').classList.contains('hidden')).toBe(true);
         expect(document.getElementById('btnAdicionarRegraBloqueio').classList.contains('hidden')).toBe(true);
     });
 });
@@ -154,7 +159,7 @@ describe('carregarConfiguracoes — bloqueios antecipados', () => {
         `;
     }
 
-    it('sempre abre com o switch desligado e o botão de adicionar escondido, mesmo se a config tiver regras', () => {
+    it('sempre abre com o switch desligado e a lista/botão de adicionar escondidos, mesmo se a config tiver regras', () => {
         setConfigSistema({
             capacidade: 30, mesas: 18, bloqueioAutomatico: true,
             bloqueiosSemanais: { 4: { '20:00': 1 } },
@@ -164,10 +169,11 @@ describe('carregarConfiguracoes — bloqueios antecipados', () => {
         carregarConfiguracoes();
 
         expect(document.getElementById('toggleConfigBloqueiosSemanais').checked).toBe(false);
+        expect(document.getElementById('listaBloqueiosSemanais').classList.contains('hidden')).toBe(true);
         expect(document.getElementById('btnAdicionarRegraBloqueio').classList.contains('hidden')).toBe(true);
     });
 
-    it('renderiza as regras salvas na lista', () => {
+    it('renderiza as regras salvas na lista (mesmo oculta, os dados já estão prontos ao ligar o switch)', () => {
         setConfigSistema({
             capacidade: 30, mesas: 18, bloqueioAutomatico: true,
             bloqueiosSemanais: { 5: { '20:30': 2 } },

@@ -1,5 +1,5 @@
 /* =========================================================================================
-   OSTERIA DI LUCCA - CONTROLS.JS v9.1
+   OSTERIA DI LUCCA - CONTROLS.JS v9.2
    RESPONSABILIDADE: Controles de Interface e Tema
    ✅ CORRIGIDO: Migrado para DatabaseService
    ✅ O Tema agora obedece estritamente a posição do switch
@@ -20,6 +20,9 @@
    ✅ v9.1: Editor de "Bloqueios Antecipados" (dia da semana × horário × qtd) — mesmo
             padrão de trava de capacidade/mesas: switch desligado por padrão, "+
             ADICIONAR REGRA" só aparece com o switch ligado (alternarEdicaoBloqueiosSemanais)
+   ✅ v9.2: alternarEdicaoBloqueiosSemanais() também esconde/mostra a LISTA de regras
+            (antes só o botão "+ ADICIONAR REGRA" era escondido) — a lista fica oculta
+            por completo até o usuário deslizar o switch
    ========================================================================================= */
 
 import { adicionarLinhaExtra, getLinhasExtras, getTodasReservas, getDataAtual, getConfig, setConfigSistema, getHorariosPadrao } from '../core/state.js';
@@ -280,17 +283,19 @@ export function carregarConfiguracoes() {
     // valor sensível que precise de confirmação extra pra editar.
     if (toggleBloqueioAutomatico) toggleBloqueioAutomatico.checked = config.bloqueioAutomatico !== false;
 
-    // Trava igual capacidade/mesas: começa sempre desligado, "+ ADICIONAR REGRA"
-    // só aparece com o switch ligado — evita adicionar regra sem querer.
+    // Trava igual capacidade/mesas: começa sempre desligado — a lista de regras e o
+    // "+ ADICIONAR REGRA" só aparecem com o switch ligado.
     if (toggleBloqueiosSemanais) toggleBloqueiosSemanais.checked = false;
     alternarEdicaoBloqueiosSemanais(false);
 
     _renderizarRegrasBloqueioSemanal(config.bloqueiosSemanais || {});
 }
 
-/** Mostra/esconde o botão "+ ADICIONAR REGRA" de acordo com o switch da seção. */
+/** Mostra/esconde a lista de regras + botão "+ ADICIONAR REGRA" de acordo com o switch da seção. */
 export function alternarEdicaoBloqueiosSemanais(habilitado) {
+    const lista = document.getElementById('listaBloqueiosSemanais');
     const btn = document.getElementById('btnAdicionarRegraBloqueio');
+    if (lista) lista.classList.toggle('hidden', !habilitado);
     if (btn) btn.classList.toggle('hidden', !habilitado);
 }
 
