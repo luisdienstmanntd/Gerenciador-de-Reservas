@@ -53,7 +53,7 @@ export async function registrarLog(acao, dadosAntes = null, dadosDepois = null) 
  * Converte uma linha de reservas_log (snake_case, criado_em) para o formato que a
  * timeline sempre usou (camelCase, timestamp) — equivalente ao doc do Firestore.
  */
-function _paraLogApp(row) {
+export function _paraLogApp(row) {
     return {
         id: row.id,
         acao: row.acao,
@@ -65,8 +65,9 @@ function _paraLogApp(row) {
     };
 }
 
-/** Resume dados da reserva para o log (evita salvar campos desnecessários) */
-function _resumir(dados) {
+/** Resume dados da reserva para o log (evita salvar campos desnecessários).
+ *  Exportada para testes (mesmo padrão dos helpers _-prefixados de service.js). */
+export function _resumir(dados) {
     return {
         id:              dados.id              || '',
         // A data da noite é essencial pra análise: após EXCLUIR (linha apagada) ou
@@ -360,7 +361,7 @@ function _renderizarItem(log) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Campos rastreados cujo valor mudou entre antes e depois, na ordem de LABELS_CAMPOS. */
-function _camposAlterados(antes, depois) {
+export function _camposAlterados(antes, depois) {
     return Object.keys(LABELS_CAMPOS).filter(function(c) {
         return String(antes[c] != null ? antes[c] : '') !== String(depois[c] != null ? depois[c] : '');
     });

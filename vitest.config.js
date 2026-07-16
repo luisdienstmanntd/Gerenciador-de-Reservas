@@ -8,6 +8,12 @@ import { defineConfig } from 'vitest/config';
 // npm (usado só nos testes/scripts Node), sem exigir nenhuma mudança no código do
 // navegador.
 export default defineConfig({
+    test: {
+        // Worktrees do Claude Code (.claude/worktrees/*) contêm cópias completas do
+        // projeto — sem esta exclusão o Vitest roda cada teste duas vezes (uma da
+        // cópia, uma do projeto real), inflando a contagem e mascarando o resultado.
+        exclude: ['**/node_modules/**', '**/.claude/**'],
+    },
     resolve: {
         alias: {
             'https://esm.sh/@supabase/supabase-js@2.110.2': '@supabase/supabase-js',

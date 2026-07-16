@@ -82,8 +82,9 @@ export function _calcularPosicaoLivre(reservasBloco, posicaoDesejada = 0) {
 
 const PAX_MINIMO_BLOQUEIO_AUTOMATICO = 4;
 
-/** Total de linhas visíveis (base + extras) de um bloco — mesmo cálculo de removerLinhaDoBloco(). */
-function _totalLinhasBloco(hr) {
+/** Total de linhas visíveis (base + extras) de um bloco — mesmo cálculo de removerLinhaDoBloco().
+ *  Exportada para testes (mesmo padrão de _calcularPosicaoLivre/_calcularDepositoRetido). */
+export function _totalLinhasBloco(hr) {
     const baseLinhas = new Set(getHorariosPadrao()).has(hr) ? 3 : 1;
     const extras = getLinhasExtras()[hr] !== undefined ? getLinhasExtras()[hr] : 0;
     return baseLinhas + extras;
@@ -94,7 +95,7 @@ function _totalLinhasBloco(hr) {
  * pessoas. 4-5 pessoas → 1 linha extra; 6-7 → 2; 8-9 → 3; e assim por diante.
  * Retorna 0 (nenhuma linha extra) pra reservas abaixo de 4 pessoas.
  */
-function _linhasExtrasNecessarias(paxs) {
+export function _linhasExtrasNecessarias(paxs) {
     return Math.max(0, Math.floor(paxs / 2) - 1);
 }
 

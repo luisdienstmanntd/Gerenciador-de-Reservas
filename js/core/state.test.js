@@ -17,6 +17,8 @@ import {
     setUnsubscribe,
     getUnsubscribeConfig,
     setUnsubscribeConfig,
+    getUnsubscribeConfigSistema,
+    setUnsubscribeConfigSistema,
     setConfigSistema,
 } from './state.js';
 
@@ -141,5 +143,19 @@ describe('unsubscribe (reservas e config_dia)', () => {
         setUnsubscribeConfig(fnConfig);
         expect(getUnsubscribe()).toBe(fnReservas);
         expect(getUnsubscribeConfig()).toBe(fnConfig);
+    });
+
+    it('getUnsubscribeConfigSistema/setUnsubscribeConfigSistema são independentes dos outros dois', () => {
+        const fnReservas = () => {};
+        const fnConfigDia = () => {};
+        const fnConfigSistema = () => {};
+        setUnsubscribe(fnReservas);
+        setUnsubscribeConfig(fnConfigDia);
+        setUnsubscribeConfigSistema(fnConfigSistema);
+        expect(getUnsubscribeConfigSistema()).toBe(fnConfigSistema);
+        expect(getUnsubscribe()).toBe(fnReservas);
+        expect(getUnsubscribeConfig()).toBe(fnConfigDia);
+        setUnsubscribeConfigSistema(null);
+        expect(getUnsubscribeConfigSistema()).toBe(null);
     });
 });
