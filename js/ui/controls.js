@@ -1,5 +1,5 @@
 /* =========================================================================================
-   OSTERIA DI LUCCA - CONTROLS.JS v8.7
+   OSTERIA DI LUCCA - CONTROLS.JS v9.1
    RESPONSABILIDADE: Controles de Interface e Tema
    ✅ CORRIGIDO: Migrado para DatabaseService
    ✅ O Tema agora obedece estritamente a posição do switch
@@ -15,6 +15,11 @@
    ✅ v8.6: Limpa também vazios em posições redundantes (gerados pelo bug do service.js anterior)
    ✅ v8.7: acaoExcluir() delegada para removerLinhaDoBloco() em service.js — regra 4
             controls.js é agora puramente UI: sem acesso direto ao Firestore
+   ✅ v9.0: salvarConfiguracoes()/carregarConfiguracoes() passam a ler/gravar em
+            config_sistema (Supabase) — ver docstrings abaixo
+   ✅ v9.1: Editor de "Bloqueios Antecipados" (dia da semana × horário × qtd) — mesmo
+            padrão de trava de capacidade/mesas: switch desligado por padrão, "+
+            ADICIONAR REGRA" só aparece com o switch ligado (alternarEdicaoBloqueiosSemanais)
    ========================================================================================= */
 
 import { adicionarLinhaExtra, getLinhasExtras, getTodasReservas, getDataAtual, getConfig, setConfigSistema, getHorariosPadrao } from '../core/state.js';
@@ -265,6 +270,7 @@ export function carregarConfiguracoes() {
     const toggleCapacidade = document.getElementById('toggleConfigCapacidade');
     const toggleMesas = document.getElementById('toggleConfigMesas');
     const toggleBloqueioAutomatico = document.getElementById('toggleBloqueioAutomatico');
+    const toggleBloqueiosSemanais = document.getElementById('toggleConfigBloqueiosSemanais');
 
     if (inputCapacidade) { inputCapacidade.value = config.capacidade; inputCapacidade.disabled = true; }
     if (inputMesas)      { inputMesas.value = config.mesas; inputMesas.disabled = true; }
@@ -274,7 +280,18 @@ export function carregarConfiguracoes() {
     // valor sensível que precise de confirmação extra pra editar.
     if (toggleBloqueioAutomatico) toggleBloqueioAutomatico.checked = config.bloqueioAutomatico !== false;
 
+    // Trava igual capacidade/mesas: começa sempre desligado, "+ ADICIONAR REGRA"
+    // só aparece com o switch ligado — evita adicionar regra sem querer.
+    if (toggleBloqueiosSemanais) toggleBloqueiosSemanais.checked = false;
+    alternarEdicaoBloqueiosSemanais(false);
+
     _renderizarRegrasBloqueioSemanal(config.bloqueiosSemanais || {});
+}
+
+/** Mostra/esconde o botão "+ ADICIONAR REGRA" de acordo com o switch da seção. */
+export function alternarEdicaoBloqueiosSemanais(habilitado) {
+    const btn = document.getElementById('btnAdicionarRegraBloqueio');
+    if (btn) btn.classList.toggle('hidden', !habilitado);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -418,6 +435,7 @@ window.acaoAdicionar = acaoAdicionar;
 window.acaoExcluir = acaoExcluir;
 window.alternarTelaCheia = alternarTelaCheia;
 window.adicionarRegraBloqueioSemanal = adicionarRegraBloqueioSemanal;
+window.alternarEdicaoBloqueiosSemanais = alternarEdicaoBloqueiosSemanais;
 window.toggleAlterarHorario = toggleAlterarHorario;
 window.salvarConfiguracoes = salvarConfiguracoes;
 window.carregarConfiguracoes = carregarConfiguracoes;

@@ -6,7 +6,10 @@ import {
     ajustarMinuto,
     toggleAlterarHorario,
     alternarEdicaoConfig,
+    alternarEdicaoBloqueiosSemanais,
+    carregarConfiguracoes,
 } from './controls.js';
+import { setConfigSistema } from '../core/state.js';
 
 beforeEach(() => {
     document.body.innerHTML = '';
@@ -126,5 +129,56 @@ describe('alternarEdicaoConfig', () => {
         expect(document.getElementById('configCapacidade').disabled).toBe(false);
         alternarEdicaoConfig('configCapacidade', false);
         expect(document.getElementById('configCapacidade').disabled).toBe(true);
+    });
+});
+
+describe('alternarEdicaoBloqueiosSemanais', () => {
+    it('mostra o botão "+ ADICIONAR REGRA" quando o switch liga e esconde quando desliga', () => {
+        document.body.innerHTML = '<button id="btnAdicionarRegraBloqueio" class="hidden"></button>';
+        alternarEdicaoBloqueiosSemanais(true);
+        expect(document.getElementById('btnAdicionarRegraBloqueio').classList.contains('hidden')).toBe(false);
+        alternarEdicaoBloqueiosSemanais(false);
+        expect(document.getElementById('btnAdicionarRegraBloqueio').classList.contains('hidden')).toBe(true);
+    });
+});
+
+describe('carregarConfiguracoes — bloqueios antecipados', () => {
+    function montarTelaConfig() {
+        document.body.innerHTML = `
+            <input id="configCapacidade"><input id="toggleConfigCapacidade" type="checkbox">
+            <input id="configMesas"><input id="toggleConfigMesas" type="checkbox">
+            <input id="toggleBloqueioAutomatico" type="checkbox">
+            <input id="toggleConfigBloqueiosSemanais" type="checkbox" checked>
+            <div id="listaBloqueiosSemanais"></div>
+            <button id="btnAdicionarRegraBloqueio"></button>
+        `;
+    }
+
+    it('sempre abre com o switch desligado e o botão de adicionar escondido, mesmo se a config tiver regras', () => {
+        setConfigSistema({
+            capacidade: 30, mesas: 18, bloqueioAutomatico: true,
+            bloqueiosSemanais: { 4: { '20:00': 1 } },
+        });
+        montarTelaConfig();
+
+        carregarConfiguracoes();
+
+        expect(document.getElementById('toggleConfigBloqueiosSemanais').checked).toBe(false);
+        expect(document.getElementById('btnAdicionarRegraBloqueio').classList.contains('hidden')).toBe(true);
+    });
+
+    it('renderiza as regras salvas na lista', () => {
+        setConfigSistema({
+            capacidade: 30, mesas: 18, bloqueioAutomatico: true,
+            bloqueiosSemanais: { 5: { '20:30': 2 } },
+        });
+        montarTelaConfig();
+
+        carregarConfiguracoes();
+
+        const linhas = document.querySelectorAll('#listaBloqueiosSemanais .regra-bloqueio-semanal');
+        expect(linhas.length).toBe(1);
+        expect(linhas[0].querySelector('.regra-horario').value).toBe('20:30');
+        expect(linhas[0].querySelector('.regra-qtd').value).toBe('2');
     });
 });
