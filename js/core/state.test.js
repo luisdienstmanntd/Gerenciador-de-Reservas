@@ -74,7 +74,13 @@ describe('getTodasReservas / setTodasReservas', () => {
 
 describe('getConfig', () => {
     it('retorna valores padrão quando não há configuração salva', () => {
-        expect(getConfig()).toEqual({ capacidade: 30, mesas: 18, bloqueioAutomatico: true });
+        expect(getConfig()).toMatchObject({ capacidade: 30, mesas: 18, bloqueioAutomatico: true });
+        // Default de bloqueios antecipados: qui/sex/sáb → 1×20:00, 2×20:30, 1×21:00
+        expect(getConfig().bloqueiosSemanais).toEqual({
+            4: { '20:00': 1, '20:30': 2, '21:00': 1 },
+            5: { '20:00': 1, '20:30': 2, '21:00': 1 },
+            6: { '20:00': 1, '20:30': 2, '21:00': 1 },
+        });
     });
 
     it('retorna a configuração aplicada por setConfigSistema (sincronizada via Supabase)', () => {

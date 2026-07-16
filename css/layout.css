@@ -355,6 +355,47 @@ input:checked + .slider-round:before {
   opacity: 0.7;
 }
 
+/* Editor de bloqueios antecipados (dias de movimento) — uma linha por regra:
+   [dia da semana] [horário] [qtd] [✕] */
+.lista-regras-bloqueio {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+.regra-bloqueio-semanal {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.regra-bloqueio-semanal .regra-dia {
+  flex: 1;
+  width: auto;
+  min-width: 0;
+}
+.regra-bloqueio-semanal .regra-horario {
+  width: 84px;
+}
+.regra-bloqueio-semanal .regra-qtd {
+  width: 56px;
+  text-align: center;
+}
+.regra-remover {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--vermelho);
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+.regra-remover:hover {
+  border-color: var(--vermelho);
+}
+
 /* --- CONTEÚDO PRINCIPAL --- */
 .main-content {
   flex: 1;

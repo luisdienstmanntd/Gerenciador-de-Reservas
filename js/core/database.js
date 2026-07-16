@@ -570,6 +570,7 @@ class DatabaseService {
             capacidade: row.capacidade,
             mesas: row.mesas,
             bloqueioAutomatico: row.bloqueio_automatico,
+            bloqueiosSemanais: row.bloqueios_semanais || {},
         };
     }
 
@@ -582,9 +583,31 @@ class DatabaseService {
             capacidade: config.capacidade,
             mesas: config.mesas,
             bloqueio_automatico: config.bloqueioAutomatico,
+            bloqueios_semanais: config.bloqueiosSemanais || {},
         }).eq('id', 1);
         if (error) throw error;
         console.log('💾 config_sistema salvo:', config);
+    }
+
+    /**
+     * Bloqueios antecipados da data já foram materializados? (uma vez por data —
+     * depois disso a recepção tem controle manual total, nada é recriado sozinho)
+     */
+    async getBloqueiosSemanaisAplicados(data) {
+        const { data: row, error } = await this.client
+            .from('config_dia').select('bloqueios_semanais_aplicados').eq('data', data).maybeSingle();
+        if (error) throw error;
+        return row?.bloqueios_semanais_aplicados === true;
+    }
+
+    /**
+     * Marca a data como já semeada. Upsert parcial: on conflict só atualiza as
+     * colunas enviadas — não sobrescreve linhas_extras já salvas pra data.
+     */
+    async marcarBloqueiosSemanaisAplicados(data) {
+        const { error } = await this.client
+            .from('config_dia').upsert({ data, bloqueios_semanais_aplicados: true });
+        if (error) throw error;
     }
 
     /**

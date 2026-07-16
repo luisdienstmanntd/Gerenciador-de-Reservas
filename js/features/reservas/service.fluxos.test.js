@@ -17,13 +17,15 @@ vi.mock('../../core/database.js', () => {
         criarReserva: vi.fn().mockResolvedValue('novo-id'),
         atualizarReserva: vi.fn().mockResolvedValue(undefined),
         excluirReserva: vi.fn().mockResolvedValue(undefined),
+        getBloqueiosSemanaisAplicados: vi.fn().mockResolvedValue(false),
+        marcarBloqueiosSemanaisAplicados: vi.fn().mockResolvedValue(undefined),
     };
     return { db };
 });
 // registrarLog grava no Supabase — nos testes vira um no-op observável.
 vi.mock('./log.js', () => ({ registrarLog: vi.fn().mockResolvedValue(undefined) }));
 
-import { salvarApenasHorario, alterarData } from './service.js';
+import { salvarApenasHorario, alterarData, aplicarBloqueiosSemanais, OBS_BLOQUEIO_SEMANAL } from './service.js';
 import { db } from '../../core/database.js';
 import { setConfigSistema, setLinhasExtras } from '../../core/state.js';
 
@@ -181,5 +183,85 @@ describe('alterarData — checagem de capacidade no destino (bug #66)', () => {
     it('exige id e novaData', async () => {
         await expect(alterarData(null, '2026-07-20')).rejects.toThrow('ID obrigatório');
         await expect(alterarData('r1', '')).rejects.toThrow('Nova data é obrigatória');
+    });
+});
+
+describe('aplicarBloqueiosSemanais — bloqueios antecipados de dia de movimento', () => {
+    // Datas futuras fixas com dia da semana conhecido (2027-07-15 = quinta, 16 = sexta, 19 = segunda)
+    const QUINTA = '2027-07-15';
+    const SEGUNDA = '2027-07-19';
+
+    function configComRegras() {
+        setConfigSistema({
+            capacidade: 30, mesas: 18, bloqueioAutomatico: false,
+            bloqueiosSemanais: { 4: { '20:00': 1, '20:30': 2 } }, // quinta
+        });
+    }
+
+    it('cria os bloqueios configurados nas primeiras linhas livres e marca a data', async () => {
+        configComRegras();
+        // Array NOVO a cada chamada — aplicarBloqueiosSemanais faz push local no
+        // bloco pra ocupar posições; um mockResolvedValue([]) compartilharia a
+        // mesma instância entre os horários e vazaria ocupação de um pro outro.
+        db.buscarReservasPorBloco.mockImplementation(async () => []);
+
+        const criados = await aplicarBloqueiosSemanais(QUINTA);
+
+        expect(criados).toBe(3); // 1×20:00 + 2×20:30
+        expect(db.criarReserva).toHaveBeenCalledTimes(3);
+        expect(db.criarReserva).toHaveBeenCalledWith(expect.objectContaining({
+            data: QUINTA, horario: '20:00', posicao: 0,
+            bloqueado: true, obs: OBS_BLOQUEIO_SEMANAL,
+        }));
+        // As 2 linhas de 20:30 ocupam posições consecutivas
+        expect(db.criarReserva).toHaveBeenCalledWith(expect.objectContaining({ horario: '20:30', posicao: 0 }));
+        expect(db.criarReserva).toHaveBeenCalledWith(expect.objectContaining({ horario: '20:30', posicao: 1 }));
+        expect(db.marcarBloqueiosSemanaisAplicados).toHaveBeenCalledWith(QUINTA);
+    });
+
+    it('pula posições já ocupadas — nunca atropela reserva existente', async () => {
+        configComRegras();
+        db.buscarReservasPorBloco.mockResolvedValue([{ id: 'x', nomes: 'OCUPA', posicao: 0 }]);
+
+        await aplicarBloqueiosSemanais(QUINTA);
+
+        expect(db.criarReserva).toHaveBeenCalledWith(expect.objectContaining({ horario: '20:00', posicao: 1 }));
+    });
+
+    it('bloco cheio → não cria nada nesse horário e nunca abre linha extra', async () => {
+        configComRegras();
+        db.buscarReservasPorBloco.mockResolvedValue(blocoCheio());
+
+        const criados = await aplicarBloqueiosSemanais(QUINTA);
+
+        expect(criados).toBe(0);
+        expect(db.criarReserva).not.toHaveBeenCalled();
+        // A data ainda é marcada — foi avaliada; a recepção já controla o dia manualmente
+        expect(db.marcarBloqueiosSemanaisAplicados).toHaveBeenCalledWith(QUINTA);
+    });
+
+    it('não reaplica quando a data já foi semeada (flag em config_dia)', async () => {
+        configComRegras();
+        db.getBloqueiosSemanaisAplicados.mockResolvedValue(true);
+
+        const criados = await aplicarBloqueiosSemanais(QUINTA);
+
+        expect(criados).toBe(0);
+        expect(db.criarReserva).not.toHaveBeenCalled();
+        expect(db.marcarBloqueiosSemanaisAplicados).not.toHaveBeenCalled();
+    });
+
+    it('dia da semana sem regra → não faz nada', async () => {
+        configComRegras();
+        const criados = await aplicarBloqueiosSemanais(SEGUNDA);
+        expect(criados).toBe(0);
+        expect(db.criarReserva).not.toHaveBeenCalled();
+    });
+
+    it('nunca semeia datas passadas', async () => {
+        configComRegras();
+        const criados = await aplicarBloqueiosSemanais('2020-07-16'); // quinta no passado
+        expect(criados).toBe(0);
+        expect(db.criarReserva).not.toHaveBeenCalled();
     });
 });

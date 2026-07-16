@@ -26,6 +26,7 @@ import {
 import { renderizarGrid, atualizarMiniCards } from '../../ui/render.js';
 import { db } from '../../core/database.js';
 import { notificarErro } from '../../core/notificacao.js';
+import { aplicarBloqueiosSemanais } from './service.js';
 
 // Usuário logado — fonte única para controle de leitura
 const USUARIO_ATUAL = localStorage.getItem('usuario_nome') || 'sistema';
@@ -187,6 +188,12 @@ export async function escutarReservas(data = null) {
     // Inicia listener de config_dia para a mesma data
     iniciarListenerConfig(dataFiltro);
 
+    // Bloqueios antecipados de dia de movimento — semeia a data na primeira vez
+    // que alguém a visualiza (fire-and-forget: os INSERTs chegam via Realtime).
+    // Idempotente (flag em config_dia) e no-op enquanto a config real não carregou.
+    aplicarBloqueiosSemanais(dataFiltro)
+        .catch(e => console.error('❌ Erro ao aplicar bloqueios antecipados:', e));
+
     try {
         const unsubscribe = db.escutarReservasPorDataComMudancas(
             dataFiltro,
@@ -336,6 +343,11 @@ export function iniciarEscutaConfigSistema() {
         const unsub = db.escutarConfigSistema((config) => {
             setConfigSistema(config);
             console.log('🔧 config_sistema aplicado:', config);
+            // A config real acabou de chegar — reavalia os bloqueios antecipados da
+            // data em exibição (no boot, escutarReservas pode ter rodado ANTES da
+            // config carregar, e nesse caso o aplicar de lá foi um no-op de propósito).
+            aplicarBloqueiosSemanais(getDataAtual())
+                .catch(e => console.error('❌ Erro ao aplicar bloqueios antecipados:', e));
         });
         setUnsubscribeConfigSistema(unsub);
         console.log('✅ Escuta de config_sistema iniciada');

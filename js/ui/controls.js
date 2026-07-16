@@ -17,7 +17,7 @@
             controls.js é agora puramente UI: sem acesso direto ao Firestore
    ========================================================================================= */
 
-import { adicionarLinhaExtra, getLinhasExtras, getTodasReservas, getDataAtual, getConfig, setConfigSistema } from '../core/state.js';
+import { adicionarLinhaExtra, getLinhasExtras, getTodasReservas, getDataAtual, getConfig, setConfigSistema, getHorariosPadrao } from '../core/state.js';
 import { renderizarGrid } from './render.js';
 import { removerLinhaDoBloco } from '../features/reservas/service.js';
 import { db } from '../core/database.js';
@@ -273,6 +273,87 @@ export function carregarConfiguracoes() {
     // Diferente de capacidade/mesas: é liga/desliga direto, sem trava — não é um
     // valor sensível que precise de confirmação extra pra editar.
     if (toggleBloqueioAutomatico) toggleBloqueioAutomatico.checked = config.bloqueioAutomatico !== false;
+
+    _renderizarRegrasBloqueioSemanal(config.bloqueiosSemanais || {});
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BLOQUEIOS ANTECIPADOS — editor de regras (dia da semana × horário × qtd)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const DIAS_SEMANA_LABEL = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+
+/** Monta uma linha do editor: [dia da semana][horário][qtd][remover]. */
+function _criarLinhaRegra(dia = 4, horario = '20:00', qtd = 1) {
+    const linha = document.createElement('div');
+    linha.className = 'regra-bloqueio-semanal';
+
+    const selDia = document.createElement('select');
+    selDia.className = 'config-input regra-dia';
+    DIAS_SEMANA_LABEL.forEach((label, i) => {
+        const opt = document.createElement('option');
+        opt.value = i; opt.textContent = label;
+        if (i === Number(dia)) opt.selected = true;
+        selDia.appendChild(opt);
+    });
+
+    const selHorario = document.createElement('select');
+    selHorario.className = 'config-input regra-horario';
+    getHorariosPadrao().forEach(h => {
+        const opt = document.createElement('option');
+        opt.value = h; opt.textContent = h;
+        if (h === horario) opt.selected = true;
+        selHorario.appendChild(opt);
+    });
+
+    const inputQtd = document.createElement('input');
+    inputQtd.type = 'number';
+    inputQtd.className = 'config-input regra-qtd';
+    inputQtd.min = '1'; inputQtd.max = '3';
+    inputQtd.value = Math.min(3, Math.max(1, Number(qtd) || 1));
+    inputQtd.title = 'Quantas linhas bloquear (1-3)';
+
+    const btnRemover = document.createElement('button');
+    btnRemover.type = 'button';
+    btnRemover.className = 'regra-remover';
+    btnRemover.textContent = '✕';
+    btnRemover.title = 'Remover regra';
+    btnRemover.addEventListener('click', () => linha.remove());
+
+    linha.append(selDia, selHorario, inputQtd, btnRemover);
+    return linha;
+}
+
+/** Preenche o editor a partir do mapa salvo { dia: { horario: qtd } }. */
+function _renderizarRegrasBloqueioSemanal(mapa) {
+    const container = document.getElementById('listaBloqueiosSemanais');
+    if (!container) return;
+    container.innerHTML = '';
+    Object.keys(mapa).sort().forEach(dia => {
+        Object.keys(mapa[dia]).sort().forEach(horario => {
+            container.appendChild(_criarLinhaRegra(dia, horario, mapa[dia][horario]));
+        });
+    });
+}
+
+export function adicionarRegraBloqueioSemanal() {
+    const container = document.getElementById('listaBloqueiosSemanais');
+    if (container) container.appendChild(_criarLinhaRegra());
+}
+
+/** Lê as linhas do editor de volta pro mapa { dia: { horario: qtd } }.
+ *  Regras duplicadas (mesmo dia+horário): a última vence. */
+function _serializarRegrasBloqueioSemanal() {
+    const mapa = {};
+    document.querySelectorAll('#listaBloqueiosSemanais .regra-bloqueio-semanal').forEach(linha => {
+        const dia = linha.querySelector('.regra-dia')?.value;
+        const horario = linha.querySelector('.regra-horario')?.value;
+        const qtd = Math.min(3, Math.max(1, parseInt(linha.querySelector('.regra-qtd')?.value) || 1));
+        if (dia == null || !horario) return;
+        if (!mapa[dia]) mapa[dia] = {};
+        mapa[dia][horario] = qtd;
+    });
+    return mapa;
 }
 
 /**
@@ -294,8 +375,9 @@ export async function salvarConfiguracoes() {
     const capacidade = parseInt(inputCapacidade?.value) || 30;
     const mesas = parseInt(inputMesas?.value) || 18;
     const bloqueioAutomatico = toggleBloqueioAutomatico ? toggleBloqueioAutomatico.checked : true;
+    const bloqueiosSemanais = _serializarRegrasBloqueioSemanal();
 
-    const config = { capacidade, mesas, bloqueioAutomatico };
+    const config = { capacidade, mesas, bloqueioAutomatico, bloqueiosSemanais };
 
     try {
         await db.salvarConfigSistema(config);
@@ -335,6 +417,7 @@ window.fecharMenuHorario = fecharMenuHorario;
 window.acaoAdicionar = acaoAdicionar;
 window.acaoExcluir = acaoExcluir;
 window.alternarTelaCheia = alternarTelaCheia;
+window.adicionarRegraBloqueioSemanal = adicionarRegraBloqueioSemanal;
 window.toggleAlterarHorario = toggleAlterarHorario;
 window.salvarConfiguracoes = salvarConfiguracoes;
 window.carregarConfiguracoes = carregarConfiguracoes;

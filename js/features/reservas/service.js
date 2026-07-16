@@ -1,5 +1,5 @@
 /* =========================================================================================
-   OSTERIA DI LUCCA - RESERVAS.SERVICE.JS (v4.4)
+   OSTERIA DI LUCCA - RESERVAS.SERVICE.JS (v4.5)
    ✅ v2.8-v3.11: histórico Firestore — ver git log para versões anteriores.
    ✅ v4.0: Fase 5 da migração Firestore → Supabase. Todas as operações de escrita/leitura
             passam a falar com o Supabase. `firestore.batch()` (atômico) não tem equivalente
@@ -26,6 +26,10 @@
    ✅ v4.4: alterarData() ganha a mesma checagem de capacidade/aviso do v4.3 — mover uma
             reserva pra uma data em que o mesmo horário já está com as linhas base cheias
             também pergunta antes de criar linha nova (aceita opções.permitirNovaLinha)
+   ✅ v4.5: aplicarBloqueiosSemanais() — bloqueios antecipados nos dias de movimento do
+            hotel (config_sistema.bloqueiosSemanais, editável em Configurações). Semeia
+            uma data UMA vez (flag em config_dia) quando ela é visualizada; depois disso
+            controle manual total da recepção. Nunca atropela reserva nem abre linha extra
    ========================================================================================= */
 
 import {
@@ -35,6 +39,7 @@ import {
     removerLinhaExtra,
     getHorariosPadrao,
     getConfig,
+    isConfigSistemaCarregada,
 } from '../../core/state.js';
 import { registrarLog } from './log.js';
 import { db } from '../../core/database.js';
@@ -236,6 +241,72 @@ async function _reconciliarBloqueioAutomatico(reservaId, dadosAntes, reservaData
             mudouDeLinha ? null : blocoPreCarregado,
         );
     }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BLOQUEIOS ANTECIPADOS — dias de movimento do hotel (qui/sex/sáb por padrão)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const OBS_BLOQUEIO_SEMANAL = 'BLOQUEIO ANTECIPADO — DIA DE MOVIMENTO';
+
+/** Dia da semana (getDay 0-6, 0=domingo) de uma data ISO. T12:00 evita rollover
+ *  de fuso — mesmo padrão já usado em home.js/dashboard.js. Exportada pra teste. */
+export function _diaSemanaDe(dataStr) {
+    return new Date(dataStr + 'T12:00:00').getDay();
+}
+
+/**
+ * Materializa os bloqueios antecipados de uma data, UMA única vez (flag em
+ * config_dia). Regra de negócio: nos dias de movimento do hotel, algumas linhas
+ * já nascem bloqueadas pra reserva de externo em data futura não consumir as
+ * vagas dos hóspedes. Configurável em Configurações (dia da semana, horário,
+ * quantidade — config_sistema.bloqueiosSemanais, sincronizado entre usuários).
+ *
+ * Depois de semeada, a data fica sob controle manual total da recepção:
+ * desbloquear ou excluir um bloqueio antecipado NÃO faz o sistema recriá-lo.
+ *
+ * Só bloqueia linhas base LIVRES (posições 0-2) — nunca atropela reserva
+ * existente nem abre linha extra. Datas passadas nunca são semeadas.
+ *
+ * @param {string} dataAlvo - Data ISO (YYYY-MM-DD) sendo visualizada
+ * @returns {Promise<number>} quantos bloqueios foram criados
+ */
+export async function aplicarBloqueiosSemanais(dataAlvo) {
+    if (!dataAlvo) return 0;
+    // Nunca decide com base nos defaults do state — espera a config real chegar
+    // do Supabase (o listener chama de novo quando ela carrega).
+    if (!isConfigSistemaCarregada()) return 0;
+
+    const hoje = new Date().toLocaleDateString('en-CA');
+    if (dataAlvo < hoje) return 0;
+
+    const regras = (getConfig().bloqueiosSemanais || {})[String(_diaSemanaDe(dataAlvo))];
+    if (!regras || Object.keys(regras).length === 0) return 0;
+
+    if (await db.getBloqueiosSemanaisAplicados(dataAlvo)) return 0;
+
+    let criados = 0;
+    for (const [horario, qtd] of Object.entries(regras)) {
+        const bloco = await db.buscarReservasPorBloco(dataAlvo, horario);
+        for (let i = 0; i < qtd; i++) {
+            const pos = _calcularPosicaoLivre(bloco, 0);
+            if (pos >= 3) break; // linhas base cheias — nunca abre linha extra sozinho
+            await db.criarReserva({
+                data: dataAlvo, horario, originalBase: horario, posicao: pos,
+                nomes: '', tipo: 'hospede', paxs: 0, chd: 0,
+                bloqueado: true,
+                obs: OBS_BLOQUEIO_SEMANAL,
+            });
+            bloco.push({ bloqueado: true, posicao: pos }); // ocupa localmente pra próxima volta
+            criados++;
+        }
+    }
+
+    await db.marcarBloqueiosSemanaisAplicados(dataAlvo);
+    if (criados > 0) {
+        console.log(`🔒 ${criados} bloqueio(s) antecipado(s) aplicados em ${dataAlvo}`);
+    }
+    return criados;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

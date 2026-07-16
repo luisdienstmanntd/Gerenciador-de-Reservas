@@ -16,7 +16,22 @@ let filtroAtivo = null;
 // de cada navegador/tablet — cada usuário podia ver um valor diferente). Cache em
 // memória, atualizado pelo listener registrado em listener.js — mesmo padrão de
 // linhasExtras/config_dia. Valores default usados até o primeiro carregamento chegar.
-let configSistema = { capacidade: 30, mesas: 18, bloqueioAutomatico: true };
+let configSistema = {
+    capacidade: 30,
+    mesas: 18,
+    bloqueioAutomatico: true,
+    // Bloqueios antecipados por dia da semana (dias de movimento do hotel).
+    // Formato: { "<getDay 0-6>": { "<HH:MM>": <qtd linhas> } }. Default espelha
+    // a migration 20260716120000: qui/sex/sáb → 1×20:00, 2×20:30, 1×21:00.
+    bloqueiosSemanais: {
+        4: { '20:00': 1, '20:30': 2, '21:00': 1 },
+        5: { '20:00': 1, '20:30': 2, '21:00': 1 },
+        6: { '20:00': 1, '20:30': 2, '21:00': 1 },
+    },
+};
+// true depois que a primeira carga real chegou do Supabase — usado pra não aplicar
+// bloqueios antecipados com base nos defaults acima antes de saber a config real.
+let configSistemaCarregada = false;
 
 export function getDataAtual() {
     const inputData = document.getElementById("dataFiltro");
@@ -56,6 +71,12 @@ export function getConfig() {
  */
 export function setConfigSistema(novaConfig) {
     configSistema = novaConfig;
+    configSistemaCarregada = true;
+}
+
+/** true depois que a config real chegou do Supabase (não estamos mais nos defaults). */
+export function isConfigSistemaCarregada() {
+    return configSistemaCarregada;
 }
 
 export function getLinhasExtras() {

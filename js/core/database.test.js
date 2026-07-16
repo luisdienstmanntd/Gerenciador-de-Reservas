@@ -153,8 +153,15 @@ describe('_paraConfigSistemaApp', () => {
     it('converte a linha snake_case pro formato achatado da UI', () => {
         expect(db._paraConfigSistemaApp({
             capacidade: 40, mesas: 20, bloqueio_automatico: false,
+            bloqueios_semanais: { 4: { '20:00': 1 } },
         })).toEqual({
             capacidade: 40, mesas: 20, bloqueioAutomatico: false,
+            bloqueiosSemanais: { 4: { '20:00': 1 } },
         });
+    });
+
+    it('bloqueios_semanais ausente (linha antiga) vira objeto vazio', () => {
+        const app = db._paraConfigSistemaApp({ capacidade: 30, mesas: 18, bloqueio_automatico: true });
+        expect(app.bloqueiosSemanais).toEqual({});
     });
 });

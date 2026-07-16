@@ -677,6 +677,15 @@
                 <small>Bloqueia sozinho a(s) próxima(s) linha(s) do horário quando uma reserva atinge 4+ hóspedes</small>
             </div>
 
+            <div class="config-linha">
+                <div class="config-linha-topo">
+                    <label>Bloqueios Antecipados — Dias de Movimento</label>
+                </div>
+                <small>Nesses dias da semana, as linhas configuradas já nascem bloqueadas — protege as vagas dos hóspedes contra reservas de externos em datas futuras. Aplicado uma única vez por data; depois disso a recepção pode desbloquear normalmente.</small>
+                <div id="listaBloqueiosSemanais" class="lista-regras-bloqueio"></div>
+                <button type="button" class="btn-main" onclick="adicionarRegraBloqueioSemanal()" style="margin-top: 10px; padding: 8px 14px; font-size: 0.8rem;">+ ADICIONAR REGRA</button>
+            </div>
+
             <div style="margin-top: 30px; display: flex; gap: 10px;">
                 <button class="btn-main save-btn" onclick="salvarConfiguracoes()">SALVAR CONFIGURAÇÕES</button>
                 <button class="btn-main cancel-btn" onclick="navegar('reservas')">↩VOLTAR</button>

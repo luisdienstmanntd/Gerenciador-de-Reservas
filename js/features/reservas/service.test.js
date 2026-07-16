@@ -7,6 +7,7 @@ import {
     _calcularDepositoRetido,
     _totalLinhasBloco,
     _linhasExtrasNecessarias,
+    _diaSemanaDe,
 } from './service.js';
 import { setLinhasExtras } from '../../core/state.js';
 
@@ -151,5 +152,15 @@ describe('_linhasExtrasNecessarias', () => {
     it('nunca retorna negativo (0 pessoas, dados sujos)', () => {
         expect(_linhasExtrasNecessarias(0)).toBe(0);
         expect(_linhasExtrasNecessarias(-2)).toBe(0);
+    });
+});
+
+describe('_diaSemanaDe', () => {
+    it('retorna o dia da semana correto (getDay 0-6) sem rollover de fuso', () => {
+        expect(_diaSemanaDe('2026-07-12')).toBe(0); // domingo
+        expect(_diaSemanaDe('2026-07-13')).toBe(1); // segunda
+        expect(_diaSemanaDe('2026-07-16')).toBe(4); // quinta
+        expect(_diaSemanaDe('2026-07-17')).toBe(5); // sexta
+        expect(_diaSemanaDe('2026-07-18')).toBe(6); // sábado
     });
 });
