@@ -36,6 +36,7 @@
 
 import { getHorariosPadrao, getLinhasExtras, getFiltroAtivo } from '../core/state.js';
 import { escapeHtml } from '../features/reservas/validators.js';
+import { OBS_BLOQUEIO_AUTOMATICO, OBS_BLOQUEIO_SEMANAL } from '../features/reservas/service.js';
 
 /**
  * Atualiza os mini-cards do header com totais
@@ -332,10 +333,14 @@ function renderizarLinha(res, horarioVisual, posicao, tdHora, hrBase, mostrarCan
         const isB = res.bloqueado || res.somenteHospedes;
         
         if (isB) {
-            let txt = res.bloqueado ? "BLOQUEADO" : "SOMENTE HÓSPEDES";
             let classeBloqueio = res.bloqueado ? "reserva-bloqueada" : "reserva-somente-hospedes";
-            let obsTexto = res.obs ? ` - ${escapeHtml(res.obs)}` : '';
-            
+            // Bloqueios automáticos (reserva grande / dia de movimento) já trazem uma
+            // observação autoexplicativa — o prefixo "BLOQUEADO -" só faz sentido pra
+            // bloqueios manuais da recepção, que digitam um texto livre em obs.
+            const isBloqueioAutomatico = res.obs === OBS_BLOQUEIO_AUTOMATICO || res.obs === OBS_BLOQUEIO_SEMANAL;
+            let txt = isBloqueioAutomatico ? '' : (res.bloqueado ? "BLOQUEADO" : "SOMENTE HÓSPEDES");
+            let obsTexto = res.obs ? (isBloqueioAutomatico ? escapeHtml(res.obs) : ` - ${escapeHtml(res.obs)}`) : '';
+
             return `
 <tr>
     ${tdHora}

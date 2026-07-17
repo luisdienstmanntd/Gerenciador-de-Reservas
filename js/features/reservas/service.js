@@ -87,6 +87,8 @@ export function _calcularPosicaoLivre(reservasBloco, posicaoDesejada = 0) {
 
 const PAX_MINIMO_BLOQUEIO_AUTOMATICO = 4;
 
+export const OBS_BLOQUEIO_AUTOMATICO = 'consultar cozinha';
+
 /** Total de linhas visíveis (base + extras) de um bloco — mesmo cálculo de removerLinhaDoBloco().
  *  Exportada para testes (mesmo padrão de _calcularPosicaoLivre/_calcularDepositoRetido). */
 export function _totalLinhasBloco(hr) {
@@ -165,7 +167,7 @@ async function _verificarBloqueioAutomatico(reservaId, data, originalBase, posic
             data, horario: originalBase, originalBase, posicao: posAlvo,
             nomes: '', tipo: 'hospede', paxs: 0, chd: 0,
             bloqueado: true,
-            obs: 'BLOQUEIO AUTOMÁTICO — RESERVA GRANDE NA LINHA ANTERIOR',
+            obs: OBS_BLOQUEIO_AUTOMATICO,
             bloqueioOrigemId: reservaId,
         };
 
@@ -247,7 +249,7 @@ async function _reconciliarBloqueioAutomatico(reservaId, dadosAntes, reservaData
 // BLOQUEIOS ANTECIPADOS — dias de movimento do hotel (qui/sex/sáb por padrão)
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const OBS_BLOQUEIO_SEMANAL = 'BLOQUEIO ANTECIPADO — DIA DE MOVIMENTO';
+export const OBS_BLOQUEIO_SEMANAL = 'somente hóspedes';
 
 /** Dia da semana (getDay 0-6, 0=domingo) de uma data ISO. T12:00 evita rollover
  *  de fuso — mesmo padrão já usado em home.js/dashboard.js. Exportada pra teste. */
