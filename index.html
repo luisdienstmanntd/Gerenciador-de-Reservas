@@ -556,13 +556,6 @@
 
         <!-- TELA DE DASHBOARD -->
         <div id="tela-dashboard" class="view hidden" style="padding: 20px;">
-            <div class="top-bar-unica" style="position: relative; top: 0; margin-bottom: 20px; z-index: 100;">
-                 <div class="left-group">
-                    <button class="menu-toggle" onclick="toggleMenu()">☰</button>
-                    <h3 style="margin: 0; color: var(--primaria); font-size: 1.2rem;">Painel Analítico</h3>
-                 </div>
-            </div>
-
             <div style="background: var(--card-bg); padding: 15px; border-radius: 10px; margin-bottom: 10px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; box-shadow: 0 4px 6px var(--shadow);">
                 <div>
                     <label style="font-size: 0.8rem;">Modo:</label>
@@ -591,7 +584,6 @@
                     <button class="btn-main" onclick="adicionarDataExcluida()" style="padding: 5px 12px; height: 34px;">+ EXCLUIR</button>
                 </div>
                 <div id="dashGrupoEspecificas" style="display: none; gap: 8px; align-items: center;">
-                    <label style="font-size: 0.8rem;">Adicionar data à análise:</label>
                     <input type="date" id="dashDataEspecifica" class="filtro-data" style="margin: 0;">
                     <button class="btn-main" onclick="adicionarDataEspecifica()" style="padding: 5px 12px; height: 34px;">+ ADICIONAR</button>
                 </div>

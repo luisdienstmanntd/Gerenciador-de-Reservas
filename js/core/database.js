@@ -463,6 +463,12 @@ class DatabaseService {
             if (payload.eventType !== 'INSERT') return;
 
             const row = payload.new;
+            // Notificação só faz sentido pro dia real de hoje — reserva criada/movida para
+            // uma data passada ou futura (ex: recepção consultando disponibilidade de outro
+            // dia) não deve poluir o sino, só o log de alterações continua registrando tudo.
+            const hoje = new Date().toLocaleDateString('en-CA');
+            if (row.data !== hoje) return;
+
             let hospede = null;
             if (row.hospede_id) {
                 const { data: h } = await this.client.from('hospedes').select('*').eq('id', row.hospede_id).maybeSingle();
