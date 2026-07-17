@@ -205,6 +205,7 @@ export class ReservaModal {
     if (titulo) titulo.innerText = horario;
 
     this._ocultarConteudoModal();
+    this.modal?.querySelector(".modal-content")?.classList.add("modal-compacto");
 
     const resumo = document.createElement("div");
     resumo.id = "resumoReserva";
