@@ -444,6 +444,78 @@ function modalConfirmar(mensagem, onConfirm) {
 }
 
 /**
+ * Modal de cancelamento de reserva — título fixo "CANCELAR RESERVA" + 3 botões pro
+ * desfecho do depósito (escolha manual da recepção, sem sugestão automática da regra
+ * de 48h) + "CANCELAR" pra desistir sem cancelar a reserva. Mesmo estilo/infraestrutura
+ * de modalConfirmar() (overlay próprio, Escape fecha, clique fora fecha), mas com um
+ * conjunto de botões diferente — por isso não reaproveita a função genérica, que outros
+ * fluxos (sem disponibilidade, restaurar cancelamento etc.) continuam usando como está.
+ * @param {Function} onEscolher - Recebe depositoRetido: true (sem estorno) | false (estornado) | null (sem depósito)
+ */
+function modalCancelarReserva(onEscolher) {
+    const anterior = document.getElementById('modalConfirmacao');
+    if (anterior) anterior.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'modalConfirmacao';
+    overlay.style.cssText = `
+        position: fixed; inset: 0; z-index: 100000;
+        background: rgba(0,0,0,0.55);
+        display: flex; align-items: center; justify-content: center;
+    `;
+
+    const isDark = document.body.classList.contains('dark-theme');
+    const bgCard  = isDark ? '#2d2d2d' : '#fff';
+    const txtPrin = isDark ? '#e0e0e0' : '#1a1a1a';
+
+    overlay.innerHTML = `
+        <div style="
+            background:${bgCard}; color:${txtPrin};
+            border-radius:12px; padding:28px; width:min(320px,90vw);
+            box-shadow:0 8px 32px rgba(0,0,0,0.25);
+            font-family: inherit; text-align:center;
+        ">
+            <p style="font-size:1.05rem; font-weight:800; margin:0 0 20px; letter-spacing:.4px; text-transform:uppercase;">
+                CANCELAR RESERVA
+            </p>
+            <div style="display:flex; flex-direction:column; gap:10px;">
+                <button id="_btnCancSemEstorno" style="
+                    padding:13px; border:none; border-radius:8px;
+                    background:#e74c3c; color:#fff; font-size:0.9rem;
+                    font-weight:700; cursor:pointer; letter-spacing:.3px;
+                ">SEM ESTORNO</button>
+                <button id="_btnCancEstornado" style="
+                    padding:13px; border:none; border-radius:8px;
+                    background:#27ae60; color:#fff; font-size:0.9rem;
+                    font-weight:700; cursor:pointer; letter-spacing:.3px;
+                ">ESTORNADO</button>
+                <button id="_btnCancSemDeposito" style="
+                    padding:13px; border:1px solid #999; border-radius:8px;
+                    background:transparent; color:${txtPrin}; font-size:0.9rem;
+                    font-weight:700; cursor:pointer; letter-spacing:.3px;
+                ">SEM DEPÓSITO</button>
+                <button id="_btnCancAbortar" style="
+                    padding:12px; border:1px solid #ccc; border-radius:8px;
+                    background:transparent; color:${txtPrin}; font-size:0.85rem;
+                    font-weight:700; cursor:pointer; letter-spacing:.3px; margin-top:6px;
+                ">CANCELAR</button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    const fechar = () => overlay.remove();
+    overlay.querySelector('#_btnCancSemEstorno').addEventListener('click', () => { fechar(); onEscolher(true); });
+    overlay.querySelector('#_btnCancEstornado').addEventListener('click', () => { fechar(); onEscolher(false); });
+    overlay.querySelector('#_btnCancSemDeposito').addEventListener('click', () => { fechar(); onEscolher(null); });
+    overlay.querySelector('#_btnCancAbortar').addEventListener('click', fechar);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) fechar(); });
+    const onKey = (e) => { if (e.key === 'Escape') { fechar(); document.removeEventListener('keydown', onKey); } };
+    document.addEventListener('keydown', onKey);
+}
+
+/**
  * Expõe funções globais
  */
 function exponerFuncoesGlobais() {
@@ -457,7 +529,8 @@ function exponerFuncoesGlobais() {
     // ✅ v2.0: Expõe modalConfirmar globalmente — modal.js v3.2 usa window.modalConfirmar()
     // para substituir confirm() nativo sem criar dependência circular (init.js importa modal.js)
     window.modalConfirmar = modalConfirmar;
-    
+    window.modalCancelarReserva = modalCancelarReserva;
+
     console.log('🌍 Funções globais expostas');
 }
 

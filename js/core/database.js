@@ -319,8 +319,9 @@ class DatabaseService {
     /**
      * Cancela uma reserva (soft-delete) — mantém a linha no banco pra análise,
      * mas marca `cancelado_em` pra ela parar de contar como reserva ativa (grade,
-     * KPIs, Dashboard). `depositoRetido` é calculado por quem chama (service.js),
-     * com base no prazo de 48h — só relevante pra tipo='externo'.
+     * KPIs, Dashboard). `depositoRetido` é escolhido manualmente pela recepção no
+     * modal "CANCELAR RESERVA" (service.js só repassa) — true = sem estorno,
+     * false = estornado, null = sem depósito.
      * @param {string} id
      * @param {boolean|null} depositoRetido
      */

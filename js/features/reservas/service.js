@@ -1,5 +1,5 @@
 /* =========================================================================================
-   OSTERIA DI LUCCA - RESERVAS.SERVICE.JS (v4.5)
+   OSTERIA DI LUCCA - RESERVAS.SERVICE.JS (v4.6)
    ✅ v2.8-v3.11: histórico Firestore — ver git log para versões anteriores.
    ✅ v4.0: Fase 5 da migração Firestore → Supabase. Todas as operações de escrita/leitura
             passam a falar com o Supabase. `firestore.batch()` (atômico) não tem equivalente
@@ -30,6 +30,10 @@
             hotel (config_sistema.bloqueiosSemanais, editável em Configurações). Semeia
             uma data UMA vez (flag em config_dia) quando ela é visualizada; depois disso
             controle manual total da recepção. Nunca atropela reserva nem abre linha extra
+   ✅ v4.6: cancelarReserva() deixa de calcular _calcularDepositoRetido() (regra automática
+            de 48h) — o desfecho do depósito agora é escolhido manualmente pela recepção no
+            modal "CANCELAR RESERVA" (SEM ESTORNO/ESTORNADO/SEM DEPÓSITO, init.js), repassado
+            direto como parâmetro. Função e constante PRAZO_CANCELAMENTO_HORAS removidas.
    ========================================================================================= */
 
 import {
@@ -90,7 +94,7 @@ const PAX_MINIMO_BLOQUEIO_AUTOMATICO = 4;
 export const OBS_BLOQUEIO_AUTOMATICO = 'consultar cozinha';
 
 /** Total de linhas visíveis (base + extras) de um bloco — mesmo cálculo de removerLinhaDoBloco().
- *  Exportada para testes (mesmo padrão de _calcularPosicaoLivre/_calcularDepositoRetido). */
+ *  Exportada para testes (mesmo padrão de _calcularPosicaoLivre). */
 export function _totalLinhasBloco(hr) {
     const baseLinhas = new Set(getHorariosPadrao()).has(hr) ? 3 : 1;
     const extras = getLinhasExtras()[hr] !== undefined ? getLinhasExtras()[hr] : 0;
@@ -410,37 +414,23 @@ export async function excluirReserva(id) {
     }
 }
 
-const PRAZO_CANCELAMENTO_HORAS = 48;
-
-/**
- * Calcula se um cancelamento agora, pra uma reserva de externo, perde o
- * adiantamento de R$200 — menos de 48h de antecedência = perde.
- * @param {Object} reserva - Reserva no formato achatado (precisa de tipo/data/horario)
- * @returns {boolean|null} true = perde o adiantamento, false = devolve, null = não se aplica
- */
-export function _calcularDepositoRetido(reserva) {
-    if (reserva.tipo !== 'externo') return null;
-    const dataHoraReserva = new Date(`${reserva.data}T${reserva.horario}`);
-    const horasDeAntecedencia = (dataHoraReserva - new Date()) / 3600000;
-    return horasDeAntecedencia < PRAZO_CANCELAMENTO_HORAS;
-}
-
 /**
  * Cancela uma reserva — soft-delete: mantém o registro no banco (histórico pra
  * análise, visível no Log do dia), mas some da grade/KPIs como reserva ativa.
  * Diferente de excluirReserva(), que apaga de vez (uso: erro de digitação).
  *
- * Pra reservas de Externo, calcula automaticamente se o cliente perde o
- * adiantamento de R$200 (menos de 48h de antecedência).
+ * O desfecho do depósito é escolhido manualmente pela recepção no momento do
+ * cancelamento (modal "CANCELAR RESERVA" — SEM ESTORNO/ESTORNADO/SEM DEPÓSITO),
+ * não é mais calculado automaticamente pela regra de 48h.
  *
  * @param {string} id
+ * @param {boolean|null} depositoRetido - true = cliente perde o depósito, false = devolvido, null = não houve depósito
  * @returns {Promise<{depositoRetido: boolean|null}>}
  */
-export async function cancelarReserva(id) {
+export async function cancelarReserva(id, depositoRetido = null) {
     if (!id) throw new Error('ID obrigatório');
     try {
         const dadosAntes = await db.getReservaPorId(id) || { id };
-        const depositoRetido = _calcularDepositoRetido(dadosAntes);
 
         await db.cancelarReserva(id, depositoRetido);
         await registrarLog('CANCELAR', dadosAntes, {

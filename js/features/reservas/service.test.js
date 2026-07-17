@@ -4,20 +4,11 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
     _calcularPosicaoLivre,
-    _calcularDepositoRetido,
     _totalLinhasBloco,
     _linhasExtrasNecessarias,
     _diaSemanaDe,
 } from './service.js';
 import { setLinhasExtras } from '../../core/state.js';
-
-/** Formata uma data/hora futura (ou passada) em {data, horario} pro formato da reserva. */
-function dataHoraDaquiA(horas) {
-    const alvo = new Date(Date.now() + horas * 3600000);
-    const data = alvo.toISOString().split('T')[0];
-    const horario = alvo.toTimeString().slice(0, 5);
-    return { data, horario };
-}
 
 describe('_calcularPosicaoLivre', () => {
     it('retorna a posição desejada quando o bloco está vazio', () => {
@@ -79,38 +70,6 @@ describe('_calcularPosicaoLivre', () => {
 
     it('usa 0 como posição desejada padrão quando não informada', () => {
         expect(_calcularPosicaoLivre([])).toBe(0);
-    });
-});
-
-describe('_calcularDepositoRetido', () => {
-    it('retorna null pra hóspede (não paga adiantamento)', () => {
-        const { data, horario } = dataHoraDaquiA(72);
-        expect(_calcularDepositoRetido({ tipo: 'hospede', data, horario })).toBeNull();
-    });
-
-    it('retorna null pra passante (não paga adiantamento)', () => {
-        const { data, horario } = dataHoraDaquiA(72);
-        expect(_calcularDepositoRetido({ tipo: 'passante', data, horario })).toBeNull();
-    });
-
-    it('retorna null pra room service (não paga adiantamento)', () => {
-        const { data, horario } = dataHoraDaquiA(72);
-        expect(_calcularDepositoRetido({ tipo: 'roomservice', data, horario })).toBeNull();
-    });
-
-    it('externo cancelando com 72h de antecedência não perde o adiantamento', () => {
-        const { data, horario } = dataHoraDaquiA(72);
-        expect(_calcularDepositoRetido({ tipo: 'externo', data, horario })).toBe(false);
-    });
-
-    it('externo cancelando com 2h de antecedência perde o adiantamento', () => {
-        const { data, horario } = dataHoraDaquiA(2);
-        expect(_calcularDepositoRetido({ tipo: 'externo', data, horario })).toBe(true);
-    });
-
-    it('externo cancelando depois do horário da reserva perde o adiantamento', () => {
-        const { data, horario } = dataHoraDaquiA(-5);
-        expect(_calcularDepositoRetido({ tipo: 'externo', data, horario })).toBe(true);
     });
 });
 
