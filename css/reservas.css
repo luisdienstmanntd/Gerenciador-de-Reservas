@@ -166,8 +166,8 @@
   text-transform: uppercase;
 }
 .reserva-somente-hospedes {
-  background-color: #e3f2fd;
-  color: #2980b9;
+  background-color: #9e9e9e;
+  color: #222222;
   font-weight: bold;
   text-align: center !important;
   justify-content: center !important;
@@ -180,8 +180,8 @@ body.dark-theme .reserva-bloqueada {
   color: #8a8a8a;
 }
 body.dark-theme .reserva-somente-hospedes {
-  background-color: #1a3a5a;
-  color: #90caf9;
+  background-color: #0a0a0a;
+  color: #8a8a8a;
 }
 
 /* Timer e Pagamento */

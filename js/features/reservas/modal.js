@@ -235,18 +235,7 @@ export class ReservaModal {
 
     document.getElementById("btnAcaoBloquear")?.addEventListener("click", () => {
       this._fecharResumo();
-      this._abrirFormularioNovo(horario, posicao, hrBase);
-      // ✅ BLOQUEAR: restaura barra e mostra só BLOQUEAR/SÓ HOSP. (sem ALTERAR HORA)
-      const headerControls = document.getElementById("modal-header-controls");
-      if (headerControls) headerControls.style.display = "";
-      const containerBloqueio = document.getElementById("containerBloqueio");
-      if (containerBloqueio) containerBloqueio.style.display = "";
-      const wrapperAltHora = document.getElementById("wrapperAlterarHorario");
-      if (wrapperAltHora) wrapperAltHora.style.display = "none";
-      if (this.elementos.checkBloquear) {
-        this.elementos.checkBloquear.checked = true;
-        this.elementos.checkBloquear.dispatchEvent(new Event("change"));
-      }
+      this._abrirSeletorBloqueio(horario, posicao, hrBase);
     }, { once: true });
 
     document.getElementById("btnAcaoHorario")?.addEventListener("click", () => {
@@ -276,6 +265,60 @@ export class ReservaModal {
     }, { once: true });
 
     document.getElementById("btnAcaoFechar")?.addEventListener("click", () => {
+      this.fechar();
+    }, { once: true });
+
+    this._mostrarModal();
+  }
+
+  /**
+   * Clicou em "Bloquear" no seletor de ação → em vez do formulário completo
+   * (checkboxes + observações), mostra direto 3 botões: SOMENTE HÓSPEDES,
+   * BLOQUEAR, CANCELAR. Cada opção marca o checkbox correspondente e aciona
+   * o mesmo btnSalvar do fluxo normal (init.js já sabe salvar um bloqueio a
+   * partir dele) — evita duplicar a lógica de salvamento aqui.
+   */
+  _abrirSeletorBloqueio(horario, posicao, hrBase) {
+    this._abrirFormularioNovo(horario, posicao, hrBase);
+
+    const titulo = this.modal?.querySelector("h3");
+    if (titulo) titulo.innerText = `BLOQUEIO - ${horario}`;
+
+    this._ocultarConteudoModal();
+    this.modal?.querySelector(".modal-content")?.classList.add("modal-compacto");
+
+    const resumo = document.createElement("div");
+    resumo.id = "resumoReserva";
+    resumo.innerHTML = `
+      <div class="resumo-lista">
+        <button type="button" id="btnSelHospedes" class="resumo-btn resumo-btn--info">
+          <span class="resumo-btn-icone">${ICONES.bloquear}</span>Somente hóspedes
+        </button>
+        <button type="button" id="btnSelBloquear" class="resumo-btn resumo-btn--danger">
+          <span class="resumo-btn-icone">${ICONES.bloquear}</span>Bloquear
+        </button>
+        <button type="button" id="btnSelCancelar" class="resumo-btn resumo-btn--ghost">Cancelar</button>
+      </div>
+    `;
+    if (titulo) titulo.after(resumo);
+
+    document.getElementById("btnSelHospedes")?.addEventListener("click", () => {
+      if (this.elementos.checkHospedes) {
+        this.elementos.checkHospedes.checked = true;
+        this.elementos.checkHospedes.dispatchEvent(new Event("change"));
+      }
+      this.elementos.btnSalvar?.click();
+    }, { once: true });
+
+    document.getElementById("btnSelBloquear")?.addEventListener("click", () => {
+      if (this.elementos.checkBloquear) {
+        this.elementos.checkBloquear.checked = true;
+        this.elementos.checkBloquear.dispatchEvent(new Event("change"));
+      }
+      this.elementos.btnSalvar?.click();
+    }, { once: true });
+
+    document.getElementById("btnSelCancelar")?.addEventListener("click", () => {
       this.fechar();
     }, { once: true });
 
@@ -580,6 +623,18 @@ export class ReservaModal {
     const textoHorarioContainer = document.getElementById("textoHorarioContainer");
     if (textoHorarioContainer) textoHorarioContainer.style.display = "none";
 
+    // Bloqueio existente: só DESBLOQUEAR/CANCELAR fazem sentido aqui — a observação
+    // (se houver) já é exibida no texto da própria linha bloqueada na grade, não precisa
+    // de campo editável. _toggleCampos() mostra o campo obs por padrão (_ocultarTodosCamposExcetoObs),
+    // então a ocultação precisa vir depois, sobrescrevendo esse comportamento genérico.
+    if (this.isBloqueioExistente) {
+      const labelObsBloqueio = document.getElementById("labelObs");
+      const obsElBloqueio = document.getElementById("obs");
+      if (labelObsBloqueio) labelObsBloqueio.style.display = "none";
+      if (obsElBloqueio) obsElBloqueio.style.display = "none";
+      this.modal?.querySelector(".modal-content")?.classList.add("modal-compacto");
+    }
+
     this._mostrarModal();
   }
 
@@ -684,6 +739,9 @@ export class ReservaModal {
     const obsEl = document.getElementById("obs");
     if (labelObs) labelObs.style.display = "";
     if (obsEl) obsEl.style.display = "";
+    // Reseta o modal compacto do fluxo de bloqueio existente — sem isso, abrir um bloqueio
+    // e depois uma reserva normal herdava a largura estreita.
+    this.modal?.querySelector(".modal-content")?.classList.remove("modal-compacto");
     const containerNovoHorario = document.getElementById('containerNovoHorario');
     if (containerNovoHorario) containerNovoHorario.classList.add('hidden');
     // ✅ v3.1: Reseta texto do btnSalvar para "SALVAR".
