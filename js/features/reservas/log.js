@@ -88,6 +88,9 @@ export function _resumir(dados) {
         somenteHospedes: dados.somenteHospedes || false,
         canceladoEm:     dados.canceladoEm     || '',
         depositoRetido:  dados.depositoRetido,
+        whatsapp:        dados.whatsapp        || '',
+        avulsa:          dados.avulsa          || '',
+        menuDegustacao:  dados.menuDegustacao  || false,
     };
 }
 
@@ -109,6 +112,7 @@ const LABELS_CAMPOS = {
     canceladoEm: 'Cancelado em', depositoRetido: 'Depósito retido',
     paxs: 'Adultos', chd: 'Crianças', obs: 'Obs', mesa: 'Mesa',
     bloqueado: 'Bloqueado', somenteHospedes: 'Só Hósp.',
+    whatsapp: 'WhatsApp', avulsa: 'Avulsa', menuDegustacao: 'Menu Deg.',
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -387,24 +391,19 @@ function _renderizarItem(log) {
           '</div>'
         : '';
 
-    // Detalhes (antes/depois) — dois modos:
-    //  - Ambos os lados existem (EDITAR, CANCELAR, RESTAURAR): mostra só os campos que
-    //    de fato mudaram (v3.2), igual antes.
-    //  - Só um lado existe (CRIAR = só depois, EXCLUIR/DESBLOQUEAR = só antes): mostra
-    //    um "retrato" dos campos com valor daquele lado — _renderizarDiff já trata o
-    //    lado ausente como {} e imprime "—", então funciona sem mudança nele.
-    var temAmbosLados    = !!(log.dadosAntes && log.dadosDepois);
-    var camposParaExibir = temAmbosLados
+    // Diff — só existe quando a edição alterou de fato algum campo rastreado.
+    // Só EDITAR expande: CRIAR não tem "antes" (nada existia), EXCLUIR/DESBLOQUEAR/
+    // CANCELAR/RESTAURAR não precisam do detalhe pra fazer sentido no log.
+    var camposAlterados = (log.acao === 'EDITAR' && log.dadosAntes && log.dadosDepois)
         ? _camposAlterados(log.dadosAntes, log.dadosDepois)
-        : _camposComValor(log.dadosDepois || log.dadosAntes || {});
-    var temDetalhes   = camposParaExibir.length > 0;
-    var diffHtml      = temDetalhes ? _renderizarDiff(log, camposParaExibir) : '';
+        : [];
+    var temDetalhes   = camposAlterados.length > 0;
+    var diffHtml      = temDetalhes ? _renderizarDiff(log, camposAlterados) : '';
     var clicavelClass = temDetalhes ? 'tl-clicavel' : '';
     var onclickAttr   = temDetalhes ? 'onclick="expandirLog(\'' + log.id + '\')"' : '';
-    var nomesCampos   = camposParaExibir.map(function(c) { return LABELS_CAMPOS[c]; }).join(', ');
-    var textoDica     = temAmbosLados ? 'Alterou' : 'Detalhes';
+    var nomesCampos   = camposAlterados.map(function(c) { return LABELS_CAMPOS[c]; }).join(', ');
     var dicaHtml      = temDetalhes
-        ? '<div class="tl-dica">' + _iconeLapis() + ' <span>' + textoDica + ': ' + nomesCampos + ' — toque para detalhes</span></div>'
+        ? '<div class="tl-dica">' + _iconeLapis() + ' <span>Alterou: ' + nomesCampos + ' — toque para detalhes</span></div>'
         : '';
 
     return (
@@ -438,18 +437,6 @@ function _renderizarItem(log) {
 export function _camposAlterados(antes, depois) {
     return Object.keys(LABELS_CAMPOS).filter(function(c) {
         return String(antes[c] != null ? antes[c] : '') !== String(depois[c] != null ? depois[c] : '');
-    });
-}
-
-/** Campos com valor "real" (não vazio/zero/false) num único lado — usado no "retrato"
- *  de CRIAR (só depois) e EXCLUIR/DESBLOQUEAR (só antes), que não têm o que comparar.
- *  Exportada para testes (mesmo padrão de _camposAlterados). */
-export function _camposComValor(dados) {
-    return Object.keys(LABELS_CAMPOS).filter(function(c) {
-        var v = dados[c];
-        if (typeof v === 'boolean') return v === true;
-        if (typeof v === 'number') return v > 0;
-        return !!v;
     });
 }
 

@@ -25,8 +25,9 @@ vi.mock('../../core/database.js', () => {
 // registrarLog grava no Supabase — nos testes vira um no-op observável.
 vi.mock('./log.js', () => ({ registrarLog: vi.fn().mockResolvedValue(undefined) }));
 
-import { salvarApenasHorario, alterarData, aplicarBloqueiosSemanais, OBS_BLOQUEIO_SEMANAL } from './service.js';
+import { salvarApenasHorario, alterarData, aplicarBloqueiosSemanais, OBS_BLOQUEIO_SEMANAL, salvarReserva } from './service.js';
 import { db } from '../../core/database.js';
+import { registrarLog } from './log.js';
 import { setConfigSistema, setLinhasExtras } from '../../core/state.js';
 
 /** Cliente Supabase fake — registra os UPDATEs/DELETEs pra inspeção. */
@@ -263,5 +264,20 @@ describe('aplicarBloqueiosSemanais — bloqueios antecipados de dia de movimento
         const criados = await aplicarBloqueiosSemanais('2020-07-16'); // quinta no passado
         expect(criados).toBe(0);
         expect(db.criarReserva).not.toHaveBeenCalled();
+    });
+});
+
+describe('salvarReserva — log de auditoria (bug: editar paxs não abria detalhes no Log)', () => {
+    it('registra o log com o estado REAL anterior (do banco), não os dados recém-submetidos', async () => {
+        // Estado anterior de verdade, buscado no banco antes do UPDATE.
+        db.getReservaPorId.mockResolvedValue({ id: 'r1', nomes: 'ANA', horario: '20:00', paxs: 2 });
+
+        await salvarReserva({ id: 'r1', nomes: 'ANA', horario: '20:00', paxs: 4 });
+
+        expect(registrarLog).toHaveBeenCalledWith(
+            'EDITAR',
+            expect.objectContaining({ paxs: 2 }),
+            expect.objectContaining({ paxs: 4 }),
+        );
     });
 });

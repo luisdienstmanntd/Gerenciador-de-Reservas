@@ -387,7 +387,11 @@ export async function salvarReserva(dados) {
             .catch(e => console.error('❌ Erro ao reconciliar bloqueio automático:', e));
 
         if (dados.id) {
-            registrarLog('EDITAR', { id: dados.id, ...dados }, { id: docRef, ...reservaData });
+            // ✅ dadosAntesReserva é o estado REAL anterior (buscado no banco antes do
+            // UPDATE, linha acima) — usar `dados` aqui (o que acabou de ser submetido)
+            // comparava os dados novos contra eles mesmos, então nenhuma edição gerava
+            // diff detectável no log (bug reportado: paxs alterado não abria detalhes).
+            registrarLog('EDITAR', dadosAntesReserva || { id: dados.id }, { id: docRef, ...reservaData });
         } else {
             registrarLog('CRIAR', null, { id: docRef, ...reservaData });
         }
