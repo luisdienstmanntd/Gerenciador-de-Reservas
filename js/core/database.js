@@ -23,6 +23,11 @@
 
 import { supabase } from './supabaseClient.js';
 
+// Governança de dados (ver prompt.md §6.1): reservas com jantar anterior a esta data
+// vieram da migração manual das planilhas Google — o criado_em delas é a data da
+// digitação, não da solicitação real. Métricas de tempo nunca devem usá-las.
+const DATA_CORTE_TEMPO_CONFIAVEL = '2026-06-30';
+
 class DatabaseService {
     constructor() {
         if (DatabaseService.instance) {
@@ -228,6 +233,12 @@ class DatabaseService {
             pagamento: dados.pagamento || null,
             menu_degustacao: dados.menuDegustacao || false,
             bloqueio_origem_id: dados.bloqueioOrigemId || null,
+            // Governança: recalculado a cada insert/update a partir da data do jantar —
+            // determinístico, então regravar no update é seguro (e correto se a reserva
+            // for movida através do corte). origem_dados NUNCA entra aqui: o default do
+            // banco ('sistema') cobre o insert, e incluí-lo no update sobrescreveria o
+            // 'importacao' dos registros históricos (mesmo motivo do mesa_identificador).
+            confiavel_para_tempo: !dados.data || dados.data >= DATA_CORTE_TEMPO_CONFIAVEL,
         };
     }
 

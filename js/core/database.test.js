@@ -139,6 +139,7 @@ describe('_paraColunasReserva', () => {
             pagamento: null,
             menu_degustacao: true,
             bloqueio_origem_id: null,
+            confiavel_para_tempo: true,
         });
     });
 
@@ -146,6 +147,28 @@ describe('_paraColunasReserva', () => {
         vi.spyOn(db, '_resolverHospedeId').mockResolvedValue(null);
         const colunas = await db._paraColunasReserva({ data: '2026-07-14', horario: '21:00' });
         expect(colunas.original_base).toBe('21:00');
+    });
+
+    // Governança de dados (prompt.md §6.1): jantar antes de 30/06/2026 = histórico migrado
+    // das planilhas, criado_em não é confiável pra métricas de tempo.
+    it('marca confiavel_para_tempo=false pra jantar anterior ao corte (30/06/2026)', async () => {
+        vi.spyOn(db, '_resolverHospedeId').mockResolvedValue(null);
+        const colunas = await db._paraColunasReserva({ data: '2026-06-29', horario: '20:00' });
+        expect(colunas.confiavel_para_tempo).toBe(false);
+    });
+
+    it('marca confiavel_para_tempo=true a partir do dia do corte', async () => {
+        vi.spyOn(db, '_resolverHospedeId').mockResolvedValue(null);
+        const noCorte = await db._paraColunasReserva({ data: '2026-06-30', horario: '20:00' });
+        const depois  = await db._paraColunasReserva({ data: '2026-07-14', horario: '20:00' });
+        expect(noCorte.confiavel_para_tempo).toBe(true);
+        expect(depois.confiavel_para_tempo).toBe(true);
+    });
+
+    it('NUNCA inclui origem_dados — default do banco no insert; no update, incluir sobrescreveria o importacao histórico', async () => {
+        vi.spyOn(db, '_resolverHospedeId').mockResolvedValue(null);
+        const colunas = await db._paraColunasReserva({ data: '2026-07-14', horario: '20:00' });
+        expect(colunas).not.toHaveProperty('origem_dados');
     });
 });
 

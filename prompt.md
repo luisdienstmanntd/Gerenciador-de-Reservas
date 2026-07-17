@@ -226,6 +226,19 @@ reservas/{autoId} {
 
 **Linha disponível** = documento com `nomes: ""` (ou falsy), `bloqueado: false`, `somenteHospedes: false`.
 
+### 6.1 Governança de Dados — confiabilidade para métricas de tempo (só no Postgres)
+
+Reservas históricas migradas manualmente das planilhas Google (**data de jantar anterior a 30/06/2026**) não têm o timestamp real de criação: o `criado_em` delas registra o momento da digitação na migração, não o momento em que o cliente solicitou. Duas colunas na tabela `reservas` (migration `20260717120000`) rotulam isso — elas existem **só no Postgres**, não aparecem no formato achatado da aplicação (§6):
+
+| Coluna | Valores | Regra |
+|---|---|---|
+| `origem_dados` | `'sistema'` (default) \| `'importacao'` | Definida no insert e nunca regravada pelo app. **Qualquer import em lote futuro deve setar `'importacao'` explicitamente.** |
+| `confiavel_para_tempo` | boolean (default `true`) | `false` quando `data < '2026-06-30'`. Recalculada pelo app a cada insert/update (`database.js _paraColunasReserva`, constante `DATA_CORTE_TEMPO_CONFIAVEL`). |
+
+**⚠️ REGRA PARA ANÁLISES (Claude, Power BI, qualquer consumidor):** registros com `confiavel_para_tempo = false` **nunca** entram em métricas baseadas em `criado_em` — antecedência da reserva, lead time entre solicitação e jantar, volume de criação por período. Para contagens/PAX/ocupação por data de jantar eles continuam válidos normalmente.
+
+**Power BI:** para métricas de tempo, conecte direto na view **`vw_reservas_tempo_real`** — já vem filtrada (`confiavel_para_tempo = true` e só reservas reais, sem bloqueios/canceladas) e traz `dias_antecedencia` calculado no fuso `America/Sao_Paulo`. A `vw_reservas_detalhado` também expõe as duas colunas (no fim da lista) para quem quiser filtrar manualmente.
+
 ---
 
 ## 7. Grade de Reservas — Funcionamento Completo
