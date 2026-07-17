@@ -116,10 +116,8 @@ function atualizarKpisNaTela(ocupacao, total, tempo, mesaTop, criancas, cancelam
         mesa: document.getElementById('kpiMesaTop'),
         criancas: document.getElementById('kpiCriancas'),
         cancelamentos: document.getElementById('kpiCancelamentos'),
-        opTotal: document.getElementById('dashTotalPax')
     };
 
-    if (el.opTotal) el.opTotal.innerText = total;
     if (el.ocupacao) {
         el.ocupacao.innerText = ocupacao.toFixed(1) + '%';
         el.ocupacao.style.color = ocupacao > 90 ? '#e74c3c' : (ocupacao > 70 ? '#27ae60' : 'var(--texto-principal)');

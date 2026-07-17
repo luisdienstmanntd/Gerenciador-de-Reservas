@@ -404,8 +404,11 @@ class DatabaseService {
      * @returns {Function} unsubscribe
      */
     escutarNotificacoesNaoLidas(usuario, callback) {
+        // Janela de busca ampla o bastante pra pegar sobras de ontem que ainda não foram
+        // marcadas como lidas (limpeza abaixo) — o corte que decide o que o sino MOSTRA
+        // é sempre a meia-noite de hoje, não essas 48h.
         const corte = new Date();
-        corte.setHours(corte.getHours() - 12); // janela de 12h, igual antes
+        corte.setHours(corte.getHours() - 48);
 
         const buscar = async () => {
             try {
@@ -415,8 +418,20 @@ class DatabaseService {
                     .order('criado_em', { ascending: false });
                 if (error) throw error;
 
-                const pendentes = rows
-                    .filter(n => !n.lido_por || !n.lido_por.includes(usuario))
+                const inicioHoje = new Date();
+                inicioHoje.setHours(0, 0, 0, 0);
+
+                const naoLidas = rows.filter(n => !n.lido_por || !n.lido_por.includes(usuario));
+
+                // Notificação de dia anterior nunca deve alertar o sino — marca como lida
+                // silenciosamente assim que aparece (mesmo sem o usuário abrir o painel),
+                // pra ela não ficar "pendente pra sempre" e reacender o sino do nada.
+                naoLidas
+                    .filter(n => new Date(n.criado_em) < inicioHoje)
+                    .forEach(n => { this.marcarNotificacaoLida(n.id, usuario).catch(() => {}); });
+
+                const pendentes = naoLidas
+                    .filter(n => new Date(n.criado_em) >= inicioHoje)
                     .map(n => ({ id: n.id, texto: n.texto, reservaId: n.reserva_id, lido_por: n.lido_por, timestamp: n.criado_em }));
                 callback(pendentes);
             } catch (error) {
