@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 // (log.js importa database.js/state.js, que precisam de DOM na carga do módulo)
 import { describe, it, expect } from 'vitest';
-import { _paraLogApp, _resumir, _camposAlterados } from './log.js';
+import { _paraLogApp, _resumir, _camposAlterados, _camposComValor } from './log.js';
 
 describe('_paraLogApp', () => {
     it('converte a linha de reservas_log (snake_case) pro formato da timeline', () => {
@@ -76,5 +76,28 @@ describe('_camposAlterados', () => {
     it('compara por valor convertido em string (0 ≠ "", false ≠ true)', () => {
         expect(_camposAlterados({ paxs: 2 }, { paxs: '2' })).toEqual([]);
         expect(_camposAlterados({ bloqueado: false }, { bloqueado: true })).toEqual(['bloqueado']);
+    });
+});
+
+// "Retrato" de um único lado — usado no ícone clicável de CRIAR (só dadosDepois) e
+// EXCLUIR/DESBLOQUEAR (só dadosAntes), que não têm outro lado pra comparar.
+describe('_camposComValor', () => {
+    it('lista só os campos com valor real, ignorando vazio/zero/false', () => {
+        const dados = _resumir({ data: '2026-07-14', nomes: 'ANA', horario: '20:00', paxs: 0, chd: 0, obs: '' });
+        expect(_camposComValor(dados)).toEqual(['data', 'nomes', 'horario']);
+    });
+
+    it('inclui número > 0', () => {
+        const dados = _resumir({ paxs: 4 });
+        expect(_camposComValor(dados)).toContain('paxs');
+    });
+
+    it('inclui boolean só quando true', () => {
+        expect(_camposComValor({ bloqueado: true })).toContain('bloqueado');
+        expect(_camposComValor({ bloqueado: false })).not.toContain('bloqueado');
+    });
+
+    it('retorna vazio pra objeto sem nenhum campo com valor', () => {
+        expect(_camposComValor({})).toEqual([]);
     });
 });

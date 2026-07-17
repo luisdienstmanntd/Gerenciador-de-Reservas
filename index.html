@@ -724,7 +724,11 @@
                     <label style="font-size: 0.8rem;">Data:</label>
                     <input type="date" id="dataFiltroLog" class="filtro-data" style="margin: 0;">
                 </div>
-                <button class="btn-main" onclick="carregarLogs()" style="padding: 5px 15px; height: 38px; background: #3498db;">BUSCAR</button>
+                <button class="btn-main" onclick="document.getElementById('filtroNomeLog').value=''; carregarLogs()" style="padding: 5px 15px; height: 38px; background: #3498db;">BUSCAR</button>
+                <div style="flex: 1; min-width: 160px;">
+                    <label style="font-size: 0.8rem;">Nome:</label>
+                    <input type="text" id="filtroNomeLog" class="filtro-data" placeholder="Buscar por nome (todas as datas)..." style="margin: 0; width: 100%;" oninput="buscarLogsPorNomeDebounced(this.value)">
+                </div>
             </div>
             <div id="listaLogs" style="min-height: 300px;"></div>
         </div>

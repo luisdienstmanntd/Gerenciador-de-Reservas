@@ -19,6 +19,7 @@
 
 import { db } from '../../core/database.js';
 import { notificarErro } from '../../core/notificacao.js';
+import { escapeHtml } from './validators.js';
 
 // ✅ v1.3: Lê usuário do localStorage (definido na tela de login)
 const USUARIO_ATUAL = localStorage.getItem('usuario_nome') || 'sistema';
@@ -144,6 +145,9 @@ function _injetarCSS() {
         '.tl-item{display:flex;align-items:flex-start;gap:13px;margin-bottom:10px;position:relative}',
 
         '.tl-icon{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;position:relative;z-index:1;box-shadow:0 2px 8px rgba(0,0,0,.22);color:#fff;margin-top:2px}',
+        '.tl-icon.tl-clicavel{cursor:pointer;transition:transform .12s ease,box-shadow .15s ease}',
+        '.tl-icon.tl-clicavel:hover{transform:scale(1.08);box-shadow:0 4px 14px rgba(0,0,0,.32)}',
+        '.tl-icon.tl-clicavel:active{transform:scale(0.96)}',
 
         '.tl-card{flex:1;min-width:0;background:var(--card-bg,#fff);border-radius:10px;border:1px solid rgba(0,0,0,.07);overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.07);transition:box-shadow .15s,transform .1s}',
         'body.dark-mode .tl-card{border-color:rgba(255,255,255,.06)}',
@@ -262,21 +266,85 @@ export async function carregarLogs() {
     }
 }
 
+/**
+ * Busca alterações por nome do cliente, em TODAS as datas (não respeita o filtro de
+ * Data — é um campo de busca à parte, pra achar o histórico de uma reserva sem
+ * precisar saber o dia). Campo vazio volta pro comportamento normal (carregarLogs()).
+ *
+ * Procura tanto em dados_antes quanto em dados_depois (uma linha EXCLUIR, por exemplo,
+ * só tem dados_antes) via .or() do PostgREST em cima dos campos jsonb.
+ * @param {string} nome
+ */
+export async function buscarLogsPorNome(nome) {
+    _injetarCSS();
+
+    const container = document.getElementById('listaLogs');
+    if (!container) return;
+
+    const termo = (nome || '').trim();
+    if (!termo) {
+        await carregarLogs();
+        return;
+    }
+
+    container.innerHTML = '<div style="text-align:center;padding:50px;opacity:.45;"><div style="font-size:1.6rem;margin-bottom:10px;">⏳</div><div style="font-size:.82rem;font-weight:600;letter-spacing:1px;">BUSCANDO...</div></div>';
+
+    try {
+        await db.aguardarInicializacao();
+        const client = db.getClient();
+
+        // Escapa curingas do ILIKE (% e _) e remove vírgula/parênteses — delimitadores
+        // do próprio filtro .or() do PostgREST, quebrariam a sintaxe se vierem no termo.
+        const termoEscapado = termo.replace(/[%_]/g, '\\$&').replace(/[,()]/g, '');
+
+        const { data: rows, error } = await client.from('reservas_log')
+            .select('*')
+            .or(`dados_antes->>nomes.ilike.%${termoEscapado}%,dados_depois->>nomes.ilike.%${termoEscapado}%`)
+            .order('criado_em', { ascending: false })
+            .limit(200);
+        if (error) throw error;
+
+        const logs = rows.map(r => _paraLogApp(r));
+
+        if (logs.length === 0) {
+            container.innerHTML = '<div class="tl-vazio"><div class="tl-vazio-icone">🔍</div><div class="tl-vazio-texto">Nenhuma alteração encontrada para "' + escapeHtml(termo) + '"</div></div>';
+            return;
+        }
+
+        container.innerHTML = _renderizarTimeline(logs, { agruparPorDia: true });
+
+    } catch (e) {
+        console.error('❌ Erro ao buscar logs por nome:', e);
+        notificarErro('Erro ao buscar histórico de alterações.');
+        container.innerHTML = '<p style="color:#e74c3c;text-align:center;padding:40px;">Erro ao buscar logs</p>';
+    }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // RENDERIZAÇÃO DA TIMELINE
 // ─────────────────────────────────────────────────────────────────────────────
 
-function _renderizarTimeline(logs) {
+/**
+ * @param {Array} logs
+ * @param {{agruparPorDia?: boolean}} [opcoes] - agruparPorDia: true agrupa os separadores
+ *   por data (DD/MM/AAAA) em vez de só hora — usado na busca por nome, que cruza várias
+ *   datas (agrupar só por hora misturaria dias diferentes sob o mesmo rótulo "20:30").
+ *   Cada card já mostra o próprio horário completo (tl-meta), então nada se perde.
+ */
+function _renderizarTimeline(logs, opcoes) {
+    var agruparPorDia = !!(opcoes && opcoes.agruparPorDia);
     var html = '<div class="tl-wrapper">';
-    var horaAtual = null;
+    var chaveAtual = null;
 
     logs.forEach(function(log) {
         var dt = new Date(log.timestamp);
-        var horaMin = dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        var chave = agruparPorDia
+            ? dt.toLocaleDateString('pt-BR')
+            : dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
-        if (horaMin !== horaAtual) {
-            horaAtual = horaMin;
-            html += '<div class="tl-hora-sep"><span>' + horaMin + '</span></div>';
+        if (chave !== chaveAtual) {
+            chaveAtual = chave;
+            html += '<div class="tl-hora-sep"><span>' + chave + '</span></div>';
         }
 
         html += _renderizarItem(log);
@@ -319,23 +387,29 @@ function _renderizarItem(log) {
           '</div>'
         : '';
 
-    // Diff — só existe quando a edição alterou de fato algum campo rastreado.
-    // A dica já adianta QUAIS campos mudaram; o expandido mostra só esses (v3.2).
-    var camposAlterados = (log.acao === 'EDITAR' && log.dadosAntes && log.dadosDepois)
+    // Detalhes (antes/depois) — dois modos:
+    //  - Ambos os lados existem (EDITAR, CANCELAR, RESTAURAR): mostra só os campos que
+    //    de fato mudaram (v3.2), igual antes.
+    //  - Só um lado existe (CRIAR = só depois, EXCLUIR/DESBLOQUEAR = só antes): mostra
+    //    um "retrato" dos campos com valor daquele lado — _renderizarDiff já trata o
+    //    lado ausente como {} e imprime "—", então funciona sem mudança nele.
+    var temAmbosLados    = !!(log.dadosAntes && log.dadosDepois);
+    var camposParaExibir = temAmbosLados
         ? _camposAlterados(log.dadosAntes, log.dadosDepois)
-        : [];
-    var temDiff       = camposAlterados.length > 0;
-    var diffHtml      = temDiff ? _renderizarDiff(log, camposAlterados) : '';
-    var clicavelClass = temDiff ? 'tl-clicavel' : '';
-    var onclickAttr   = temDiff ? 'onclick="expandirLog(\'' + log.id + '\')"' : '';
-    var nomesCampos   = camposAlterados.map(function(c) { return LABELS_CAMPOS[c]; }).join(', ');
-    var dicaHtml      = temDiff
-        ? '<div class="tl-dica">' + _iconeLapis() + ' <span>Alterou: ' + nomesCampos + ' — toque para detalhes</span></div>'
+        : _camposComValor(log.dadosDepois || log.dadosAntes || {});
+    var temDetalhes   = camposParaExibir.length > 0;
+    var diffHtml      = temDetalhes ? _renderizarDiff(log, camposParaExibir) : '';
+    var clicavelClass = temDetalhes ? 'tl-clicavel' : '';
+    var onclickAttr   = temDetalhes ? 'onclick="expandirLog(\'' + log.id + '\')"' : '';
+    var nomesCampos   = camposParaExibir.map(function(c) { return LABELS_CAMPOS[c]; }).join(', ');
+    var textoDica     = temAmbosLados ? 'Alterou' : 'Detalhes';
+    var dicaHtml      = temDetalhes
+        ? '<div class="tl-dica">' + _iconeLapis() + ' <span>' + textoDica + ': ' + nomesCampos + ' — toque para detalhes</span></div>'
         : '';
 
     return (
         '<div class="tl-item">' +
-            '<div class="tl-icon" style="background:' + cfg.cor + ';">' + cfg.icone + '</div>' +
+            '<div class="tl-icon ' + clicavelClass + '" style="background:' + cfg.cor + ';" ' + onclickAttr + '>' + cfg.icone + '</div>' +
             '<div id="log-' + log.id + '" class="tl-card ' + clicavelClass + '" ' + onclickAttr + '>' +
                 '<div class="tl-card-topo" style="background:' + cfg.cor + ';"></div>' +
                 '<div class="tl-card-corpo">' +
@@ -364,6 +438,18 @@ function _renderizarItem(log) {
 export function _camposAlterados(antes, depois) {
     return Object.keys(LABELS_CAMPOS).filter(function(c) {
         return String(antes[c] != null ? antes[c] : '') !== String(depois[c] != null ? depois[c] : '');
+    });
+}
+
+/** Campos com valor "real" (não vazio/zero/false) num único lado — usado no "retrato"
+ *  de CRIAR (só depois) e EXCLUIR/DESBLOQUEAR (só antes), que não têm o que comparar.
+ *  Exportada para testes (mesmo padrão de _camposAlterados). */
+export function _camposComValor(dados) {
+    return Object.keys(LABELS_CAMPOS).filter(function(c) {
+        var v = dados[c];
+        if (typeof v === 'boolean') return v === true;
+        if (typeof v === 'number') return v > 0;
+        return !!v;
     });
 }
 
@@ -424,6 +510,13 @@ function recolherLog(logId) {
     if (diff) diff.classList.remove('aberto');
 }
 
+/** Debounce (400ms) do campo de busca por nome — evita uma query a cada tecla digitada. */
+let _debounceBuscaNomeLog = null;
+function buscarLogsPorNomeDebounced(nome) {
+    clearTimeout(_debounceBuscaNomeLog);
+    _debounceBuscaNomeLog = setTimeout(() => buscarLogsPorNome(nome), 400);
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // EXPOR GLOBALMENTE
 // ─────────────────────────────────────────────────────────────────────────────
@@ -431,6 +524,7 @@ function recolherLog(logId) {
 window.carregarLogs = carregarLogs;
 window.expandirLog  = expandirLog;
 window.recolherLog  = recolherLog;
+window.buscarLogsPorNomeDebounced = buscarLogsPorNomeDebounced;
 
 /**
  * Chamado pelo sino após navegar para a tela de logs.
