@@ -1,5 +1,5 @@
 /* =========================================================================================
-   OSTERIA DI LUCCA - HOME.JS v2.7
+   OSTERIA DI LUCCA - HOME.JS v2.8
    ✅ v1.1: onSnapshot em tempo real
    ✅ v1.2: Gauge de taxa de ocupação
    ✅ v1.3: rosca 360° ocupação com legenda
@@ -26,6 +26,9 @@
             mostra quantas ocorreram no dia (soft-delete — histórico completo no Log)
    ✅ v2.7: Reserva cancelada aparece em "Observações da Noite" (ex: "20:30 - CANCELADA -
             NOME"), mesmo sem obs/degustação registrada
+   ✅ v2.8: Ticker de KPIs só anima quando os cards NÃO cabem na largura; se cabem, mostra um
+            único conjunto estático (sem repetição/rolagem). Reavalia ao girar/redimensionar
+            (ResizeObserver). Offset preservado entre updates; gap incluído na largura do loop.
    ========================================================================================= */
 
 import { db } from '../core/database.js';
@@ -37,7 +40,6 @@ let chartBarrasInstance = null;
 let chartSemanaInstance = null;
 
 let _unsubscribeHome    = null;
-let _tickerInicializado = false;
 
 const PALETA = {
     hospede:     '#4a90e2',
@@ -55,7 +57,6 @@ export async function carregarHome() {
     console.log('🏠 Carregando Home v1.5...');
 
     _mostrarSkeleton();
-    _tickerInicializado = false;
 
     try {
         await db.aguardarInicializacao();
@@ -80,7 +81,6 @@ export async function carregarHome() {
 
         _renderizarKPIs(reaisHoje, cancelamentosHoje);
         _atualizarClonesKpiTicker();
-        if (!_tickerInicializado) { _tickerInicializado = true; _iniciarKpiTicker(); }
 
         _renderizarGiroMesa(reservasHoje);
         _renderizarObsNoite(reservasHoje);
@@ -356,98 +356,115 @@ function _renderizarGraficos(reaisHoje, reaisSemana, hoje) {
 
 
 // ─────────────────────────────────────────────────────────────────────────────
-// KPI Ticker — mobile/tablet (≤1024px)
+// KPI Ticker — mobile/tablet (≤1200px)
 // Clona os cards do grid original para o ticker e anima via RAF.
 // Desktop: grid intocado, ticker display:none via CSS.
 // ─────────────────────────────────────────────────────────────────────────────
-let _kpiRafId  = null;
-let _kpiPaused = false;
-let _kpiGen    = 0;
+let _kpiRafId         = null;
+let _kpiPaused        = false;
+let _kpiOffset        = 0;      // posição atual da animação (preservada entre atualizações)
+let _kpiConjW         = 0;      // largura de UM conjunto de cards (+ gap)
+let _kpiTouchLigado   = false;
+let _kpiObserver      = null;
+const KPI_TICKER_MQ   = '(max-width: 1200px)';
 
 // ── Obs Noite Ticker (scroll vertical) ──
 let _obsRafId = null;
 let _obsGen   = 0;
 
-/**
- * Recria os clones no ticker com os valores atuais dos KPI cards.
- * Chamado após _renderizarKPIs() a cada update do Firebase.
- * Preserva o RAF em andamento — só atualiza o conteúdo, não reinicia a animação.
- */
-function _atualizarClonesKpiTicker() {
-    if (!window.matchMedia('(max-width: 1200px)').matches) return;
-    const grid  = document.getElementById('home-kpis-grid');
-    const inner = document.getElementById('kpi-ticker-inner');
-    if (!grid || !inner) return;
-
-    // Guarda offset atual para não pular visualmente
-    const transformAtual = inner.style.transform;
-
-    inner.innerHTML = '';
-    const clone = () => {
-        [...grid.children].forEach(card => inner.appendChild(card.cloneNode(true)));
-    };
-    clone(); clone(); clone();
-
-    // Restaura posição para não haver salto
-    if (transformAtual) inner.style.transform = transformAtual;
+function _pararKpiTicker() {
+    if (_kpiRafId) { cancelAnimationFrame(_kpiRafId); _kpiRafId = null; }
 }
 
 /**
- * Inicia o loop RAF do ticker. Chamado apenas uma vez por sessão de home.
- * Conteúdo dos cards é gerenciado por _atualizarClonesKpiTicker().
+ * Reavalia o ticker de KPIs (≤1200px). Chamado a cada update do banco e quando a
+ * largura da área muda (rotação do tablet, resize, abrir/fechar menu lateral).
+ *
+ * - Se UM conjunto de cards cabe na largura disponível: renderiza só um conjunto,
+ *   parado, com os cards distribuídos (sem rolagem e sem cards repetidos).
+ * - Se não cabe: renderiza 3 conjuntos e anima em loop contínuo (ticker).
+ * Desktop (>1200px): grid original visível, ticker oculto via CSS.
  */
-function _iniciarKpiTicker() {
-    if (!window.matchMedia('(max-width: 1200px)').matches) return;
-
+function _atualizarClonesKpiTicker() {
     const wrap  = document.getElementById('kpi-ticker-wrap');
     const inner = document.getElementById('kpi-ticker-inner');
-    if (!wrap || !inner) return;
+    const grid  = document.getElementById('home-kpis-grid');
+    if (!wrap || !inner || !grid) return;
 
-    // Garante alturas explícitas — corrige o colapso height:0 no pai flex
-    wrap.style.height    = '88px';
-    wrap.style.minHeight = '88px';
+    _observarLarguraKpiTicker(wrap);
+
+    if (!window.matchMedia(KPI_TICKER_MQ).matches) { _pararKpiTicker(); return; }
+
+    const larguraWrap = wrap.clientWidth;
+    if (larguraWrap <= 0) return; // tela Home oculta — o observer chama de novo quando aparecer
+
+    // Alturas explícitas — corrige o colapso height:0 no pai flex
+    wrap.style.height     = '88px';
+    wrap.style.minHeight  = '88px';
     wrap.style.flexShrink = '0';
-    wrap.style.overflow  = 'hidden';
-    inner.style.height   = '88px';
+    wrap.style.overflow   = 'hidden';
+    inner.style.height    = '88px';
 
-    if (_kpiRafId) { cancelAnimationFrame(_kpiRafId); _kpiRafId = null; }
-    _kpiPaused = false;
-
-    inner.addEventListener('touchstart', () => { _kpiPaused = true; }, { passive: true });
-    inner.addEventListener('touchend',   () => { setTimeout(() => { _kpiPaused = false; }, 1500); }, { passive: true });
-
-    _kpiGen++;
-    const gen = _kpiGen;
-
-    function iniciarLoop() {
-        if (_kpiGen !== gen) return;
-        const conjW = inner.scrollWidth / 3;
-        if (conjW <= 0) {
-            // Ainda sem conteúdo — tenta novamente no próximo frame
-            requestAnimationFrame(iniciarLoop);
-            return;
-        }
-
-        let offset = 0;
-        let lastTs = null;
-        inner.style.transform = 'translateX(0)';
-
-        function tick(ts) {
-            if (_kpiGen !== gen) return;
-            if (lastTs === null) lastTs = ts;
-            const dt = Math.min(ts - lastTs, 50);
-            lastTs = ts;
-            if (!_kpiPaused) {
-                offset += 0.04 * dt;
-                if (offset >= conjW) offset -= conjW;
-                inner.style.transform = `translateX(-${offset}px)`;
-            }
-            _kpiRafId = requestAnimationFrame(tick);
-        }
-        _kpiRafId = requestAnimationFrame(tick);
+    if (!_kpiTouchLigado) {
+        _kpiTouchLigado = true;
+        inner.addEventListener('touchstart', () => { _kpiPaused = true; }, { passive: true });
+        inner.addEventListener('touchend',   () => { setTimeout(() => { _kpiPaused = false; }, 1500); }, { passive: true });
     }
 
-    requestAnimationFrame(() => requestAnimationFrame(iniciarLoop));
+    const clonarConjunto = () => [...grid.children].forEach(card => inner.appendChild(card.cloneNode(true)));
+
+    // 1) Mede com UM conjunto, nas larguras naturais dos cards
+    inner.classList.remove('kpi-estatico');
+    inner.innerHTML = '';
+    clonarConjunto();
+
+    if (inner.scrollWidth <= larguraWrap + 1) {
+        // Cabe: sem animação, sem repetição
+        _pararKpiTicker();
+        _kpiOffset = 0;
+        inner.style.transform = 'none';
+        inner.classList.add('kpi-estatico');
+        return;
+    }
+
+    // 2) Não cabe: 3 conjuntos para o loop contínuo
+    clonarConjunto(); clonarConjunto();
+    const gap = parseFloat(getComputedStyle(inner).columnGap) || 0;
+    _kpiConjW = (inner.scrollWidth + gap) / 3;
+    if (_kpiOffset >= _kpiConjW) _kpiOffset = _kpiOffset % _kpiConjW;
+    inner.style.transform = `translateX(-${_kpiOffset}px)`;
+    _iniciarLoopKpiTicker(inner);
+}
+
+/** Reavalia o ticker quando a largura da área muda (rotação, resize, menu lateral). */
+function _observarLarguraKpiTicker(wrap) {
+    if (_kpiObserver || typeof ResizeObserver === 'undefined') return;
+    let ultimaLargura = wrap.clientWidth;
+    _kpiObserver = new ResizeObserver(() => {
+        const largura = wrap.clientWidth;
+        if (largura === ultimaLargura) return;
+        ultimaLargura = largura;
+        _atualizarClonesKpiTicker();
+    });
+    _kpiObserver.observe(wrap);
+}
+
+/** Loop RAF do ticker. Se já está rodando, só o conteúdo foi trocado — não reinicia. */
+function _iniciarLoopKpiTicker(inner) {
+    if (_kpiRafId) return;
+    let lastTs = null;
+    const tick = (ts) => {
+        if (lastTs === null) lastTs = ts;
+        const dt = Math.min(ts - lastTs, 50);
+        lastTs = ts;
+        if (!_kpiPaused) {
+            _kpiOffset += 0.04 * dt;
+            if (_kpiOffset >= _kpiConjW) _kpiOffset -= _kpiConjW;
+            inner.style.transform = `translateX(-${_kpiOffset}px)`;
+        }
+        _kpiRafId = requestAnimationFrame(tick);
+    };
+    _kpiRafId = requestAnimationFrame(tick);
 }
 
 

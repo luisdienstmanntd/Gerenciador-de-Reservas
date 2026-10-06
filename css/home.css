@@ -132,6 +132,13 @@
     flex-shrink: 0;
     height: 72px;
   }
+  /* Todos os cards cabem na largura: um único conjunto, parado e distribuído
+     (o JS adiciona .kpi-estatico; sem animação e sem cards repetidos) */
+  #kpi-ticker-inner.kpi-estatico .home-kpi-card {
+    flex: 1 1 0 !important;
+    width: auto !important;
+    min-width: 0;
+  }
 
   /* Header "Bem-vindo" oculto — só desktop */
   .home-header { display: none; }
