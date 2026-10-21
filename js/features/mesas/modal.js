@@ -71,7 +71,7 @@ export class MesaModal {
         const dataAtual = getDataAtual();
         const reservas = getTodasReservas();
         const mesasOcupadas = reservas
-            .filter(r => r.mesa && !r.fimMesa && r.data === dataAtual && r.mesa !== "ROOM")
+            .filter(r => r.mesa && !r.fimMesa && !r.canceladoEm && r.data === dataAtual && r.mesa !== "ROOM")
             .map(r => r.mesa);
         
         this.elementos.containerListaMesas.querySelectorAll('.btn-mesa').forEach(btn => {
@@ -241,3 +241,4 @@ export class MesaModal {
         if (this.modal) this.modal.style.display = "none";
     }
 }
+

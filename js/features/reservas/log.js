@@ -22,7 +22,7 @@ import { notificarErro } from '../../core/notificacao.js';
 import { escapeHtml } from './validators.js';
 
 // ✅ v1.3: Lê usuário do localStorage (definido na tela de login)
-const USUARIO_ATUAL = localStorage.getItem('usuario_nome') || 'sistema';
+const usuarioAtual = () => localStorage.getItem('usuario_nome') || 'sistema';
 
 /**
  * Registra uma ação no log
@@ -38,7 +38,7 @@ export async function registrarLog(acao, dadosAntes = null, dadosDepois = null) 
         const { error } = await client.from('reservas_log').insert({
             reserva_id: dadosDepois?.id || dadosAntes?.id || null,
             acao,
-            usuario: USUARIO_ATUAL,
+            usuario: usuarioAtual(),
             dados_antes: dadosAntes ? _resumir(dadosAntes) : null,
             dados_depois: dadosDepois ? _resumir(dadosDepois) : null,
         });
@@ -576,3 +576,4 @@ window.destacarLogPorReservaId = async function(reservaId) {
         container.innerHTML = '<div class="tl-vazio"><div class="tl-vazio-icone">❌</div><div class="tl-vazio-texto">Erro ao carregar histórico</div></div>';
     }
 };
+

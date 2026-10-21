@@ -18,7 +18,8 @@
 
 import { buscarReservasPorPeriodo, buscarReservasPorData } from './reservas/service.js';
 import { notificarErro } from '../core/notificacao.js';
-import { getHorariosPadrao } from '../core/state.js';
+import { getHorariosPadrao, getConfig } from '../core/state.js';
+import { CORES_OSTERIA, coresGrafico } from '../core/theme.js';
 
 // --- VARIÁVEIS GLOBAIS ---
 let chartHorarioInstance = null;
@@ -26,7 +27,6 @@ let chartTipoInstance = null;
 let chartDiaSemanaInstance = null;
 let chartMesasInstance = null;
 
-const CAPACIDADE_NOITE = 30;
 const DIAS_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
 // ✅ v3.13: Consulta por período com exceções, ou por datas específicas (bug #48)
@@ -45,7 +45,9 @@ function processarDashboard(reservas, diasNoPeriodo = 1) {
         getHorariosPadrao().map(h => [h, { hospede: 0, externo: 0, passante: 0 }])
     );
     let usoMesas = {};
-    for (let i = 1; i <= 18; i++) usoMesas[i] = 0;
+    const config = getConfig();
+    const totalMesas = Math.max(1, Number(config.totalMesas || config.mesas) || 18);
+    for (let i = 1; i <= totalMesas; i++) usoMesas[i] = 0;
 
     // ✅ v3.12: Movimento por dia da semana, separado por tipo de cliente (bug #47)
     let porDiaSemana = DIAS_SEMANA.map(() => ({ hospede: 0, externo: 0, passante: 0 }));
@@ -98,7 +100,7 @@ function processarDashboard(reservas, diasNoPeriodo = 1) {
         }
     });
 
-    let capacidadeTotalPeriodo = CAPACIDADE_NOITE * diasNoPeriodo;
+    let capacidadeTotalPeriodo = (Number(config.capacidade) || 30) * diasNoPeriodo;
     let taxaOcupacao = capacidadeTotalPeriodo > 0 ? (kpis.totalPax / capacidadeTotalPeriodo) * 100 : 0;
     let tempoMedio = kpis.mesasFinalizadasCount > 0 ? Math.round(kpis.tempoTotalMinutos / kpis.mesasFinalizadasCount) : 0;
     let mesaTop = Object.keys(usoMesas).reduce((a, b) => usoMesas[a] > usoMesas[b] ? a : b);
@@ -120,7 +122,7 @@ function atualizarKpisNaTela(ocupacao, total, tempo, mesaTop, criancas, cancelam
 
     if (el.ocupacao) {
         el.ocupacao.innerText = ocupacao.toFixed(1) + '%';
-        el.ocupacao.style.color = ocupacao > 90 ? '#e74c3c' : (ocupacao > 70 ? '#27ae60' : 'var(--texto-principal)');
+        el.ocupacao.style.color = ocupacao > 90 ? CORES_OSTERIA.erro : (ocupacao > 70 ? CORES_OSTERIA.sucesso : 'var(--texto)');
     }
     if (el.total) el.total.innerText = total;
     if (el.tempo) el.tempo.innerText = tempo > 0 ? tempo + ' min' : '--';
@@ -131,8 +133,7 @@ function atualizarKpisNaTela(ocupacao, total, tempo, mesaTop, criancas, cancelam
 
 function renderizarGraficosAvancados(dadosHorario, dadosTipo, dadosDiaSemana, dadosMesas) {
     const isDark = document.body.classList.contains('dark-theme');
-    const corTexto = isDark ? '#e0e0e0' : '#333333';
-    const corGrid = isDark ? '#444' : '#ddd';
+    const { texto: corTexto, grade: corGrid } = coresGrafico(isDark);
 
     destruirGraficos();
 
@@ -146,9 +147,9 @@ function renderizarGraficosAvancados(dadosHorario, dadosTipo, dadosDiaSemana, da
             data: {
                 labels: horariosOrdenados,
                 datasets: [
-                    { label: 'Hóspede', data: horariosOrdenados.map(h => dadosHorario[h].hospede), backgroundColor: '#3498db' },
-                    { label: 'Externo', data: horariosOrdenados.map(h => dadosHorario[h].externo), backgroundColor: '#f39c12' },
-                    { label: 'Passante', data: horariosOrdenados.map(h => dadosHorario[h].passante), backgroundColor: '#95a5a6' },
+                    { label: 'Hóspede', data: horariosOrdenados.map(h => dadosHorario[h].hospede), backgroundColor: CORES_OSTERIA.hospede },
+                    { label: 'Externo', data: horariosOrdenados.map(h => dadosHorario[h].externo), backgroundColor: CORES_OSTERIA.externo },
+                    { label: 'Passante', data: horariosOrdenados.map(h => dadosHorario[h].passante), backgroundColor: CORES_OSTERIA.passante },
                 ]
             },
             options: {
@@ -166,12 +167,12 @@ function renderizarGraficosAvancados(dadosHorario, dadosTipo, dadosDiaSemana, da
     const ctxMesas = document.getElementById('chartMesas');
     if (ctxMesas) {
         let mesasLabels = [], mesasValores = [];
-        for (let i = 1; i <= 18; i++) {
+        for (const i of Object.keys(dadosMesas)) {
             if (dadosMesas[i] > 0) { mesasLabels.push('Mesa ' + i); mesasValores.push(dadosMesas[i]); }
         }
         chartMesasInstance = new Chart(ctxMesas.getContext('2d'), {
             type: 'bar',
-            data: { labels: mesasLabels, datasets: [{ label: 'Vezes utilizada', data: mesasValores, backgroundColor: '#27ae60', borderRadius: 3 }] },
+            data: { labels: mesasLabels, datasets: [{ label: 'Vezes utilizada', data: mesasValores, backgroundColor: CORES_OSTERIA.sucesso, borderRadius: 3 }] },
             options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: corTexto, stepSize: 1 }, grid: { color: corGrid } }, y: { ticks: { color: corTexto }, grid: { display: false } } } }
         });
     }
@@ -180,7 +181,7 @@ function renderizarGraficosAvancados(dadosHorario, dadosTipo, dadosDiaSemana, da
     if (ctxTipo) {
         chartTipoInstance = new Chart(ctxTipo.getContext('2d'), {
             type: 'doughnut',
-            data: { labels: ['Hóspede', 'Externo', 'Passante', 'Room Service'], datasets: [{ data: [dadosTipo.hospede, dadosTipo.externo, dadosTipo.passante, dadosTipo.roomservice], backgroundColor: ['#3498db', '#f39c12', '#95a5a6', '#9b59b6'], borderWidth: 0 }] },
+            data: { labels: ['Hóspede', 'Externo', 'Passante', 'Room Service'], datasets: [{ data: [dadosTipo.hospede, dadosTipo.externo, dadosTipo.passante, dadosTipo.roomservice], backgroundColor: [CORES_OSTERIA.hospede, CORES_OSTERIA.externo, CORES_OSTERIA.passante, CORES_OSTERIA.roomservice], borderWidth: 0 }] },
             options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { color: corTexto, font: { size: 11 } } } } }
         });
     }
@@ -193,9 +194,9 @@ function renderizarGraficosAvancados(dadosHorario, dadosTipo, dadosDiaSemana, da
             data: {
                 labels: DIAS_SEMANA,
                 datasets: [
-                    { label: 'Hóspede', data: dadosDiaSemana.map(d => d.hospede), backgroundColor: '#3498db' },
-                    { label: 'Externo', data: dadosDiaSemana.map(d => d.externo), backgroundColor: '#f39c12' },
-                    { label: 'Passante', data: dadosDiaSemana.map(d => d.passante), backgroundColor: '#95a5a6' },
+                    { label: 'Hóspede', data: dadosDiaSemana.map(d => d.hospede), backgroundColor: CORES_OSTERIA.hospede },
+                    { label: 'Externo', data: dadosDiaSemana.map(d => d.externo), backgroundColor: CORES_OSTERIA.externo },
+                    { label: 'Passante', data: dadosDiaSemana.map(d => d.passante), backgroundColor: CORES_OSTERIA.passante },
                 ]
             },
             options: {
@@ -345,3 +346,4 @@ window.adicionarDataExcluida = adicionarDataExcluida;
 window.removerDataExcluida = removerDataExcluida;
 window.adicionarDataEspecifica = adicionarDataEspecifica;
 window.removerDataEspecifica = removerDataEspecifica;
+

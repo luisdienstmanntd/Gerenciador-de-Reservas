@@ -29,7 +29,9 @@ import { notificarErro } from '../../core/notificacao.js';
 import { aplicarBloqueiosSemanais } from './service.js';
 
 // Usuário logado — fonte única para controle de leitura
-const USUARIO_ATUAL = localStorage.getItem('usuario_nome') || 'sistema';
+const usuarioAtual = () => localStorage.getItem('usuario_nome') || 'sistema';
+let geracaoReservas = 0;
+let geracaoNotificacoes = 0;
 
 // Unsubscribe do listener de notificações
 let _unsubscribeNotificacoes = null;
@@ -96,7 +98,7 @@ function tentarRenderizar() {
  *
  * @param {string} dataFiltro
  */
-function iniciarListenerConfig(dataFiltro) {
+function iniciarListenerConfig(dataFiltro, geracao) {
     // Cancela listener anterior se existir
     const unsubAnterior = getUnsubscribeConfig();
     if (unsubAnterior) {
@@ -105,6 +107,7 @@ function iniciarListenerConfig(dataFiltro) {
     }
 
     const unsub = db.escutarConfigDia(dataFiltro, (linhasExtrasFirestore) => {
+        if (geracao !== geracaoReservas) return;
         console.log('📡 config_dia recebido, aplicando linhasExtras...');
 
         // Pega reservas já em memória para garantir que nenhuma fique fora da grade
@@ -161,10 +164,12 @@ function iniciarListenerConfig(dataFiltro) {
  * @param {string} data - Data para filtrar (opcional, usa data atual se não fornecida)
  */
 export async function escutarReservas(data = null) {
+    const geracao = ++geracaoReservas;
     console.log('🔄 Iniciando escuta de reservas...');
 
     try {
         await db.aguardarInicializacao();
+        if (geracao !== geracaoReservas) return;
         console.log('✅ DatabaseService inicializado');
     } catch (error) {
         console.error('❌ Erro ao inicializar DatabaseService:', error);
@@ -186,7 +191,7 @@ export async function escutarReservas(data = null) {
     console.log(`📅 Buscando reservas para: ${dataFiltro}`);
 
     // Inicia listener de config_dia para a mesma data
-    iniciarListenerConfig(dataFiltro);
+    iniciarListenerConfig(dataFiltro, geracao);
 
     // Bloqueios antecipados de dia de movimento — semeia a data na primeira vez
     // que alguém a visualiza (fire-and-forget: os INSERTs chegam via Realtime).
@@ -199,6 +204,7 @@ export async function escutarReservas(data = null) {
             dataFiltro,
             // ── callback de reservas (igual ao anterior) ──
             (reservas) => {
+                if (geracao !== geracaoReservas) return;
                 console.log(`📥 ${reservas.length} reservas recebidas do Firebase`);
                 setTodasReservas(reservas);
                 reservasCarregadas = true;
@@ -206,20 +212,8 @@ export async function escutarReservas(data = null) {
             },
             // ── callback de mudanças — só nova reserva (added) ──
             (mudancas) => {
-                mudancas.forEach(async m => {
-                    if (m.type !== 'added') return;
-                    const r = m.depois;
-                    if (!r || !r.nomes || r.bloqueado || r.somenteHospedes) return;
-                    const tipo = { hospede: 'Hóspede', externo: 'Externo', passante: 'Passante', roomservice: 'Room Service' }[r.tipo] || r.tipo || '';
-                    try {
-                        await db.salvarNotificacao({
-                            texto: `${r.horario}  ·  ${tipo}  ·  ${r.nomes}`,
-                            reservaId: r.id || '',
-                        });
-                    } catch (e) {
-                        console.error('❌ Erro ao salvar notificação:', e);
-                    }
-                });
+                // A notificação é criada uma única vez pelo banco no INSERT da reserva.
+                // Clientes Realtime apenas leem; múltiplos tablets não geram duplicatas.
             }
         );
 
@@ -236,6 +230,7 @@ export async function escutarReservas(data = null) {
  * Para de escutar reservas E config_dia.
  */
 export function pararEscuta() {
+    geracaoReservas++;
     const unsubReservas = getUnsubscribe();
     if (unsubReservas) {
         unsubReservas();
@@ -283,16 +278,19 @@ document.addEventListener('visibilitychange', () => {
  */
 export function iniciarEscutaNotificacoes() {
     if (_unsubscribeNotificacoes) return; // já está escutando
-
+    const geracao = ++geracaoNotificacoes;
     db.aguardarInicializacao().then(() => {
-        _unsubscribeNotificacoes = db.escutarNotificacoesNaoLidas(USUARIO_ATUAL, (pendentes) => {
+        if (geracao !== geracaoNotificacoes) return;
+        const usuario = usuarioAtual();
+        _unsubscribeNotificacoes = db.escutarNotificacoesNaoLidas(usuario, (pendentes) => {
+            if (geracao !== geracaoNotificacoes || usuario !== usuarioAtual()) return;
             if (pendentes.length > 0) {
                 _acionarSino(pendentes);
             } else {
                 _pararSino();
             }
         });
-        console.log('✅ Escuta de notificações iniciada para:', USUARIO_ATUAL);
+        console.log('✅ Escuta de notificações iniciada para:', usuario);
     });
 }
 
@@ -301,6 +299,10 @@ export function iniciarEscutaNotificacoes() {
  * permitindo uma nova tentativa de conexão.
  */
 export function pararEscutaNotificacoes() {
+    geracaoNotificacoes++;
+    _notificacoesPendentes = [];
+    _pararSino();
+    document.getElementById('sino-painel')?.remove();
     if (_unsubscribeNotificacoes) {
         _unsubscribeNotificacoes();
         _unsubscribeNotificacoes = null;
@@ -430,7 +432,7 @@ function _abrirPainelSino() {
     `;
     btn.onclick = async () => {
         for (const ev of _notificacoesPendentes) {
-            try { await db.marcarNotificacaoLida(ev.id, USUARIO_ATUAL); } catch(e) {}
+            try { await db.marcarNotificacaoLida(ev.id, usuarioAtual()); } catch(e) {}
         }
         painel.remove();
     };
@@ -455,3 +457,4 @@ function _pararSino() {
     if (wrap)  wrap.classList.remove('sino-animando');
     if (badge) badge.classList.add('hidden');
 }
+

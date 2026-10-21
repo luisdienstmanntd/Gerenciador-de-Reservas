@@ -57,6 +57,18 @@ import { notificarErro, notificarAviso, notificarSucesso } from '../../core/noti
  * Garante inicialização e retorna o cliente do Supabase.
  * @returns {Promise<import('@supabase/supabase-js').SupabaseClient>}
  */
+async function _confirmarEscrita(query, exigirLinha = true) {
+    const { data, error } = await query.select('id');
+    if (error) {
+        if (error.code === '23505') error.semDisponibilidade = true;
+        throw error;
+    }
+    if (exigirLinha && (!data || data.length === 0)) {
+        throw new Error('Reserva não encontrada ou sem permissão para alterar. Recarregue os dados.');
+    }
+    return data;
+}
+
 async function _getClient() {
     await db.aguardarInicializacao();
     return db.getClient();
@@ -74,6 +86,7 @@ async function _getClient() {
 export function _calcularPosicaoLivre(reservasBloco, posicaoDesejada = 0) {
     const ocupadas = [];
     reservasBloco.forEach(r => {
+        if (r.tipo === 'roomservice') return; // pedidos não ocupam a grade do salão
         // Reserva cancelada libera a posição pra uma reserva nova reaproveitar —
         // ela continua existindo no banco (soft-delete), só não "trava" o slot.
         if ((r.nomes && !r.canceladoEm) || r.bloqueado || r.somenteHospedes) {
@@ -99,6 +112,12 @@ export function _totalLinhasBloco(hr) {
     const baseLinhas = new Set(getHorariosPadrao()).has(hr) ? 3 : 1;
     const extras = getLinhasExtras()[hr] !== undefined ? getLinhasExtras()[hr] : 0;
     return baseLinhas + extras;
+}
+
+async function _totalLinhasNaData(hr, data) {
+    if (data === getDataAtual()) return _totalLinhasBloco(hr);
+    const extras = await db.getLinhasExtrasPorData(data);
+    return (getHorariosPadrao().includes(hr) ? 3 : 1) + (extras[hr] || 0);
 }
 
 /**
@@ -135,7 +154,7 @@ async function _verificarBloqueioAutomatico(reservaId, data, originalBase, posic
     const linhasNecessarias = _linhasExtrasNecessarias(paxs);
     if (linhasNecessarias === 0) return;
 
-    const totalLinhas = _totalLinhasBloco(originalBase);
+    const totalLinhas = await _totalLinhasNaData(originalBase, data);
     const blocoReservas = blocoPreCarregado || await db.buscarReservasPorBloco(data, originalBase);
 
     let novasBloqueadas = 0;
@@ -143,9 +162,9 @@ async function _verificarBloqueioAutomatico(reservaId, data, originalBase, posic
 
     for (let i = 1; i <= linhasNecessarias; i++) {
         const posAlvo = posicao + i;
-        if (posAlvo >= totalLinhas) break; // acabaram as linhas do bloco
+        if (posAlvo >= totalLinhas) { parouPorOcupada = true; break; } // acabaram as linhas do bloco
 
-        const naPosAlvo = blocoReservas.find(r => r.posicao === posAlvo);
+        const naPosAlvo = blocoReservas.find(r => r.posicao === posAlvo && r.tipo !== 'roomservice' && !r.canceladoEm && (r.nomes || r.bloqueado || r.somenteHospedes)) || blocoReservas.find(r => r.posicao === posAlvo && r.tipo !== 'roomservice' && !r.canceladoEm);
 
         // Já bloqueada E ativa por esta mesma reserva — segue conferindo a próxima.
         // Checa `bloqueado` além do vínculo: desbloquearReserva() só limpa
@@ -221,31 +240,24 @@ async function _removerBloqueioAutomatico(reservaId) {
  *   (só é válido quando o bloco não mudou — ver uso abaixo)
  */
 async function _reconciliarBloqueioAutomatico(reservaId, dadosAntes, reservaData, blocoPreCarregado = null) {
-    // Configurável em Configurações do Sistema (por navegador/tablet, mesmo padrão
-    // de capacidade/mesas). Desligado: não cria nem remove bloqueio automático —
-    // bloqueios já existentes ficam como estão, a recepção desbloqueia manualmente
-    // se quiser.
+    if (reservaData.canceladoEm || reservaData.tipo === 'roomservice') {
+        await _removerBloqueioAutomatico(reservaId);
+        return;
+    }
     if (getConfig().bloqueioAutomatico === false) return;
-
-    const mudouDeLinha = !dadosAntes
-        || dadosAntes.data !== reservaData.data
+    const mudouDeLinha = !dadosAntes || dadosAntes.data !== reservaData.data
         || (dadosAntes.originalBase || dadosAntes.horario) !== reservaData.originalBase
         || dadosAntes.posicao !== reservaData.posicao;
-
-    const eraGrande = (dadosAntes?.paxs || 0) >= PAX_MINIMO_BLOQUEIO_AUTOMATICO;
-    const ehGrande = (reservaData.paxs || 0) >= PAX_MINIMO_BLOQUEIO_AUTOMATICO;
-
-    // Mudou de bloco/posição, ou deixou de ser grande: remove o bloqueio antigo
-    // (se existir) antes de reavaliar — ele não se aplica mais ao lugar certo.
-    if (mudouDeLinha || (eraGrande && !ehGrande)) {
-        await _removerBloqueioAutomatico(reservaId);
+    const necessarias = _linhasExtrasNecessarias(reservaData.paxs || 0);
+    const existentes = await db.buscarBloqueiosAutomaticos(reservaId);
+    for (const b of existentes) {
+        if (mudouDeLinha || b.posicao <= reservaData.posicao || b.posicao > reservaData.posicao + necessarias) {
+            await db.excluirReserva(b.id);
+        }
     }
-
-    if (ehGrande) {
-        await _verificarBloqueioAutomatico(
-            reservaId, reservaData.data, reservaData.originalBase, reservaData.posicao, reservaData.paxs,
-            mudouDeLinha ? null : blocoPreCarregado,
-        );
+    if (necessarias > 0 && !reservaData.canceladoEm && reservaData.tipo !== 'roomservice') {
+        await _verificarBloqueioAutomatico(reservaId, reservaData.data, reservaData.originalBase,
+            reservaData.posicao, reservaData.paxs, mudouDeLinha ? null : blocoPreCarregado);
     }
 }
 
@@ -278,41 +290,9 @@ export function _diaSemanaDe(dataStr) {
  * @returns {Promise<number>} quantos bloqueios foram criados
  */
 export async function aplicarBloqueiosSemanais(dataAlvo) {
-    if (!dataAlvo) return 0;
-    // Nunca decide com base nos defaults do state — espera a config real chegar
-    // do Supabase (o listener chama de novo quando ela carrega).
-    if (!isConfigSistemaCarregada()) return 0;
-
-    const hoje = new Date().toLocaleDateString('en-CA');
-    if (dataAlvo < hoje) return 0;
-
-    const regras = (getConfig().bloqueiosSemanais || {})[String(_diaSemanaDe(dataAlvo))];
-    if (!regras || Object.keys(regras).length === 0) return 0;
-
-    if (await db.getBloqueiosSemanaisAplicados(dataAlvo)) return 0;
-
-    let criados = 0;
-    for (const [horario, qtd] of Object.entries(regras)) {
-        const bloco = await db.buscarReservasPorBloco(dataAlvo, horario);
-        for (let i = 0; i < qtd; i++) {
-            const pos = _calcularPosicaoLivre(bloco, 0);
-            if (pos >= 3) break; // linhas base cheias — nunca abre linha extra sozinho
-            await db.criarReserva({
-                data: dataAlvo, horario, originalBase: horario, posicao: pos,
-                nomes: '', tipo: 'hospede', paxs: 0, chd: 0,
-                bloqueado: true,
-                obs: OBS_BLOQUEIO_SEMANAL,
-            });
-            bloco.push({ bloqueado: true, posicao: pos }); // ocupa localmente pra próxima volta
-            criados++;
-        }
-    }
-
-    await db.marcarBloqueiosSemanaisAplicados(dataAlvo);
-    if (criados > 0) {
-        console.log(`🔒 ${criados} bloqueio(s) antecipado(s) aplicados em ${dataAlvo}`);
-    }
-    return criados;
+    if (!dataAlvo || !isConfigSistemaCarregada()) return 0;
+    // A transação no servidor lê a configuração real e trava config_dia antes de semear.
+    return db.aplicarBloqueiosSemanaisAtomico(dataAlvo);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -369,22 +349,38 @@ export async function salvarReserva(dados) {
                 !r.nomes && !r.bloqueado && !r.somenteHospedes && (r.posicao ?? 0) === posicaoFinal
             );
 
-            docRef = await db.criarReserva(reservaData);
+            // Um concorrente pode ocupar a posição após a leitura: o índice no banco é
+            // a garantia final; uma segunda leitura recalcula antes de tentar de novo.
+            for (let tentativa = 0; ; tentativa++) {
+                try { docRef = await db.criarReserva(reservaData); break; }
+                catch (erro) {
+                    if (erro.code !== '23505' || tentativa >= 2) throw erro;
+                    const atualizado = await db.buscarReservasPorBloco(reservaData.data, reservaData.originalBase);
+                    reservaData.posicao = _calcularPosicaoLivre(atualizado, reservaData.posicao);
+                    blocoPreCarregado = atualizado;
+                }
+            }
             for (const v of vazioNaPosicao) {
-                await client.from('reservas').delete().eq('id', v.id);
+                // O slot pode ter sido preenchido por outro tablet desde a leitura.
+                // Nunca transforma a limpeza de um vazio antigo em exclusão de cliente.
+                await _confirmarEscrita(client.from('reservas').delete().eq('id', v.id)
+                    .is('hospede_id', null).eq('bloqueado', false).eq('somente_hospedes', false), false);
             }
         }
 
-        if (reservaData.tipo === 'roomservice') {
-            await atribuirMesa(docRef, 'ROOM');
+        if (reservaData.tipo === 'roomservice' && dadosAntesReserva?.tipo !== 'roomservice') {
+            await _confirmarEscrita(client.from('reservas').update({ mesa_identificador: 'ROOM', inicio_mesa: null, fim_mesa: null }).eq('id', docRef));
+        } else if (reservaData.tipo !== 'roomservice' && dadosAntesReserva?.mesa === 'ROOM') {
+            await _confirmarEscrita(client.from('reservas').update({ mesa_identificador: null, inicio_mesa: null, fim_mesa: null }).eq('id', docRef));
         }
 
-        // A reserva em si já foi gravada — o Realtime já dispara a atualização da grade
-        // a partir daqui. Bloqueio automático e log de auditoria rodam em segundo plano
-        // (não bloqueiam o retorno) para a tela não ficar esperando por eles; ambos já
-        // tratam os próprios erros internamente, então um catch aqui é só rede de segurança.
-        _reconciliarBloqueioAutomatico(docRef, dadosAntesReserva, reservaData, blocoPreCarregado)
-            .catch(e => console.error('❌ Erro ao reconciliar bloqueio automático:', e));
+        // Aguarda a reconciliação; se ela falhar depois da gravação principal,
+        // informa explicitamente a necessidade de conferir os bloqueios.
+        await _reconciliarBloqueioAutomatico(docRef, dadosAntesReserva, reservaData, blocoPreCarregado)
+            .catch(e => {
+                console.error('Erro ao reconciliar bloqueio automático:', e);
+                notificarAviso('Reserva salva. Não foi possível ajustar todos os bloqueios; confira o horário antes de aceitar novas reservas.');
+            });
 
         if (dados.id) {
             // ✅ dadosAntesReserva é o estado REAL anterior (buscado no banco antes do
@@ -437,6 +433,7 @@ export async function cancelarReserva(id, depositoRetido = null) {
         const dadosAntes = await db.getReservaPorId(id) || { id };
 
         await db.cancelarReserva(id, depositoRetido);
+        await _removerBloqueioAutomatico(id);
         await registrarLog('CANCELAR', dadosAntes, {
             ...dadosAntes,
             canceladoEm: new Date().toISOString(),
@@ -479,6 +476,7 @@ export async function restaurarReserva(id) {
         }
 
         await db.restaurarReserva(id, novaPosicao);
+        await _reconciliarBloqueioAutomatico(id, dadosAntes, { ...dadosAntes, canceladoEm: null, posicao: novaPosicao, originalBase });
         await registrarLog('RESTAURAR', dadosAntes, { ...dadosAntes, canceladoEm: null, depositoRetido: null, posicao: novaPosicao });
 
         console.log('✅ Cancelamento desfeito:', id);
@@ -494,10 +492,10 @@ export async function desbloquearReserva(id) {
     const client = await _getClient();
     const dadosAntes = await db.getReservaPorId(id) || { id };
     // update() em vez de delete() — reserva permanece com bloqueado: false
-    await client.from('reservas').update({
+    await _confirmarEscrita(client.from('reservas').update({
         bloqueado: false,
         somente_hospedes: false,
-    }).eq('id', id);
+    }).eq('id', id));
     await registrarLog('DESBLOQUEAR', dadosAntes, null);
     console.log('✅ Reserva desbloqueada (update):', id);
 }
@@ -505,10 +503,12 @@ export async function desbloquearReserva(id) {
 export async function salvarApenasHorario(dados, opcoes = {}) {
     const client = await _getClient();
     const novoHorario = dados.horario;
-    const data = getDataAtual();
+    let data = dados.data || getDataAtual();
 
     if (dados.id) {
-        const dadosAtuais = await db.getReservaPorId(dados.id) || {};
+        const dadosAtuais = await db.getReservaPorId(dados.id);
+        if (!dadosAtuais) throw new Error("Reserva não encontrada");
+        data = dadosAtuais.data || data;
         const temReservaReal = dadosAtuais.nomes || dadosAtuais.bloqueado || dadosAtuais.somenteHospedes;
 
         if (temReservaReal) {
@@ -531,7 +531,7 @@ export async function salvarApenasHorario(dados, opcoes = {}) {
                 // base do destino livres, porque a busca nunca considerava as posições 0-2.
                 novaPosicao = _calcularPosicaoLivre(snapBloco, 0);
 
-                const capacidadeBase = _totalLinhasBloco(novoOriginalBase);
+                const capacidadeBase = await _totalLinhasNaData(novoOriginalBase, data);
                 if (novaPosicao >= capacidadeBase && !opcoes.permitirNovaLinha) {
                     const erro = new Error(`Sem linha disponível em ${novoHorario}`);
                     erro.semDisponibilidade = true;
@@ -543,11 +543,11 @@ export async function salvarApenasHorario(dados, opcoes = {}) {
 
             // Linha com reserva real: update simples (sem risco de inconsistência)
             const dadosAntes = { id: dados.id, ...dadosAtuais };
-            await client.from('reservas').update({
+            await _confirmarEscrita(client.from('reservas').update({
                 horario: novoHorario,
                 original_base: novoOriginalBase,
                 posicao: novaPosicao,
-            }).eq('id', dados.id);
+            }).eq('id', dados.id));
 
             await _reconciliarBloqueioAutomatico(dados.id, dadosAtuais, {
                 data, originalBase: novoOriginalBase, posicao: novaPosicao, paxs: dadosAtuais.paxs,
@@ -566,7 +566,7 @@ export async function salvarApenasHorario(dados, opcoes = {}) {
                 parseInt(dadosAtuais.posicao) || 0
             );
 
-            await client.from('reservas').delete().eq('id', dados.id);
+            await _confirmarEscrita(client.from('reservas').delete().eq('id', dados.id));
 
             const novoId = await db.criarReserva({
                 data,
@@ -600,25 +600,35 @@ export async function atribuirMesa(id, mesa) {
     const client = await _getClient();
     const mesaStr = mesa.toString();
     await db.garantirMesaExiste(mesaStr);
-    await client.from('reservas').update({ mesa_identificador: mesaStr }).eq('id', id);
+    await _confirmarEscrita(client.from('reservas').update({ mesa_identificador: mesaStr }).eq('id', id));
 }
 
 export async function iniciarAtendimento(id) {
     if (!id) throw new Error('ID obrigatório');
     const client = await _getClient();
-    await client.from('reservas').update({ inicio_mesa: new Date().toISOString() }).eq('id', id);
+    // Preserva o comportamento do deploy: início do serviço confirma a chegada.
+    await _confirmarEscrita(client.from('reservas').update({
+        inicio_mesa: new Date().toISOString(), status_recepcao: 'chegou',
+    }).eq('id', id));
+}
+
+export async function atualizarStatusRecepcao(id, status) {
+    if (!id) throw new Error('ID obrigatório');
+    if (!['aguardando', 'chegou', 'no_show'].includes(status)) throw new Error('Status de recepção inválido');
+    await _getClient();
+    await db.atualizarStatusRecepcao(id, status);
 }
 
 export async function finalizarAtendimento(id) {
     if (!id) throw new Error('ID obrigatório');
     const client = await _getClient();
-    await client.from('reservas').update({ fim_mesa: new Date().toISOString() }).eq('id', id);
+    await _confirmarEscrita(client.from('reservas').update({ fim_mesa: new Date().toISOString() }).eq('id', id));
 }
 
 export async function cancelarMesa(id) {
     if (!id) throw new Error('ID obrigatório');
     const client = await _getClient();
-    await client.from('reservas').update({ mesa_identificador: null }).eq('id', id);
+    await _confirmarEscrita(client.from('reservas').update({ mesa_identificador: null }).eq('id', id));
 }
 
 /**
@@ -629,11 +639,11 @@ export async function cancelarMesa(id) {
 export async function atualizarBloqueio(id, dados) {
     if (!id) throw new Error('ID obrigatório');
     const client = await _getClient();
-    await client.from('reservas').update({
+    await _confirmarEscrita(client.from('reservas').update({
         obs: dados.obs ? dados.obs.toUpperCase() : '',
         bloqueado: dados.bloqueado || false,
         somente_hospedes: dados.somenteHospedes || false,
-    }).eq('id', id);
+    }).eq('id', id));
     console.log('✅ Bloqueio atualizado (tipo + OBS):', id);
 }
 
@@ -644,7 +654,7 @@ export async function adicionarObservacao(id, novaObs) {
     let obs = atual?.obs || '';
     if (obs) obs += ' | ';
     obs += novaObs.toUpperCase();
-    await client.from('reservas').update({ obs }).eq('id', id);
+    await _confirmarEscrita(client.from('reservas').update({ obs }).eq('id', id));
 }
 
 /**
@@ -676,7 +686,7 @@ export async function alterarData(id, novaData, opcoes = {}) {
     // (originalBase) não muda, só a data, então reaproveitar a posição antiga como
     // desejada continua fazendo sentido. Mas se as linhas base do destino já estiverem
     // todas ocupadas, também precisa perguntar antes de criar uma linha nova sozinha.
-    const capacidadeBase = _totalLinhasBloco(originalBase);
+    const capacidadeBase = await _totalLinhasNaData(originalBase, novaData);
     if (novaPosicao >= capacidadeBase && !opcoes.permitirNovaLinha) {
         const erro = new Error(`Sem linha disponível em ${novaData} ${originalBase}`);
         erro.semDisponibilidade = true;
@@ -687,10 +697,10 @@ export async function alterarData(id, novaData, opcoes = {}) {
         console.log(`ℹ️ alterarData: posição ${dadosAntes.posicao} ocupada no destino — usando ${novaPosicao}`);
     }
 
-    await client.from('reservas').update({
+    await _confirmarEscrita(client.from('reservas').update({
         data: novaData,
         posicao: novaPosicao,
-    }).eq('id', id);
+    }).eq('id', id));
 
     await _reconciliarBloqueioAutomatico(id, dadosAntes, {
         data: novaData, originalBase, posicao: novaPosicao, paxs: dadosAntes.paxs,
@@ -769,7 +779,7 @@ export async function removerLinhaDoBloco(hr, data) {
         const manter = (!temReal && posNum >= 0 && posNum < limiteVisual) ? 1 : 0;
 
         for (let i = manter; i < vazios.length; i++) {
-            await client.from('reservas').delete().eq('id', vazios[i].id);
+            await _confirmarEscrita(client.from('reservas').delete().eq('id', vazios[i].id));
             console.log(`🗑️ Fantasma removido: ${vazios[i].id} pos ${posNum}`);
             const idx = reservasHr.findIndex(r => r.id === vazios[i].id);
             if (idx !== -1) reservasHr.splice(idx, 1);
@@ -822,15 +832,15 @@ export async function removerLinhaDoBloco(hr, data) {
     const docParaDeletar = docVazioNaPosicao(linhaParaRemover);
 
     if (docParaDeletar) {
-        await client.from('reservas').delete().eq('id', docParaDeletar.id);
+        await _confirmarEscrita(client.from('reservas').delete().eq('id', docParaDeletar.id));
         console.log(`🗑️ Doc deletado: ${docParaDeletar.id} pos ${linhaParaRemover}`);
     }
 
     const paraAtualizar = reservasHr.filter(r =>
         r.posicao > linhaParaRemover && r.id !== docParaDeletar?.id
-    );
+    ).sort((a, b) => a.posicao - b.posicao); // ocupa o buraco antes de mover a linha seguinte
     for (const r of paraAtualizar) {
-        await client.from('reservas').update({ posicao: r.posicao - 1 }).eq('id', r.id);
+        await _confirmarEscrita(client.from('reservas').update({ posicao: r.posicao - 1 }).eq('id', r.id));
         console.log(`  ↑ ${r.nomes || '(vazio)'}: pos ${r.posicao} → ${r.posicao - 1}`);
     }
 
@@ -919,10 +929,11 @@ export async function limparFantasmasDoDia(data) {
 
     let totalExcluidos = 0;
     for (const id of parasExcluir) {
-        await client.from('reservas').delete().eq('id', id);
+        await _confirmarEscrita(client.from('reservas').delete().eq('id', id));
         totalExcluidos++;
     }
 
     console.log(`✅ limparFantasmasDoDia: ${totalExcluidos} fantasma(s) removido(s) de ${data}`);
     return totalExcluidos;
 }
+

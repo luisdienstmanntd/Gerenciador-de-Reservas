@@ -301,109 +301,6 @@
   .home-kpis       { gap: 10px; }
   .home-kpi-valor  { font-size: 1.3rem; }
 }
-/* =============================================================
-   STOCK TICKER -- portrait mobile only
-   ============================================================= */
-
-
-
-
-
-
-
-
-
-    100% { transform: translateX(-50%); }
-}
-/* Portrait mobile */
-@media (max-width: 767px) and (orientation: portrait) {
-    
-}
-/* Landscape mobile */
-@media (max-width: 900px) and (orientation: landscape) {
-    
-}
-/* Tablet (768px – 1200px) */
-@media (min-width: 768px) and (max-width: 1200px) {
-    /* Sidebar começa recolhida com ícones visíveis */
-    .sidebar {
-        width: 52px !important;
-        left: 0 !important;
-        transition: width 0.25s ease;
-    }
-    /* Neutraliza hover CSS */
-    .sidebar:hover {
-        width: 52px !important;
-    }
-    /* Expandida via JS — sobrepõe o conteúdo */
-    .sidebar.sb-aberta {
-        width: 220px !important;
-        overflow: visible;
-    }
-    /* Permite que a sidebar expandida apareça por cima sem ser cortada */
-    body.sidebar-aberta {
-        overflow: visible !important;
-    }
-
-    .main-content {
-        margin-left: 52px !important;
-    }
-
-    /* Neutraliza hover CSS em todos os itens internos — toque não deve alterar padding */
-    .sidebar:hover .sb-header,
-    .sidebar:hover .sb-brand,
-    .sidebar:hover .sb-nav,
-    .sidebar:hover .nav-item,
-    .sidebar:hover .nav-item span,
-    .sidebar:hover .sb-footer,
-    .sidebar:hover .sb-theme-row,
-    .sidebar:hover .sb-theme-row span {
-        padding: revert;
-        opacity: revert;
-    }
-    .sidebar:hover .sb-header { padding: 22px 7px 18px; }
-    .sidebar:hover .sb-nav    { padding: 10px 7px; }
-    .sidebar:hover .nav-item  { padding: 10px 9px; }
-    .sidebar:hover .nav-item span  { opacity: 0; }
-    .sidebar:hover .sb-brand       { opacity: 0; pointer-events: none; }
-    .sidebar:hover .sb-footer      { padding: 0 7px 18px; }
-    .sidebar:hover .sb-theme-row   { opacity: 0; }
-    .sidebar:hover .sb-theme-row span { opacity: 0; }
-
-    /* Botão ☰ visível no tablet — centralizado na sidebar recolhida */
-    #sb-btn-toggle {
-        display: flex !important;
-        margin: 0 auto;
-    }
-
-    /* sb-aberta sobrepõe todos os resets do :hover */
-    .sidebar.sb-aberta,
-    .sidebar.sb-aberta:hover {
-        width: 220px !important;
-    }
-    .sidebar.sb-aberta .sb-header,
-    .sidebar.sb-aberta:hover .sb-header { padding: 22px 18px 18px !important; }
-    .sidebar.sb-aberta .sb-nav,
-    .sidebar.sb-aberta:hover .sb-nav    { padding: 10px 12px !important; }
-    .sidebar.sb-aberta .nav-item,
-    .sidebar.sb-aberta:hover .nav-item  { padding: 10px 12px !important; }
-    .sidebar.sb-aberta .nav-item span,
-    .sidebar.sb-aberta:hover .nav-item span  { opacity: 1 !important; }
-    .sidebar.sb-aberta .sb-brand,
-    .sidebar.sb-aberta:hover .sb-brand       { opacity: 1 !important; pointer-events: auto !important; }
-    .sidebar.sb-aberta .sb-footer,
-    .sidebar.sb-aberta:hover .sb-footer      { padding: 0 12px 18px !important; }
-    .sidebar.sb-aberta .sb-theme-row,
-    .sidebar.sb-aberta:hover .sb-theme-row   { opacity: 1 !important; }
-    .sidebar.sb-aberta .sb-theme-row span,
-    .sidebar.sb-aberta:hover .sb-theme-row span { opacity: 1 !important; }
-
-    /* Overlay transparente — intercepta toque sem escurecer */
-    .menu-overlay.sb-overlay-ativo {
-        background: transparent !important;
-    }
-}
-
 /* Campo obrigatório inválido — borda amarela */
 #formReserva input.campo-invalido,
 #formReserva select.campo-invalido {
@@ -455,3 +352,4 @@
 }
 
 .sino-animando { opacity: 1 !important; }
+

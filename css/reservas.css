@@ -202,6 +202,43 @@ body.dark-theme .reserva-somente-hospedes {
 .pg-pendente {
   color: #c0392b;
 }
+.icone-chegada {
+  display: inline-flex;
+  width: 1.05rem;
+  height: 1.05rem;
+  flex: 0 0 1.05rem;
+  margin-right: 0.3rem;
+  vertical-align: -0.2rem;
+}
+.icone-chegada svg {
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.icone-chegada--aguardando { color: #9a7518; }
+.icone-chegada--chegou { color: #287a4b; }
+.icone-chegada--no_show { color: #a13b35; }
+.status-recepcao {
+  font-size: 0.78rem;
+  letter-spacing: 0.03em;
+}
+.status-recepcao--chegou { color: #287a4b; }
+.status-recepcao--no_show { color: #a13b35; }
+.status-recepcao--aguardando { color: #80651c; }
+.status-recepcao-acoes { margin-top: 2px; }
+.campo-sinal {
+  margin-top: 10px;
+}
+.campo-sinal small {
+  display: block;
+  margin-top: 4px;
+  color: var(--texto-secundario, #6b746d);
+  font-size: 0.72rem;
+}
 body.dark-theme .pg-confirmado {
   color: #2ecc71;
 }
@@ -249,4 +286,5 @@ body.dark-theme .pg-pendente {
   letter-spacing: 0.5px;
   vertical-align: middle;
 }
+
 

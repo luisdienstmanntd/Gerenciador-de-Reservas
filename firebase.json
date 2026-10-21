@@ -8,6 +8,13 @@
       "**/.*",
       "**/node_modules/**",
       "**/*.test.js",
+      "**/*.md",
+      "**/*.sql",
+      "scripts/**",
+      "supabase/**",
+      "outputs/**",
+      "work/**",
+      "firebase-debug.log",
       "package.json",
       "package-lock.json",
       "prompt.md",
@@ -28,3 +35,4 @@
     ]
   }
 }
+

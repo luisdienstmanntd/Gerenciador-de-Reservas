@@ -35,9 +35,9 @@ beforeEach(() => {
 });
 
 describe('getHorariosPadrao', () => {
-    it('retorna os 6 horários fixos do serviço de jantar', () => {
+    it('retorna os 7 horários publicados do serviço de jantar até 23h', () => {
         expect(getHorariosPadrao()).toEqual([
-            '20:00', '20:30', '21:00', '21:30', '22:00', '22:30',
+            '20:00', '20:30', '21:00', '21:30', '22:00', '22:30', '23:00',
         ]);
     });
 });
@@ -165,3 +165,4 @@ describe('unsubscribe (reservas e config_dia)', () => {
         expect(getUnsubscribeConfigSistema()).toBe(null);
     });
 });
+

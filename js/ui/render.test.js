@@ -102,20 +102,20 @@ describe('atualizarMiniCards', () => {
 });
 
 describe('renderizarGrid — sem filtro', () => {
-    it('renderiza os 6 blocos padrão com 3 linhas base cada', () => {
+    it('renderiza os 7 blocos publicados com 3 linhas base cada', () => {
         renderizarGrid([]);
         const celulasHora = document.querySelectorAll('#gridReservas td.linha-horario');
-        expect(celulasHora.length).toBe(6);
+        expect(celulasHora.length).toBe(7);
         celulasHora.forEach(td => expect(td.getAttribute('rowspan')).toBe('3'));
-        // 6 blocos × 3 linhas vazias
-        expect(document.querySelectorAll('#gridReservas .reserva-vazia').length).toBe(18);
+        // 7 blocos × 3 linhas vazias
+        expect(document.querySelectorAll('#gridReservas .reserva-vazia').length).toBe(21);
     });
 
     it('coloca a reserva na célula da sua posição dentro do bloco', () => {
         renderizarGrid([reserva({ posicao: 1 })]);
         const html = document.getElementById('gridReservas').innerHTML;
         expect(html).toContain('ANA');
-        expect(document.querySelectorAll('#gridReservas .reserva-vazia').length).toBe(17);
+        expect(document.querySelectorAll('#gridReservas .reserva-vazia').length).toBe(20);
     });
 
     it('linhas extras aumentam o bloco correspondente', () => {
@@ -204,3 +204,4 @@ describe('renderizarGrid — com filtro', () => {
         expect(() => renderizarGrid([reserva()])).not.toThrow();
     });
 });
+
