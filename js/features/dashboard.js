@@ -18,7 +18,7 @@
 
 import { buscarReservasPorPeriodo, buscarReservasPorData } from './reservas/service.js';
 import { notificarErro } from '../core/notificacao.js';
-import { getHorariosPadrao } from '../core/state.js';
+import { getHorariosPadrao, getConfig } from '../core/state.js';
 
 // --- VARIÁVEIS GLOBAIS ---
 let chartHorarioInstance = null;
@@ -26,7 +26,6 @@ let chartTipoInstance = null;
 let chartDiaSemanaInstance = null;
 let chartMesasInstance = null;
 
-const CAPACIDADE_NOITE = 30;
 const DIAS_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
 // ✅ v3.13: Consulta por período com exceções, ou por datas específicas (bug #48)
@@ -45,7 +44,9 @@ function processarDashboard(reservas, diasNoPeriodo = 1) {
         getHorariosPadrao().map(h => [h, { hospede: 0, externo: 0, passante: 0 }])
     );
     let usoMesas = {};
-    for (let i = 1; i <= 18; i++) usoMesas[i] = 0;
+    const config = getConfig();
+    const totalMesas = Math.max(1, Number(config.totalMesas || config.mesas) || 18);
+    for (let i = 1; i <= totalMesas; i++) usoMesas[i] = 0;
 
     // ✅ v3.12: Movimento por dia da semana, separado por tipo de cliente (bug #47)
     let porDiaSemana = DIAS_SEMANA.map(() => ({ hospede: 0, externo: 0, passante: 0 }));
@@ -98,7 +99,7 @@ function processarDashboard(reservas, diasNoPeriodo = 1) {
         }
     });
 
-    let capacidadeTotalPeriodo = CAPACIDADE_NOITE * diasNoPeriodo;
+    let capacidadeTotalPeriodo = (Number(config.capacidade) || 30) * diasNoPeriodo;
     let taxaOcupacao = capacidadeTotalPeriodo > 0 ? (kpis.totalPax / capacidadeTotalPeriodo) * 100 : 0;
     let tempoMedio = kpis.mesasFinalizadasCount > 0 ? Math.round(kpis.tempoTotalMinutos / kpis.mesasFinalizadasCount) : 0;
     let mesaTop = Object.keys(usoMesas).reduce((a, b) => usoMesas[a] > usoMesas[b] ? a : b);
@@ -166,7 +167,7 @@ function renderizarGraficosAvancados(dadosHorario, dadosTipo, dadosDiaSemana, da
     const ctxMesas = document.getElementById('chartMesas');
     if (ctxMesas) {
         let mesasLabels = [], mesasValores = [];
-        for (let i = 1; i <= 18; i++) {
+        for (const i of Object.keys(dadosMesas)) {
             if (dadosMesas[i] > 0) { mesasLabels.push('Mesa ' + i); mesasValores.push(dadosMesas[i]); }
         }
         chartMesasInstance = new Chart(ctxMesas.getContext('2d'), {
@@ -345,3 +346,4 @@ window.adicionarDataExcluida = adicionarDataExcluida;
 window.removerDataExcluida = removerDataExcluida;
 window.adicionarDataEspecifica = adicionarDataEspecifica;
 window.removerDataEspecifica = removerDataEspecifica;
+

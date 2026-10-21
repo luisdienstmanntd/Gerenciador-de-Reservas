@@ -49,6 +49,8 @@
    ========================================================================================= */
 
 import { getTodasReservas, getDataAtual } from "../../core/state.js";
+import { db } from "../../core/database.js";
+import { notificarErro } from "../../core/notificacao.js";
 import { recarregarReservas } from "./listener.js";
 import {
   salvarReserva,
@@ -195,6 +197,8 @@ export class ReservaModal {
    * Clicou em linha disponível → exibe seletor de ação
    */
   abrirNova(horario, posicao, hrBase) {
+    this._reservaContexto = null;
+    this._abertura = (this._abertura || 0) + 1;
     console.log(`📋 Abrindo seletor de ação: ${horario} pos ${posicao}`);
 
     this._limparFormulario();
@@ -333,11 +337,21 @@ export class ReservaModal {
    * Clicou em reserva existente → exibe resumo (horário + nome + 3 botões)
    * Bloqueios abrem direto no formulário completo.
    */
-  abrirEditar(id) {
+  async abrirEditar(id) {
     console.log(`✏️ Abrindo resumo reserva: ${id}`);
 
     const reservas = getTodasReservas();
-    const reserva = reservas.find((r) => r.id === id);
+    const abertura = this._abertura = (this._abertura || 0) + 1;
+    let reserva = reservas.find((r) => r.id === id);
+    if (!reserva) {
+      try { reserva = await db.getReservaPorId(id); }
+      catch (error) {
+        if (abertura === this._abertura) notificarErro('Erro ao carregar reserva. Tente novamente.');
+        return;
+      }
+    }
+    if (abertura !== this._abertura) return;
+    this._reservaContexto = reserva;
 
     if (!reserva) {
       console.error("❌ Reserva não encontrada:", id);
@@ -528,6 +542,7 @@ export class ReservaModal {
   // =========================================================================
 
   _abrirFormularioNovo(horario, posicao, hrBase) {
+    this._reservaContexto = null;
     console.log(`📝 Abrindo formulário NOVA reserva: ${horario} pos ${posicao}`);
 
     this.modoEdicao = false;
@@ -563,7 +578,7 @@ export class ReservaModal {
     console.log(`📋 Abrindo formulário completo: ${id}`);
 
     const reservas = getTodasReservas();
-    const reserva = reservas.find((r) => r.id === id);
+    const reserva = reservas.find((r) => r.id === id) || (this._reservaContexto?.id === id ? this._reservaContexto : null);
 
     if (!reserva) {
       console.error("❌ Reserva não encontrada:", id);
@@ -885,7 +900,7 @@ export class ReservaModal {
 
     return {
       id: this.elementos.reservaId?.value || null,
-      data: getDataAtual(),
+      data: this._reservaContexto?.id === this.elementos.reservaId?.value ? this._reservaContexto.data : getDataAtual(),
       horario: horarioFinal,
       originalBase: this.elementos.originalBase?.value || horarioFinal,
       posicao: parseInt(this.elementos.posicaoReserva?.value) || 0,
@@ -1027,6 +1042,8 @@ export class ReservaModal {
   }
 
   fechar() {
+    this._abertura = (this._abertura || 0) + 1;
+    this._reservaContexto = null;
     if (this.modal) {
       limparHighlightCampos();
       this._fecharResumo();
@@ -1035,3 +1052,4 @@ export class ReservaModal {
     }
   }
 }
+

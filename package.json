@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:sql": "node scripts/test-integridade-sql.mjs"
   },
   "repository": {
     "type": "git",
@@ -20,6 +21,7 @@
   },
   "homepage": "https://github.com/luisdienstmanntd/Gerenciador-de-Reservas#readme",
   "devDependencies": {
+    "@electric-sql/pglite": "0.5.10",
     "firebase": "^12.16.0",
     "jsdom": "^29.1.1",
     "vitest": "^4.1.9"

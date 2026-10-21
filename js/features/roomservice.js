@@ -9,22 +9,28 @@ import { getDataAtual } from '../core/state.js';
 import { buscarReservasPorData } from './reservas/service.js';
 import { notificarErro } from '../core/notificacao.js';
 import { escapeHtml } from './reservas/validators.js';
+let geracaoCarregamento = 0;
 
 /**
  * Carrega room services de uma data específica
  */
 export async function carregarRoomServices() {
+    const geracao = ++geracaoCarregamento;
     const dataInput = document.getElementById('dataRoomService');
     const data = dataInput ? dataInput.value : getDataAtual();
     const container = document.getElementById('listaRoomServices');
     
     if (!container) return;
+    const vigente = () => geracao === geracaoCarregamento
+        && document.getElementById('listaRoomServices') === container
+        && (!dataInput || dataInput.value === data);
     
     container.innerHTML = '<p style="text-align: center; padding: 40px;">Carregando...</p>';
     
     try {
         const todasReservas = await buscarReservasPorData(data);
-        const roomServices = todasReservas.filter(r => r.tipo === 'roomservice');
+        if (!vigente()) return;
+        const roomServices = todasReservas.filter(r => r.tipo === 'roomservice' && !r.canceladoEm);
         
         if (roomServices.length === 0) {
             container.innerHTML = `
@@ -56,7 +62,7 @@ export async function carregarRoomServices() {
                     <div style="display: flex; justify-content: space-between; align-items: start;">
                         <div>
                             <div style="font-size: 0.8rem; opacity: 0.7; margin-bottom: 5px;">${rs.horario}</div>
-                            <div style="font-size: 1.3rem; font-weight: 900; color: var(--roomservice);">APTO ${rs.apto}</div>
+                            <div style="font-size: 1.3rem; font-weight: 900; color: var(--roomservice);">APTO ${escapeHtml(rs.apto)}</div>
                             <div style="margin-top: 8px; font-size: 0.95rem;">${rs.nomes ? escapeHtml(rs.nomes) : 'Sem nome'}</div>
                             <div style="margin-top: 5px; font-size: 0.85rem; opacity: 0.8;">
                                 👤 ${rs.paxs || 0} adultos ${rs.chd ? `+ ${rs.chd} crianças` : ''}
@@ -86,6 +92,7 @@ export async function carregarRoomServices() {
         container.innerHTML = html;
         
     } catch (error) {
+        if (!vigente()) return;
         console.error("Erro ao carregar room services:", error);
         notificarErro("Erro ao carregar room services.");
         container.innerHTML = '<p style="color: red; text-align: center; padding: 40px;">Erro ao carregar dados</p>';
@@ -94,3 +101,4 @@ export async function carregarRoomServices() {
 
 // Expor função globalmente
 window.carregarRoomServices = carregarRoomServices;
+

@@ -240,7 +240,7 @@ if (horario) reservaModal.abrirNova(horario, parseInt(posicao), hrBase);
                     // uma linha nova, em vez de criar direto (regra 5: nunca usar confirm nativo)
                     if (e.semDisponibilidade) {
                         modalConfirmar(
-                            `${_formatarDataBR(getDataAtual())} ${dados.horario}<br>Sem disponibilidade.<br>Deseja criar uma nova linha para esta reserva?`,
+                            `${_formatarDataBR(dados.data || getDataAtual())} ${dados.horario}<br>Sem disponibilidade.<br>Deseja criar uma nova linha para esta reserva?`,
                             async () => {
                                 await salvarApenasHorario(dados, { permitirNovaLinha: true });
                                 finalizar();
@@ -540,3 +540,4 @@ if (document.readyState === 'loading') {
 } else {
     inicializar();
 }
+

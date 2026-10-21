@@ -112,7 +112,7 @@ function navegar(tela) {
     if (tela === 'roomservice') {
         const dataInput = document.getElementById('dataRoomService');
         if (dataInput && !dataInput.value) {
-            dataInput.value = new Date().toISOString().split('T')[0];
+            dataInput.value = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
         }
         if (typeof window.carregarRoomServices === 'function') window.carregarRoomServices();
     }
@@ -205,3 +205,4 @@ if (document.readyState === 'loading') {
 } else {
     inicializarNavegacao();
 }
+

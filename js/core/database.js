@@ -148,14 +148,21 @@ class DatabaseService {
         const isHospedeOuRoom = tipo === 'hospede' || tipo === 'roomservice';
 
         if (hospedeIdExistente) {
-            const { error: erroUpdate } = await this.client.from('hospedes').update({
+            const { data: cadastro, error: erroCadastro } = await this.client.from('hospedes')
+                .select('nome, tipo').eq('id', hospedeIdExistente).maybeSingle();
+            if (erroCadastro) throw erroCadastro;
+            if (!cadastro || cadastro.nome.trim().toUpperCase() !== nome || cadastro.tipo !== tipo) {
+                return this._resolverHospedeId(dados, null);
+            }
+            const { data: atualizados, error: erroUpdate } = await this.client.from('hospedes').update({
                 nome,
                 apto: isHospedeOuRoom ? (dados.apto || null) : null,
                 codigo_reserva: isHospedeOuRoom ? (dados.codigoReserva || null) : null,
                 telefone: dados.whatsapp || null,
                 tipo,
-            }).eq('id', hospedeIdExistente);
+            }).eq('id', hospedeIdExistente).select('id');
             if (erroUpdate) throw erroUpdate;
+            if (!atualizados?.length) throw new Error('Cadastro não encontrado ou sem permissão para alterar.');
             return hospedeIdExistente;
         }
 
@@ -305,15 +312,35 @@ class DatabaseService {
     async atualizarReserva(id, dados) {
         // Busca o hospede_id já vinculado, se houver — pra _resolverHospedeId()
         // atualizar o mesmo cadastro em vez de buscar/criar outro (ver seu docstring).
-        const { data: atual } = await this.client.from('reservas').select('hospede_id').eq('id', id).maybeSingle();
+        const { data: atual, error: erroAtual } = await this.client.from('reservas').select('hospede_id').eq('id', id).maybeSingle();
+        if (erroAtual) throw erroAtual;
+        if (!atual) throw new Error('Reserva não encontrada ou sem permissão para alterar.');
         const colunas = await this._paraColunasReserva(dados, atual?.hospede_id || null);
-        const { error } = await this.client.from('reservas').update(colunas).eq('id', id);
+        await this.atualizarCamposReserva(id, colunas);
+    }
+
+    async atualizarCamposReserva(id, colunas) {
+        const { data, error } = await this.client.from('reservas').update(colunas).eq('id', id).select('id');
+        if (error) { if (error.code === '23505') error.semDisponibilidade = true; throw error; }
+        if (!data?.length) throw new Error('Reserva não encontrada ou sem permissão para alterar.');
+    }
+
+    async aplicarBloqueiosSemanaisAtomico(dataAlvo) {
+        const { data, error } = await this.client.rpc('aplicar_bloqueios_semanais', { p_data: dataAlvo });
         if (error) throw error;
+        return data || 0;
+    }
+
+    async getLinhasExtrasPorData(dataAlvo) {
+        const { data, error } = await this.client.from('config_dia').select('linhas_extras').eq('data', dataAlvo).maybeSingle();
+        if (error) throw error;
+        return data?.linhas_extras || {};
     }
 
     async excluirReserva(id) {
-        const { error } = await this.client.from('reservas').delete().eq('id', id);
+        const { data, error } = await this.client.from('reservas').delete().eq('id', id).select('id');
         if (error) throw error;
+        if (!data?.length) throw new Error('Reserva não encontrada ou sem permissão para excluir.');
     }
 
     /**
@@ -326,11 +353,10 @@ class DatabaseService {
      * @param {boolean|null} depositoRetido
      */
     async cancelarReserva(id, depositoRetido) {
-        const { error } = await this.client.from('reservas').update({
+        await this.atualizarCamposReserva(id, {
             cancelado_em: new Date().toISOString(),
             deposito_retido: depositoRetido,
-        }).eq('id', id);
-        if (error) throw error;
+        });
     }
 
     /**
@@ -344,12 +370,11 @@ class DatabaseService {
      *   ter sido reaproveitada por outra reserva enquanto esta esteve cancelada)
      */
     async restaurarReserva(id, posicao) {
-        const { error } = await this.client.from('reservas').update({
+        await this.atualizarCamposReserva(id, {
             cancelado_em: null,
             deposito_retido: null,
             posicao,
-        }).eq('id', id);
-        if (error) throw error;
+        });
     }
 
     /**
@@ -363,9 +388,13 @@ class DatabaseService {
      * @returns {Function} unsubscribe
      */
     escutarReservasPorData(data, callback) {
+        let ativo = true;
+        let geracao = 0;
         const buscar = async () => {
+            const minhaGeracao = ++geracao;
             try {
-                callback(await this.getReservasPorData(data));
+                const reservas = await this.getReservasPorData(data);
+                if (ativo && minhaGeracao === geracao) callback(reservas);
             } catch (error) {
                 console.error('❌ Erro ao escutar reservas:', error);
             }
@@ -377,7 +406,7 @@ class DatabaseService {
             .on('postgres_changes', { event: '*', schema: 'public', table: 'reservas', filter: `data=eq.${data}` }, buscar)
             .subscribe();
 
-        return () => this.client.removeChannel(channel);
+        return () => { ativo = false; geracao++; return this.client.removeChannel(channel); };
     }
 
     /**
@@ -395,20 +424,13 @@ class DatabaseService {
 
     /**
      * Marca notificação como lida pelo usuário atual.
-     * ⚠️ Não é atômico como o arrayUnion do Firestore (lê o array, adiciona e regrava) —
-     * tradeoff aceito dado o volume baixo de usuários internos clicando "OK" ao mesmo tempo.
+     * RPC executa um único UPDATE no servidor: preserva leitores concorrentes
+     * e não duplica o mesmo usuário em novas tentativas.
      */
     async marcarNotificacaoLida(id, usuario) {
-        const { data: row, error: erroLeitura } = await this.client
-            .from('notificacoes').select('lido_por').eq('id', id).single();
-        if (erroLeitura) throw erroLeitura;
-
-        const atual = row.lido_por || [];
-        if (atual.includes(usuario)) return;
-
-        const { error } = await this.client
-            .from('notificacoes').update({ lido_por: [...atual, usuario] }).eq('id', id);
+        const { data, error } = await this.client.rpc('marcar_notificacao_lida', { p_id: id, p_usuario: usuario });
         if (error) throw error;
+        if (data !== true) throw new Error('Notificação não encontrada ou sem permissão.');
     }
 
     /**
@@ -475,9 +497,13 @@ class DatabaseService {
      * @returns {Function} unsubscribe
      */
     escutarReservasPorDataComMudancas(data, callbackReservas, callbackMudancas) {
+        let ativo = true;
+        let geracao = 0;
         const buscar = async () => {
+            const minhaGeracao = ++geracao;
             try {
-                callbackReservas(await this.getReservasPorData(data));
+                const reservas = await this.getReservasPorData(data);
+                if (ativo && minhaGeracao === geracao) callbackReservas(reservas);
             } catch (error) {
                 console.error('❌ Erro ao escutar reservas:', error);
             }
@@ -485,6 +511,7 @@ class DatabaseService {
         buscar();
 
         const tratarMudanca = async (payload) => {
+            if (!ativo) return;
             buscar(); // sempre refaz a lista completa, igual ao comportamento anterior
 
             if (payload.eventType !== 'INSERT') return;
@@ -504,7 +531,7 @@ class DatabaseService {
             const depois = this._paraReservaApp({ ...row, hospedes: hospede });
             if (!depois.nomes || depois.bloqueado || depois.somenteHospedes) return;
 
-            callbackMudancas([{ type: 'added', antes: null, depois }]);
+            if (ativo) callbackMudancas([{ type: 'added', antes: null, depois }]);
         };
 
         const channel = this.client
@@ -512,7 +539,7 @@ class DatabaseService {
             .on('postgres_changes', { event: '*', schema: 'public', table: 'reservas', filter: `data=eq.${data}` }, tratarMudanca)
             .subscribe();
 
-        return () => this.client.removeChannel(channel);
+        return () => { ativo = false; geracao++; return this.client.removeChannel(channel); };
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -673,3 +700,4 @@ class DatabaseService {
 // Exporta instância única
 export const db = DatabaseService.getInstance();
 export { DatabaseService };
+
