@@ -28,6 +28,7 @@ beforeEach(() => {
 it('QA01: atribuir/iniciar/finalizar/cancelar mesa rejeitam erro SQL',async()=>{
  for(const fn of [()=>s.atribuirMesa('r1',7),()=>s.iniciarAtendimento('r1'),()=>s.finalizarAtendimento('r1'),()=>s.cancelarMesa('r1')]) await expect(fn()).rejects.toMatchObject({code:'42501'});
  expect(updates).toHaveLength(4);
+ expect(updates[1].cols).toMatchObject({status_recepcao:'chegou'});
 });
 it('QA02: mover horario não registra sucesso quando UPDATE é negado',async()=>{
  await expect(s.salvarApenasHorario({id:'r1',horario:'20:30'})).rejects.toMatchObject({code:'42501'});

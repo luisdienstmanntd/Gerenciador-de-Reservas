@@ -31,6 +31,7 @@
 import { db } from '../core/database.js';
 import { escapeHtml } from './reservas/validators.js';
 import { getHorariosPadrao, getConfig } from '../core/state.js';
+import { CORES_OSTERIA, coresGrafico } from '../core/theme.js';
 
 let chartGaugeInstance  = null;
 let chartBarrasInstance = null;
@@ -40,13 +41,7 @@ let _unsubscribeHome    = null;
 let _tickerInicializado = false;
 
 const PALETA = {
-    hospede:     '#4a90e2',
-    externo:     '#f39c12',
-    passante:    '#95a5a6',
-    roomservice: '#9b59b6',
-    criancas:    '#e67e22',
-    accent:      '#6c63ff',
-    grid:        'rgba(255,255,255,0.07)',
+    ...CORES_OSTERIA,
 };
 
 const DIAS_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
@@ -195,14 +190,14 @@ function _renderizarGiroMesa(reservas) {
         }
     }
 
-    const bgAlert = isDark ? 'rgba(231,76,60,0.12)' : 'rgba(231,76,60,0.07)';
+    const bgAlert = isDark ? 'rgba(164,91,82,.18)' : 'rgba(164,91,82,.10)';
 
     const elTempoLabel = document.getElementById('home-giro-tempo-label');
     if (elTempoLabel) {
         elTempoLabel.textContent = tempoMedioMin === null ? '' : `TEMPO MÉDIO · ${tempoMedioMin} MIN`;
         elTempoLabel.style.color = tempoMedioMin === null ? '' :
-            tempoMedioMin > 110 ? '#e74c3c' :
-            tempoMedioMin > 85  ? '#f39c12' : '#27ae60';
+            tempoMedioMin > 110 ? CORES_OSTERIA.erro :
+            tempoMedioMin > 85  ? CORES_OSTERIA.aviso : CORES_OSTERIA.sucesso;
     }
 
     let html = '';
@@ -220,7 +215,7 @@ function _renderizarGiroMesa(reservas) {
 
         previsoes.forEach(({ reserva: r, prevFim, diffMin }) => {
             const hrPrev   = prevFim.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-            const corLib   = diffMin <= 0 ? '#e74c3c' : diffMin <= 15 ? '#27ae60' : diffMin <= 30 ? '#f39c12' : 'var(--texto)';
+            const corLib   = diffMin <= 0 ? CORES_OSTERIA.erro : diffMin <= 15 ? CORES_OSTERIA.sucesso : diffMin <= 30 ? CORES_OSTERIA.aviso : 'var(--texto)';
             const labelMin = diffMin <= 0 ? 'agora' : `em ${diffMin} min`;
             const border   = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
             html += `
@@ -234,8 +229,8 @@ function _renderizarGiroMesa(reservas) {
 
     if (alertaAtraso) {
         html += `
-        <div style="background:${bgAlert};border-radius:12px;padding:14px 18px;border-left:4px solid #e74c3c;margin-top:10px;">
-            <div style="font-size:0.72rem;font-weight:700;letter-spacing:.8px;color:#e74c3c;margin-bottom:4px;">⚠️ POSSÍVEL ATRASO</div>
+        <div style="background:${bgAlert};border-radius:12px;padding:14px 18px;border-left:4px solid ${CORES_OSTERIA.erro};margin-top:10px;">
+            <div style="font-size:0.72rem;font-weight:700;letter-spacing:.8px;color:${CORES_OSTERIA.erro};margin-bottom:4px;">⚠️ POSSÍVEL ATRASO</div>
             <div style="font-size:0.85rem;font-weight:600;">Horário ${alertaAtraso.horario}: faltam ${alertaAtraso.faltam} mesa${alertaAtraso.faltam > 1 ? 's' : ''} para acomodar todas as reservas a tempo.</div>
         </div>`;
     }
@@ -248,8 +243,7 @@ function _renderizarGiroMesa(reservas) {
 // ─────────────────────────────────────────────────────────────────────────────
 function _renderizarGraficos(reaisHoje, reaisSemana, hoje) {
     const isDark   = document.body.classList.contains('dark-theme');
-    const corTexto = isDark ? '#b0b8d1' : '#555e7a';
-    const corGrid  = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(26,29,46,0.08)';
+    const { texto: corTexto, grade: corGrid } = coresGrafico(isDark);
 
     _destruirGraficos();
 
@@ -262,8 +256,8 @@ function _renderizarGraficos(reaisHoje, reaisSemana, hoje) {
         const taxa    = Math.min(totalPax / capacidade, 1);
         const taxaPct = Math.round(taxa * 100);
         const livre   = Math.max(0, capacidade - totalPax);
-        const cor     = taxa > 0.9 ? '#e74c3c' : taxa > 0.7 ? '#f39c12' : PALETA.accent;
-        const corLivre = isDark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.10)';
+        const cor     = taxa > 0.9 ? CORES_OSTERIA.erro : taxa > 0.7 ? CORES_OSTERIA.aviso : PALETA.accent;
+        const corLivre = coresGrafico(isDark).livre;
 
         const elPct = document.getElementById('home-gauge-pct');
         if (elPct) { elPct.textContent = taxaPct + '%'; elPct.style.color = cor; }
@@ -340,7 +334,7 @@ function _renderizarGraficos(reaisHoje, reaisSemana, hoje) {
 
         chartSemanaInstance = new Chart(ctxSemana.getContext('2d'), {
             type: 'line',
-            data: { labels, datasets: [{ label: 'PAX', data: valores, borderColor: PALETA.accent, backgroundColor: isDark ? 'rgba(108,99,255,0.15)' : 'rgba(108,99,255,0.10)', pointBackgroundColor: PALETA.accent, pointBorderColor: '#fff', pointBorderWidth: 2, pointRadius: 5, pointHoverRadius: 7, borderWidth: 2.5, fill: true, tension: 0.4 }] },
+            data: { labels, datasets: [{ label: 'PAX', data: valores, borderColor: PALETA.accent, backgroundColor: isDark ? 'rgba(140,111,85,.24)' : 'rgba(140,111,85,.14)', pointBackgroundColor: PALETA.accent, pointBorderColor: '#fff', pointBorderWidth: 2, pointRadius: 5, pointHoverRadius: 7, borderWidth: 2.5, fill: true, tension: 0.4 }] },
             options: {
                 responsive: true, maintainAspectRatio: false,
                 plugins: { legend: { display: false }, tooltip: { callbacks: { title: ctx => ctx[0].label, label: ctx => ` ${ctx.parsed.y} pax previstos` } } },
@@ -566,3 +560,4 @@ function _mostrarErro() {
 }
 
 window.carregarHome = carregarHome;
+

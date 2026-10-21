@@ -2,7 +2,8 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- O zoom por pinça é intencional: a planilha precisa ser legível em telas menores. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
     <title>Osteria Di Lucca - Gestão</title>
     
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -12,7 +13,7 @@
     <link rel="apple-touch-icon" href="icons/icon-192.png">
     <link rel="icon" href="icons/icon-192.png">
 
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Montserrat:wght@300;400;500;600;700&family=Raleway:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"
         integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ"
         crossorigin="anonymous"></script>
@@ -27,6 +28,7 @@
     <link rel="stylesheet" href="css/mesas-timers.css">
     <link rel="stylesheet" href="css/responsive.css">
     <link rel="stylesheet" href="css/home.css">
+    <link rel="stylesheet" href="css/osteria-redesign.css">
 </head>
 <body>
 
@@ -70,7 +72,7 @@
             onkeydown="if(event.key==='Enter') confirmarLogin()"
         >
 
-        <button onclick="confirmarLogin()" style="
+        <button id="btnEntrar" onclick="confirmarLogin()" style="
             width: 260px; padding: 14px;
             background: #c9a96e; color: #1a1a1a;
             border: none; border-radius: 10px;
@@ -78,9 +80,37 @@
             margin-top: 4px;
         ">ENTRAR</button>
 
+        <button id="btnEsqueciSenha" type="button" onclick="mostrarRecuperacaoSenha()" style="
+            border: none; background: transparent; color: rgba(255,255,255,.62);
+            font-size: .82rem; cursor: pointer; padding: 8px 12px;
+        ">Esqueci minha senha</button>
+
         <div id="loginErro" style="color: #e74c3c; font-size: 0.85rem; display: none; text-align: center;">
             Usuário ou senha incorretos.
         </div>
+
+        <div id="recuperacaoSenha" class="auth-recovery-panel" hidden>
+            <strong>Recuperar acesso</strong>
+            <span>Informe seu perfil. Enviaremos um link para o e-mail cadastrado.</span>
+            <input id="recuperacaoUsuario" type="text" placeholder="recepcao, osteria ou gerencia" autocomplete="username">
+            <button id="btnEnviarRecuperacao" type="button" onclick="solicitarRecuperacaoSenha()">ENVIAR LINK</button>
+            <p id="recuperacaoMensagem" role="status" aria-live="polite"></p>
+            <button type="button" class="auth-link-button" onclick="voltarParaLogin()">Voltar para o login</button>
+        </div>
+    </div>
+
+    <div id="telaNovaSenha" class="auth-recovery-overlay" hidden>
+        <form class="auth-recovery-card" id="formNovaSenha">
+            <span class="auth-eyebrow">Osteria Di Lucca</span>
+            <h2>Definir nova senha</h2>
+            <p>Escolha uma senha com pelo menos 8 caracteres.</p>
+            <label for="novaSenha">Nova senha</label>
+            <input id="novaSenha" type="password" autocomplete="new-password" minlength="8" required>
+            <label for="confirmarNovaSenha">Confirmar senha</label>
+            <input id="confirmarNovaSenha" type="password" autocomplete="new-password" minlength="8" required>
+            <button type="submit">SALVAR NOVA SENHA</button>
+            <p id="novaSenhaMensagem" role="status" aria-live="polite"></p>
+        </form>
     </div>
 
     <script type="module">
@@ -124,18 +154,113 @@
         // Reconectar sob um usuário já confirmado garante um listener sempre vivo e
         // autenticado (a tela Home e o sino de notificações, se não fossem recarregados
         // aqui, só se recuperariam manualmente — ver dívida técnica #2, corrigida).
+        function mostrarNovaSenha() {
+            const tela = document.getElementById('telaNovaSenha');
+            if (tela) tela.hidden = false;
+        }
+
+        function mostrarRecuperacaoSenha() {
+            const painel = document.getElementById('recuperacaoSenha');
+            const login = document.getElementById('telaLogin');
+            if (!painel || !login) return;
+            login.style.display = 'flex';
+            painel.hidden = false;
+            ['inputUsuario', 'inputSenha', 'btnEntrar'].forEach((id) => document.getElementById(id)?.setAttribute('hidden', ''));
+            document.getElementById('btnEsqueciSenha')?.setAttribute('hidden', '');
+            document.getElementById('loginErro').style.display = 'none';
+            setTimeout(() => document.getElementById('recuperacaoUsuario')?.focus(), 50);
+        }
+
+        function voltarParaLogin() {
+            const painel = document.getElementById('recuperacaoSenha');
+            painel?.setAttribute('hidden', '');
+            ['inputUsuario', 'inputSenha', 'btnEntrar'].forEach((id) => document.getElementById(id)?.removeAttribute('hidden'));
+            document.getElementById('btnEsqueciSenha')?.removeAttribute('hidden');
+            document.getElementById('recuperacaoMensagem').textContent = '';
+            document.getElementById('recuperacaoUsuario').value = '';
+            document.getElementById('inputUsuario')?.focus();
+        }
+
+        async function solicitarRecuperacaoSenha() {
+            const usuario = document.getElementById('recuperacaoUsuario').value.trim().toLowerCase();
+            const mensagem = document.getElementById('recuperacaoMensagem');
+            const email = EMAIL_POR_USUARIO[usuario];
+            const redirectTo = `${window.location.origin}${window.location.pathname}?recuperacao=1`;
+
+            mensagem.className = '';
+            mensagem.textContent = 'Se o perfil existir, enviaremos um link para o e-mail cadastrado.';
+            if (!email) return;
+
+            const botao = document.getElementById('btnEnviarRecuperacao');
+            botao.disabled = true;
+            try {
+                const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+                if (error) throw error;
+                mensagem.className = 'is-success';
+            } catch {
+                mensagem.className = 'is-error';
+                mensagem.textContent = 'Não foi possível enviar agora. Tente novamente em instantes.';
+            } finally {
+                botao.disabled = false;
+            }
+        }
+
+        async function salvarNovaSenha(event) {
+            event.preventDefault();
+            const senha = document.getElementById('novaSenha').value;
+            const confirmacao = document.getElementById('confirmarNovaSenha').value;
+            const mensagem = document.getElementById('novaSenhaMensagem');
+            if (senha.length < 8 || senha !== confirmacao) {
+                mensagem.className = 'is-error';
+                mensagem.textContent = senha !== confirmacao ? 'As senhas não conferem.' : 'Use pelo menos 8 caracteres.';
+                return;
+            }
+            try {
+                const { error } = await supabase.auth.updateUser({ password: senha });
+                if (error) throw error;
+            } catch {
+                mensagem.className = 'is-error';
+                mensagem.textContent = 'Não foi possível atualizar a senha. Solicite um novo link.';
+                return;
+            }
+            mensagem.className = 'is-success';
+            mensagem.textContent = 'Senha atualizada. Você já pode entrar no sistema.';
+            setTimeout(() => {
+                document.getElementById('telaNovaSenha').hidden = true;
+                voltarParaLogin();
+                supabase.auth.signOut();
+            }, 1400);
+        }
+
+        document.getElementById('formNovaSenha')?.addEventListener('submit', salvarNovaSenha);
+
         supabase.auth.onAuthStateChange((event, session) => {
+            if (event === 'PASSWORD_RECOVERY') {
+                mostrarNovaSenha();
+                return;
+            }
             if (session?.user) {
                 esconderTelaLogin();
                 recarregarReservas();
                 carregarHome();
                 recarregarNotificacoes();
                 recarregarConfigSistema();
+                // Corrige reservas pendentes de noites anteriores assim que o
+                // usuário autentica, mesmo se a página ficou fechada à meia-noite.
+                window.atualizarNoShowsAutomaticamente?.();
             } else {
                 localStorage.removeItem('usuario_nome');
                 mostrarTelaLogin();
             }
         });
+
+        // Em alguns navegadores a sessão de recuperação já está disponível antes
+        // do callback PASSWORD_RECOVERY ser emitido.
+        if (new URLSearchParams(window.location.search).has('recuperacao')) {
+            supabase.auth.getSession().then(({ data }) => {
+                if (data.session) mostrarNovaSenha();
+            });
+        }
 
         async function confirmarLogin() {
             const usuario = document.getElementById('inputUsuario').value.trim().toLowerCase();
@@ -175,6 +300,9 @@
         // Módulos ES6 não expõem funções para onclick="..." automaticamente
         window.confirmarLogin = confirmarLogin;
         window.trocarUsuario = trocarUsuario;
+        window.mostrarRecuperacaoSenha = mostrarRecuperacaoSenha;
+        window.voltarParaLogin = voltarParaLogin;
+        window.solicitarRecuperacaoSenha = solicitarRecuperacaoSenha;
     </script>
 
     <!-- SIDEBAR -->
@@ -303,27 +431,6 @@
         </div>
 
     </div><!-- fim .sidebar -->
-
-    <script>
-        /* Marca item ativo */
-        function _sbAtivo(el) {
-            document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
-            if (el) el.classList.add('active');
-        }
-        /* Preenche nome e ativa Home por padrão */
-        (function() {
-            function init() {
-                var nome = localStorage.getItem('usuario_nome') || '—';
-                var el = document.getElementById('nomeUsuarioSidebar');
-                if (el) el.textContent = nome;
-                var primeiro = document.querySelector('.nav-item[data-tela="home"]');
-                if (primeiro) primeiro.classList.add('active');
-            }
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', init);
-            } else { init(); }
-        })();
-    </script>
 
     <div class="main-content">
         
@@ -809,6 +916,15 @@
                             <input type="checkbox" id="checkMenuDegustacao">
                         </div>
                     </div>
+                    <div id="campoSinal" class="campo-sinal">
+                        <label for="pagamento">Sinal da reserva</label>
+                        <select id="pagamento">
+                            <option value="pendente">Pendente — R$ 200,00</option>
+                            <option value="pago">Recebido — R$ 200,00</option>
+                            <option value="">Não se aplica / não informado</option>
+                        </select>
+                        <small>Confirme a reserva após identificar o depósito.</small>
+                    </div>
                 </div>
                 <label id="labelObs" style="margin-top: 10px;">Observações</label>
                 <textarea id="obs" rows="2" placeholder="Ex: Aniversário, Alérgico..."></textarea>
@@ -870,19 +986,7 @@
         </div>
     </div>
 
-<!-- Core -->
-<script type="module" src="js/core/init.js"></script>
-<script type="module" src="js/core/navigation.js"></script>
-
-<!-- Features -->
-<script type="module" src="js/features/home.js"></script>
-<script type="module" src="js/features/reservas/log.js"></script>
-<script type="module" src="js/features/dashboard.js"></script>
-<script type="module" src="js/features/roomservice.js"></script>
-
-<!-- UI -->
-<script type="module" src="js/ui/controls.js"></script>
-<script type="module" src="js/ui/filters.js"></script>
+<script type="module" src="js/app.js"></script>
 
     <!-- BottomBar — visível só em portrait mobile via CSS -->
     <nav id="bottom-nav">
@@ -913,6 +1017,15 @@
             Dashboard
         </button>
 
+        <button class="bn-item" data-tela="roomservice" onclick="navegar('roomservice')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 8h1a4 4 0 0 1 0 8h-1"/>
+                <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/>
+                <line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/>
+            </svg>
+            Room
+        </button>
+
         <button class="bn-item" data-tela="logs" onclick="navegar('logs')">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
@@ -932,18 +1045,6 @@
         </button>
 
     </nav>
-
-    <script>
-        // ✅ Registra o Service Worker (cache offline) — falha silenciosa em
-        // navegadores sem suporte, não afeta o funcionamento normal do app.
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js')
-                    .then(() => console.log('✅ Service Worker registrado'))
-                    .catch((e) => console.warn('⚠️ Falha ao registrar Service Worker:', e.message));
-            });
-        }
-    </script>
 
 </body>
 </html>

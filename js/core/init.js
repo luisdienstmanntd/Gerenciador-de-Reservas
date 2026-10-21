@@ -31,6 +31,7 @@ import { renderizarGrid } from '../ui/render.js';
 import { db } from './database.js';
 import { notificarErrosValidacao, notificarErro } from './notificacao.js';
 import { destacarCamposInvalidos, escapeHtml } from '../features/reservas/validators.js';
+import { iniciarFechamentoAutomaticoNoShows, atualizarNoShowsAutomaticamente } from '../features/reservas/no-show.js';
 
 /** Converte data ISO (YYYY-MM-DD) para exibição BR (DD/MM/AAAA). */
 function _formatarDataBR(dataIso) {
@@ -68,23 +69,27 @@ async function inicializar() {
     
     // 6. Inicia sistema de timers
     iniciarTimers();
+
+    // 7. Fecha reservas pendentes de dias anteriores como no-show e agenda a
+    // próxima virada do dia. A execução é protegida pela sessão autenticada.
+    iniciarFechamentoAutomaticoNoShows();
     
-    // 7. Configura tema
+    // 8. Configura tema
     configurarTema();
     
-    // 8. Expõe funções necessárias globalmente
+    // 9. Expõe funções necessárias globalmente
     exponerFuncoesGlobais();
     
     console.log('═══════════════════════════════════════');
     console.log('✅ SISTEMA INICIALIZADO COM SUCESSO!');
     console.log('═══════════════════════════════════════');
 
-    // 9. Limpeza de config_dia antigos — roda em background, sem bloquear a UI
+    // 10. Limpeza de config_dia antigos — roda em background, sem bloquear a UI
     // ✅ v1.9: Uma vez por sessão, após o sistema estar 100% pronto.
     //          Falha silenciosa — nunca interrompe o fluxo principal.
     limparConfigDiasAntigosBackground();
 
-    // 10. Limpeza proativa de docs fantasmas do dia atual — roda em background
+    // 11. Limpeza proativa de docs fantasmas do dia atual — roda em background
     // ✅ v2.1: Resolve o 🔴 bug de fantasmas pré-v3.0 que removerLinhaDoBloco() não alcançava.
     //          Aguarda um tick para não competir com o onSnapshot inicial da grade.
     setTimeout(() => limparFantasmasDoDiaBackground(), 2000);
@@ -530,6 +535,7 @@ function exponerFuncoesGlobais() {
     // para substituir confirm() nativo sem criar dependência circular (init.js importa modal.js)
     window.modalConfirmar = modalConfirmar;
     window.modalCancelarReserva = modalCancelarReserva;
+    window.atualizarNoShowsAutomaticamente = atualizarNoShowsAutomaticamente;
 
     console.log('🌍 Funções globais expostas');
 }

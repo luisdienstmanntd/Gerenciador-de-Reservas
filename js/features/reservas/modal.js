@@ -50,7 +50,6 @@
 
 import { getTodasReservas, getDataAtual } from "../../core/state.js";
 import { db } from "../../core/database.js";
-import { notificarErro } from "../../core/notificacao.js";
 import { recarregarReservas } from "./listener.js";
 import {
   salvarReserva,
@@ -60,8 +59,10 @@ import {
   salvarApenasHorario,
   alterarData,
   restaurarReserva,
+  atualizarStatusRecepcao,
 } from "./service.js";
 import { validarReserva, formatarTelefone, limparHighlightCampos, escapeHtml } from "./validators.js";
+import { notificarErro, notificarSucesso } from "../../core/notificacao.js";
 
 /** Converte data ISO (YYYY-MM-DD) para exibição BR (DD/MM/AAAA). */
 function _formatarDataBR(dataIso) {
@@ -105,6 +106,8 @@ export class ReservaModal {
       avulsa: document.getElementById("avulsa"),
       paxs: document.getElementById("paxs"),
       chd: document.getElementById("chd"),
+      pagamento: document.getElementById("pagamento"),
+      campoSinal: document.getElementById("campoSinal"),
       obs: document.getElementById("obs"),
       checkBloquear: document.getElementById("checkBloquear"),
       checkHospedes: document.getElementById("checkHospedes"),
@@ -371,6 +374,21 @@ export class ReservaModal {
 
     this._ocultarConteudoModal();
 
+    const statusRecepcao = reserva.statusRecepcao || "aguardando";
+    const ehDiaDaReserva = reserva.data === getDataAtual();
+    const statusLabel = statusRecepcao === "chegou"
+      ? "CHEGOU"
+      : (statusRecepcao === "no_show" ? "NO-SHOW" : "AGUARDANDO CHEGADA");
+    const statusAcoes = ehDiaDaReserva && !reserva.inicioMesa && statusRecepcao === "aguardando"
+      ? `
+        <div class="resumo-linha-dupla status-recepcao-acoes">
+          <button type="button" id="btnResumoChegada" class="resumo-btn resumo-btn--sucesso">${ICONES.check} Confirmar chegada</button>
+          <button type="button" id="btnResumoNoShow" class="resumo-btn resumo-btn--danger">Marcar no-show</button>
+        </div>`
+      : (ehDiaDaReserva && statusRecepcao === "no_show"
+        ? `<button type="button" id="btnResumoReabrirChegada" class="resumo-btn resumo-btn--info">Reabrir chegada</button>`
+        : "");
+
     // ✅ Reserva cancelada (soft-delete): único fluxo possível é desfazer o cancelamento —
     // volta ao local/data/horário de origem (nunca alterados pelo cancelamento). O registro
     // de cancelamento some da reserva e passa a existir só no log de alterações.
@@ -444,6 +462,8 @@ export class ReservaModal {
     resumo.id = "resumoReserva";
     resumo.innerHTML = `
       <div class="resumo-lista">
+        <div class="resumo-aviso status-recepcao status-recepcao--${statusRecepcao}">Recepção: <strong>${statusLabel}</strong></div>
+        ${statusAcoes}
         <button type="button" id="btnResumoEditar" class="resumo-btn resumo-btn--primary">
           <span class="resumo-btn-icone">${ICONES.editar}</span>Editar reserva
         </button>
@@ -467,6 +487,21 @@ export class ReservaModal {
       </div>
     `;
     if (titulo) titulo.after(resumo);
+
+    const atualizarStatus = async (status) => {
+      try {
+        await atualizarStatusRecepcao(id, status);
+        await recarregarReservas(getDataAtual());
+        notificarSucesso(status === "chegou" ? "Chegada confirmada." : (status === "no_show" ? "No-show registrado." : "Chegada reaberta."));
+        this.fechar();
+      } catch (erro) {
+        console.error("Erro ao atualizar status da recepção:", erro);
+        notificarErro("Não foi possível atualizar a chegada. Verifique a conexão e a migration do Supabase.");
+      }
+    };
+    document.getElementById("btnResumoChegada")?.addEventListener("click", () => atualizarStatus("chegou"), { once: true });
+    document.getElementById("btnResumoNoShow")?.addEventListener("click", () => atualizarStatus("no_show"), { once: true });
+    document.getElementById("btnResumoReabrirChegada")?.addEventListener("click", () => atualizarStatus("aguardando"), { once: true });
 
     // ✅ v2.6: { once: true } em todos os botões do resumo
 
@@ -698,6 +733,13 @@ export class ReservaModal {
     if (this.elementos.avulsa) this.elementos.avulsa.value = reserva.avulsa || "";
     if (this.elementos.paxs) this.elementos.paxs.value = reserva.paxs || 0;
     if (this.elementos.chd) this.elementos.chd.value = reserva.chd || 0;
+    // Reservas legadas podem ter pagamento vazio/null: não converter silenciosamente
+    // esse estado em "pendente" ao editar e salvar novamente.
+    if (this.elementos.pagamento) {
+      this.elementos.pagamento.value = reserva.pagamento !== undefined
+        ? reserva.pagamento
+        : "pendente";
+    }
     if (this.elementos.obs) this.elementos.obs.value = reserva.obs || "";
     if (this.elementos.checkBloquear) {
       this.elementos.checkBloquear.checked = reserva.bloqueado || false;
@@ -734,6 +776,7 @@ export class ReservaModal {
     if (this.elementos.avulsa) this.elementos.avulsa.value = "";
     if (this.elementos.paxs) this.elementos.paxs.value = "2";
     if (this.elementos.chd) this.elementos.chd.value = "0";
+    if (this.elementos.pagamento) this.elementos.pagamento.value = "pendente";
     if (this.elementos.obs) this.elementos.obs.value = "";
     if (this.elementos.checkBloquear) this.elementos.checkBloquear.checked = false;
     if (this.elementos.checkHospedes) this.elementos.checkHospedes.checked = false;
@@ -837,6 +880,12 @@ export class ReservaModal {
         tipo === "externo" ? "block" : "none";
     }
 
+    // O sinal de R$ 200,00 é exigido apenas para clientes externos.
+    // Hóspedes do hotel não veem o campo e nunca recebem "pendente" por padrão.
+    if (this.elementos.campoSinal) {
+      this.elementos.campoSinal.style.display = tipo === "externo" ? "block" : "none";
+    }
+
     // ✅ v3.10: Controle via classe CSS no modal — invulnerável ao forEach de reset.
     // O forEach em _mostrarCamposBasicos/_limparFormulario reseta style.display de todos
     // os filhos, anulando qualquer display inline. A classe no elemento pai (#modalReserva)
@@ -898,13 +947,15 @@ export class ReservaModal {
       horarioFinal = `${this.elementos.displayHoras.innerText}:${this.elementos.displayMinutos.innerText}`;
     }
 
+    const tipo = this.elementos.tipoCliente?.value || "hospede";
+
     return {
       id: this.elementos.reservaId?.value || null,
       data: this._reservaContexto?.id === this.elementos.reservaId?.value ? this._reservaContexto.data : getDataAtual(),
       horario: horarioFinal,
       originalBase: this.elementos.originalBase?.value || horarioFinal,
       posicao: parseInt(this.elementos.posicaoReserva?.value) || 0,
-      tipo: this.elementos.tipoCliente?.value || "hospede",
+      tipo,
       nomes: this.elementos.nomes?.value?.trim().toUpperCase() || "",
       apto: this.elementos.apto?.value?.trim() || "",
       codigoReserva: this.elementos.codigoReserva?.value?.trim() || "",
@@ -912,6 +963,7 @@ export class ReservaModal {
       avulsa: this.elementos.avulsa?.value || "",
       paxs: parseInt(this.elementos.paxs?.value) || 0,
       chd: parseInt(this.elementos.chd?.value) || 0,
+      pagamento: tipo === "externo" ? (this.elementos.pagamento?.value || "") : "",
       obs: this.elementos.obs?.value?.trim().toUpperCase() || "",
       bloqueado: this.elementos.checkBloquear?.checked || false,
       somenteHospedes: this.elementos.checkHospedes?.checked || false,

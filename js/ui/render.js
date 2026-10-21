@@ -38,6 +38,18 @@ import { getHorariosPadrao, getLinhasExtras, getFiltroAtivo } from '../core/stat
 import { escapeHtml } from '../features/reservas/validators.js';
 import { OBS_BLOQUEIO_AUTOMATICO, OBS_BLOQUEIO_SEMANAL } from '../features/reservas/service.js';
 
+const ICONES_CHEGADA = {
+    aguardando: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 7v5l3 2"></path></svg>',
+    chegou: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"></circle><path d="m8 12 2.5 2.5L16 9"></path></svg>',
+    no_show: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"></circle><path d="m9 9 6 6M15 9l-6 6"></path></svg>',
+};
+
+function renderIconeChegada(status) {
+    const statusValido = Object.prototype.hasOwnProperty.call(ICONES_CHEGADA, status) ? status : 'aguardando';
+    const labels = { aguardando: 'Aguardando chegada', chegou: 'Cliente chegou', no_show: 'No-show' };
+    return `<span class="icone-chegada icone-chegada--${statusValido}" role="img" aria-label="${labels[statusValido]}" title="${labels[statusValido]}">${ICONES_CHEGADA[statusValido]}</span>`;
+}
+
 /**
  * Atualiza os mini-cards do header com totais
  */
@@ -377,25 +389,34 @@ function renderizarLinha(res, horarioVisual, posicao, tdHora, hrBase, mostrarCan
         // Hóspede sem apto ainda definido (reserva feita por telefone antes do
         // check-in) mostra o número da reserva em vez de "APTO ?".
         const labelApto = res.apto ? `APTO ${res.apto}` : (res.codigoReserva ? `RES ${escapeHtml(res.codigoReserva)}` : "APTO ?");
-        let label = res.tipo === "hospede" ? `<b>${labelApto}</b>` :
-            (res.tipo === "externo" ? "<b>EXT</b>" :
-            (res.tipo === "roomservice" ? `<b>APTO ${res.apto || "?"}</b>` :
+        const tipoBruto = String(res.tipo || "hospede").trim().toLowerCase();
+        const tipo = tipoBruto === "ext" || tipoBruto.startsWith("extern") ? "externo" :
+            (tipoBruto === "pass" || tipoBruto.startsWith("pass") ? "passante" :
+            (tipoBruto === "roomservice" || tipoBruto === "room service" ? "roomservice" : "hospede"));
+        // Room service também é exibido como APTO e segue o padrão azul de hóspedes.
+        const tipoCor = tipo === "externo" ? "externo" : (tipo === "passante" ? "passante" : "hospede");
+        let label = tipo === "hospede" ? `<b>${labelApto}</b>` :
+            (tipo === "externo" ? "<b>EXT</b>" :
+            (tipo === "roomservice" ? `<b>APTO ${res.apto || "?"}</b>` :
             "<b>PASS</b>"));
+        const iconeChegada = renderIconeChegada(res.statusRecepcao);
         let classePag = res.pagamento === 'pago' ? 'pg-confirmado' : (res.pagamento === 'pendente' ? 'pg-pendente' : '');
-        let textoPag = (res.tipo === 'externo' && res.avulsa) ? escapeHtml(res.avulsa) : (res.pagamento || "-");
+        let textoPag = (res.tipo === 'externo' && res.avulsa) ? escapeHtml(res.avulsa) :
+            (res.pagamento === 'pago' ? 'SINAL OK' : (res.pagamento === 'pendente' ? 'SINAL PENDENTE' : '-'));
 
         // Cancelada no filtro "cancelados": mostra dados completos e é clicável —
         // abre o modal com a opção de DESFAZER CANCELAMENTO.
         const isCancelada = !!res.canceladoEm;
-        const classeClicavel = isCancelada ? 'linha-cancelada reserva-clicavel' : `reserva-clicavel border-${res.tipo}`;
+        const classeClicavel = isCancelada ? 'linha-cancelada reserva-clicavel' : `reserva-clicavel border-${tipoCor}`;
+        const estiloTipo = isCancelada ? '' : ` style="border-left: 4px solid var(--${tipoCor}) !important;"`;
         const dataId = `data-id="${res.id}"`;
         const badgeCancelada = isCancelada ? `<span class="badge-cancelada">❌ CANCELADA</span> ` : '';
 
         return `
 <tr>
     ${tdHora}
-    <td class="${classeClicavel}" ${dataId}>
-        ${badgeCancelada}${label} — ${escapeHtml(res.nomes)} ${res.menuDegustacao ? `<span class="badge-deg">🍽 DEG</span>` : ''}${res.obs ? `<span class="obs-exibicao">${escapeHtml(res.obs)}</span>` : ""}
+    <td class="${classeClicavel}"${estiloTipo} ${dataId}>
+        ${iconeChegada}${badgeCancelada}${label} — ${escapeHtml(res.nomes)} ${res.menuDegustacao ? `<span class="badge-deg">🍽 DEG</span>` : ''}${res.obs ? `<span class="obs-exibicao">${escapeHtml(res.obs)}</span>` : ""}
     </td>
     <td class="col-pax"><div class="td-content">${adultos}</div></td>
     <td class="col-chd"><div class="td-content">${criancas}</div></td>
@@ -431,3 +452,4 @@ function renderizarLinha(res, horarioVisual, posicao, tdHora, hrBase, mostrarCan
 
 // Expor globalmente para debug
 window.renderizarGrid = renderizarGrid;
+

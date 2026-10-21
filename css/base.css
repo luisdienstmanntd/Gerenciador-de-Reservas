@@ -16,7 +16,7 @@
   /* Cores de Status */
   --hospede: #3498db;
   --externo: #f39c12;
-  --passante: #95a5a6;
+  --passante: #27ae60;
   --roomservice: #9b59b6;
   --menu: #27ae60;
   --vermelho: #e74c3c;
@@ -84,4 +84,5 @@ button,
 th {
   letter-spacing: -0.02em;
 }
+
 

@@ -56,7 +56,8 @@ export function setTodasReservas(reservas) {
 }
 
 export function getHorariosPadrao() {
-    return ["20:00", "20:30", "21:00", "21:30", "22:00", "22:30"];
+    // Serviço de jantar da Osteria: 20h–23h, intervalos de 30 minutos.
+    return ["20:00", "20:30", "21:00", "21:30", "22:00", "22:30", "23:00"];
 }
 
 export function getConfig() {
@@ -147,3 +148,4 @@ export function getUnsubscribeConfigSistema() {
 export function setUnsubscribeConfigSistema(fn) {
     unsubscribeConfigSistema = fn;
 }
+

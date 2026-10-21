@@ -606,7 +606,17 @@ export async function atribuirMesa(id, mesa) {
 export async function iniciarAtendimento(id) {
     if (!id) throw new Error('ID obrigatório');
     const client = await _getClient();
-    await _confirmarEscrita(client.from('reservas').update({ inicio_mesa: new Date().toISOString() }).eq('id', id));
+    // Preserva o comportamento do deploy: início do serviço confirma a chegada.
+    await _confirmarEscrita(client.from('reservas').update({
+        inicio_mesa: new Date().toISOString(), status_recepcao: 'chegou',
+    }).eq('id', id));
+}
+
+export async function atualizarStatusRecepcao(id, status) {
+    if (!id) throw new Error('ID obrigatório');
+    if (!['aguardando', 'chegou', 'no_show'].includes(status)) throw new Error('Status de recepção inválido');
+    await _getClient();
+    await db.atualizarStatusRecepcao(id, status);
 }
 
 export async function finalizarAtendimento(id) {

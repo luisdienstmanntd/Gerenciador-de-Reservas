@@ -1,42 +1,100 @@
--- Aplicar antes do novo frontend. Não elimina registros conflitantes.
--- Se o preflight falhar, revisar os IDs com a equipe e resolver os conflitos
--- explicitamente; executar novamente só depois de uma cópia de segurança.
+-- Aplicar antes do novo frontend. Preserva reservas e notificações históricas.
+-- Colisões somente passadas recebem marcador de compatibilidade, sem mudar
+-- datas, horários, posições, hóspedes ou contagens. Colisões hoje/futuras abortam.
 begin;
+lock table public.reservas, public.notificacoes in share row exclusive mode;
+-- O backfill altera apenas metadados novos; conserva atualizado_em histórico.
+-- O lock impede escritas concorrentes enquanto o trigger de timestamp está
+-- temporariamente suspenso. Qualquer falha reverte também este DDL.
+alter table public.reservas disable trigger trg_reservas_atualizado_em;
 
 -- O tipo vive em hospedes; materializa somente a participação na grade para
 -- permitir um índice parcial (Postgres não permite JOIN no predicado do índice).
 alter table public.reservas add column fora_grade_roomservice boolean not null default false;
+alter table public.reservas add column conflito_posicao_legado boolean not null default false;
 update public.reservas r set fora_grade_roomservice = true
 from public.hospedes h where h.id = r.hospede_id and h.tipo = 'roomservice';
+do $$
+begin
+  if exists (
+    select 1 from public.reservas
+    where data >= (now() at time zone 'America/Sao_Paulo')::date
+      and cancelado_em is null and not fora_grade_roomservice and (hospede_id is not null or bloqueado or somente_hospedes)
+    group by data, original_base, posicao having count(*) > 1
+  ) then
+    raise exception 'Existem reservas/bloqueios ativos na mesma posição hoje ou em data futura. Consulte data, original_base, posicao, array_agg(id) agrupados com count(*) > 1 e resolva os conflitos antes de aplicar esta migration. Nenhuma reserva foi removida.';
+  end if;
+end $$;
+
+-- A reserva mais antiga de cada posição mantém a proteção do índice. Somente
+-- os excedentes estritamente passados são tolerados no ponto original. Não
+-- desloca linhas nem altera config_dia, para não reescrever a operação passada.
+with ordenadas as (
+  select id, row_number() over (partition by data, original_base, posicao order by criado_em, id) as ordem
+  from public.reservas
+  where data < (now() at time zone 'America/Sao_Paulo')::date
+    and cancelado_em is null and not fora_grade_roomservice
+    and (hospede_id is not null or bloqueado or somente_hospedes)
+)
+update public.reservas r set conflito_posicao_legado = true
+from ordenadas o where o.id = r.id and o.ordem > 1;
+alter table public.reservas enable trigger trg_reservas_atualizado_em;
+comment on column public.reservas.conflito_posicao_legado is
+  'Exceção somente para excedentes de colisões passadas pré-migration. Preserva posições originais. Novos registros e mudanças de alocação/restauração nunca herdam a exceção.';
+
 create function public.classificar_grade_reserva()
 returns trigger language plpgsql security invoker set search_path = '' as $$
 begin
   new.fora_grade_roomservice := coalesce((select tipo = 'roomservice' from public.hospedes where id = new.hospede_id), false);
+  if tg_op = 'INSERT' then
+    new.conflito_posicao_legado := false;
+  else
+    -- Não aceita que um cliente conceda ou prolongue a exceção histórica.
+    new.conflito_posicao_legado := old.conflito_posicao_legado
+      and new.data < (now() at time zone 'America/Sao_Paulo')::date
+      and new.data is not distinct from old.data
+      and new.original_base is not distinct from old.original_base
+      and new.posicao is not distinct from old.posicao
+      and new.hospede_id is not distinct from old.hospede_id
+      and new.cancelado_em is not distinct from old.cancelado_em
+      and new.bloqueado is not distinct from old.bloqueado
+      and new.somente_hospedes is not distinct from old.somente_hospedes;
+  end if;
   return new;
 end $$;
 create trigger trg_classificar_grade_reserva before insert or update on public.reservas
 for each row execute function public.classificar_grade_reserva();
 
-do $$
-begin
-  if exists (
-    select 1 from public.reservas
-    where cancelado_em is null and not fora_grade_roomservice and (hospede_id is not null or bloqueado or somente_hospedes)
-    group by data, original_base, posicao having count(*) > 1
-  ) then
-    raise exception 'Existem reservas/bloqueios ativos na mesma posição. Consulte data, original_base, posicao, array_agg(id) agrupados com count(*) > 1 e resolva os conflitos antes de aplicar esta migration. Nenhuma reserva foi removida.';
-  end if;
-  if exists (select 1 from public.notificacoes where reserva_id is not null group by reserva_id having count(*) > 1) then
-    raise exception 'Existem notificações duplicadas por reserva_id. Revise os IDs e as leituras antes de aplicar esta migration. Nenhuma notificação foi removida.';
-  end if;
-end $$;
-
 create unique index reservas_posicao_ativa_unica
 on public.reservas (data, original_base, posicao)
-where cancelado_em is null and not fora_grade_roomservice and (hospede_id is not null or bloqueado or somente_hospedes);
+where cancelado_em is null and not fora_grade_roomservice and not conflito_posicao_legado
+  and (hospede_id is not null or bloqueado or somente_hospedes);
 
+-- Não compacta nem mescla notificações/leituras antigas. Apenas uma linha por
+-- reserva recebe a chave; as outras continuam visíveis como histórico legado.
+alter table public.notificacoes add column evento_reserva_id uuid;
+with ordenadas as (
+  select id, reserva_id, row_number() over (partition by reserva_id order by criado_em, id) as ordem
+  from public.notificacoes where reserva_id is not null
+)
+update public.notificacoes n set evento_reserva_id = o.reserva_id
+from ordenadas o where o.id = n.id and o.ordem = 1;
 create unique index notificacoes_reserva_unica
-on public.notificacoes (reserva_id) where reserva_id is not null;
+on public.notificacoes (evento_reserva_id) where evento_reserva_id is not null;
+create function public.identificar_evento_notificacao()
+returns trigger language plpgsql security invoker set search_path = '' as $$
+begin
+  if tg_op = 'INSERT' then
+    new.evento_reserva_id := new.reserva_id;
+  elsif new.reserva_id is distinct from old.reserva_id then
+    new.evento_reserva_id := new.reserva_id;
+  else
+    new.evento_reserva_id := old.evento_reserva_id;
+  end if;
+  return new;
+end $$;
+create trigger trg_identificar_evento_notificacao before insert or update on public.notificacoes
+for each row execute function public.identificar_evento_notificacao();
 
 -- Soft-delete deve liberar os bloqueios na mesma transação da reserva.
 -- Também remove vínculos que já não pertencem ao bloco/quantidade atual.
@@ -139,9 +197,11 @@ revoke execute on function public.marcar_notificacao_lida(uuid, text) from publi
 revoke execute on function public.limpar_bloqueios_reserva() from public, anon;
 revoke execute on function public.notificar_nova_reserva() from public, anon;
 revoke execute on function public.classificar_grade_reserva() from public, anon;
+revoke execute on function public.identificar_evento_notificacao() from public, anon;
 grant execute on function public.aplicar_bloqueios_semanais(date) to authenticated;
 grant execute on function public.marcar_notificacao_lida(uuid, text) to authenticated;
 grant execute on function public.limpar_bloqueios_reserva() to authenticated;
 grant execute on function public.notificar_nova_reserva() to authenticated;
 grant execute on function public.classificar_grade_reserva() to authenticated;
+grant execute on function public.identificar_evento_notificacao() to authenticated;
 commit;

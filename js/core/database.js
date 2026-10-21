@@ -110,6 +110,7 @@ class DatabaseService {
             bloqueado: row.bloqueado || false,
             somenteHospedes: row.somente_hospedes || false,
             pagamento: row.pagamento || '',
+            statusRecepcao: row.status_recepcao || 'aguardando',
             menuDegustacao: row.menu_degustacao || false,
             inicioMesa: row.inicio_mesa || null,
             fimMesa: row.fim_mesa || null,
@@ -323,6 +324,24 @@ class DatabaseService {
         const { data, error } = await this.client.from('reservas').update(colunas).eq('id', id).select('id');
         if (error) { if (error.code === '23505') error.semDisponibilidade = true; throw error; }
         if (!data?.length) throw new Error('Reserva não encontrada ou sem permissão para alterar.');
+    }
+
+    async atualizarStatusRecepcao(id, status) {
+        const permitidos = ['aguardando', 'chegou', 'no_show'];
+        if (!permitidos.includes(status)) throw new Error('Status de recepção inválido');
+        await this.atualizarCamposReserva(id, { status_recepcao: status });
+    }
+
+    /** Fecha somente reservas antigas que continuam aguardando, sem atendimento
+     * nem cancelamento. Preserva o fluxo de recepção já presente no site publicado. */
+    async marcarNoShowsAnteriores(dataLimite) {
+        const { data, error } = await this.client.from('reservas')
+            .update({ status_recepcao: 'no_show' })
+            .lt('data', dataLimite).eq('status_recepcao', 'aguardando')
+            .is('cancelado_em', null).is('inicio_mesa', null).is('fim_mesa', null)
+            .not('hospede_id', 'is', null).select('id');
+        if (error) throw error;
+        return data?.length || 0;
     }
 
     async aplicarBloqueiosSemanaisAtomico(dataAlvo) {

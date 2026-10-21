@@ -33,11 +33,19 @@ function _isPortrait() {
     return window.matchMedia('(max-width: 767px) and (orientation: portrait)').matches;
 }
 
+function _atualizarAriaSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    // A rail de desktop/tablet continua acessível mesmo fechada; somente a
+    // sidebar indisponível no portrait mobile fica oculta para leitores de tela.
+    if (sidebar) sidebar.setAttribute('aria-hidden', String(_isPortrait()));
+}
+
 function _abrirSidebar() {
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('overlay');
     if (!sidebar) return;
     sidebar.classList.add('sb-aberta');
+    _atualizarAriaSidebar();
     document.body.classList.add('sidebar-aberta');
     if (overlay) {
         overlay.style.display = 'block';
@@ -52,6 +60,7 @@ function _fecharSidebar() {
     const overlay = document.getElementById('overlay');
     if (!sidebar) return;
     sidebar.classList.remove('sb-aberta');
+    _atualizarAriaSidebar();
     document.body.classList.remove('sidebar-aberta');
     if (overlay) {
         overlay.classList.remove('sb-overlay-ativo');
@@ -158,6 +167,8 @@ function inicializarNavegacao() {
         sidebar.classList.remove('active', 'sb-aberta');
         sidebar.setAttribute('data-menu-aberto', 'false');
     }
+    document.body.classList.remove('sidebar-aberta');
+    _atualizarAriaSidebar();
 
     // Overlay: garante estado inicial e registra listener de fechamento
     const overlay = document.getElementById('overlay');
@@ -184,7 +195,14 @@ function inicializarNavegacao() {
 
     // Fecha ao sair do landscape mobile (rotacionar ou redimensionar para desktop)
     window.addEventListener('resize', () => {
+        // Ao entrar no portrait, a navegação passa para a bottom bar.
+        // Fechar aqui evita deixar a sidebar/overlay presos sobre a planilha.
+        if (_isPortrait() && _sidebarAberta) {
+            _fecharSidebar();
+            return;
+        }
         if (!_isMobile() && _sidebarAberta) _fecharSidebar();
+        _atualizarAriaSidebar();
     });
 
     // Carrega a home (tela padrão)
