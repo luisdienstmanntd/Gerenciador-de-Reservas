@@ -17,9 +17,9 @@ const ICONES = {
 };
 
 const CORES = {
-    sucesso: '#27ae60',
-    aviso:   '#f39c12',
-    erro:    '#e74c3c',
+    sucesso: 'var(--cor-sucesso)',
+    aviso:   'var(--cor-aviso)',
+    erro:    'var(--cor-erro)',
 };
 
 /**
@@ -59,8 +59,8 @@ export function notificar(tipo, mensagem, duracao) {
 
     const toast = document.createElement('div');
     toast.style.cssText = `
-        background: #fff;
-        color: #333;
+        background: var(--card-bg);
+        color: var(--texto);
         border-left: 4px solid ${CORES[tipo]};
         border-radius: 6px;
         padding: 12px 16px;
@@ -74,12 +74,6 @@ export function notificar(tipo, mensagem, duracao) {
         transition: opacity 0.2s ease, transform 0.2s ease;
         word-break: break-word;
     `;
-
-    // Dark mode
-    if (document.body.classList.contains('dark-theme')) {
-        toast.style.background = '#2d2d2d';
-        toast.style.color = '#e0e0e0';
-    }
 
     toast.innerHTML = `
         <span style="font-weight:700;color:${CORES[tipo]};">${ICONES[tipo]} ${tipo.toUpperCase()}</span>
@@ -131,3 +125,4 @@ export function notificarErrosValidacao(erros) {
 
 // Expõe globalmente para uso em onclick inline se necessário
 window.notificar = notificar;
+

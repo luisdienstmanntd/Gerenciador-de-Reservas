@@ -24,7 +24,7 @@
 
 /* Cabeçalho da Tabela (Sticky Corrigido) */
 .tabela-reservas thead th {
-  background: var(--primaria) !important;
+  background: var(--acao-bg) !important;
   color: #fff !important;
   padding: 10px 5px;
   font-size: 0.8rem;
@@ -133,10 +133,10 @@
   background-color: var(--hover-line);
 }
 .reserva-vazia {
-  color: var(--menu);
+  color: var(--texto-suave);
   font-weight: 600;
   border-left: 4px dashed #ccc;
-  opacity: 0.6;
+  opacity: 1;
   font-size: 0.8rem;
   padding-left: 15px !important;
 }
@@ -194,13 +194,13 @@ body.dark-theme .reserva-somente-hospedes {
   line-height: 1;
 }
 .timer-finalizado {
-  color: #7f8c8d !important;
+  color: var(--texto-suave) !important;
 }
 .pg-confirmado {
-  color: #27ae60;
+  color: var(--cor-sucesso);
 }
 .pg-pendente {
-  color: #c0392b;
+  color: var(--cor-erro);
 }
 .icone-chegada {
   display: inline-flex;
@@ -219,16 +219,16 @@ body.dark-theme .reserva-somente-hospedes {
   stroke-linecap: round;
   stroke-linejoin: round;
 }
-.icone-chegada--aguardando { color: #9a7518; }
-.icone-chegada--chegou { color: #287a4b; }
-.icone-chegada--no_show { color: #a13b35; }
+.icone-chegada--aguardando { color: var(--cor-aviso); }
+.icone-chegada--chegou { color: var(--cor-sucesso); }
+.icone-chegada--no_show { color: var(--cor-erro); }
 .status-recepcao {
   font-size: 0.78rem;
   letter-spacing: 0.03em;
 }
-.status-recepcao--chegou { color: #287a4b; }
-.status-recepcao--no_show { color: #a13b35; }
-.status-recepcao--aguardando { color: #80651c; }
+.status-recepcao--chegou { color: var(--cor-sucesso); }
+.status-recepcao--no_show { color: var(--cor-erro); }
+.status-recepcao--aguardando { color: var(--cor-aviso); }
 .status-recepcao-acoes { margin-top: 2px; }
 .campo-sinal {
   margin-top: 10px;
@@ -236,21 +236,21 @@ body.dark-theme .reserva-somente-hospedes {
 .campo-sinal small {
   display: block;
   margin-top: 4px;
-  color: var(--texto-secundario, #6b746d);
+  color: var(--texto-suave);
   font-size: 0.72rem;
 }
 body.dark-theme .pg-confirmado {
-  color: #2ecc71;
+  color: var(--cor-sucesso);
 }
 body.dark-theme .pg-pendente {
-  color: #e74c3c;
+  color: var(--cor-erro);
 }
 
 .obs-exibicao {
   display: inline-block;
   font-size: 0.65rem;
-  background: #fff3cd;
-  color: #856404;
+  background: var(--aviso-bg);
+  color: var(--cor-aviso);
   padding: 1px 4px;
   border-radius: 3px;
   margin-left: 5px;
@@ -260,8 +260,8 @@ body.dark-theme .pg-pendente {
   display: inline-block;
   font-size: 0.62rem;
   font-weight: 800;
-  background: #4a1a1a;
-  color: #d4a373;
+  background: var(--accent-soft);
+  color: var(--primaria);
   padding: 1px 5px;
   border-radius: 3px;
   margin-left: 5px;
@@ -271,15 +271,15 @@ body.dark-theme .pg-pendente {
 
 /* ✅ Filtro "Cancelamentos" — linha histórica, clicável pra permitir desfazer cancelamento */
 .linha-cancelada {
-  opacity: 0.6;
+  opacity: 1;
   cursor: pointer;
 }
 .badge-cancelada {
   display: inline-block;
   font-size: 0.62rem;
   font-weight: 800;
-  background: #4a1a1a;
-  color: #e74c3c;
+  background: var(--erro-bg);
+  color: var(--cor-erro);
   padding: 1px 5px;
   border-radius: 3px;
   margin-right: 5px;

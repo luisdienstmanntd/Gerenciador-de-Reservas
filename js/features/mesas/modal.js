@@ -80,12 +80,14 @@ export class MesaModal {
                 btn.disabled = true;
                 btn.style.opacity = '0.3';
                 btn.style.cursor = 'not-allowed';
-                btn.style.background = '#95a5a6';
+                btn.style.background = 'var(--accent-soft)';
+                btn.style.color = 'var(--texto-suave)';
             } else {
                 btn.disabled = false;
                 btn.style.opacity = '1';
                 btn.style.cursor = 'pointer';
-                btn.style.background = "var(--primaria)";
+                btn.style.removeProperty('background');
+                btn.style.removeProperty('color');
             }
         });
     }

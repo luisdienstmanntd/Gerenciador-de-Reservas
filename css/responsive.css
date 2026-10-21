@@ -399,7 +399,7 @@
     gap: 3px;
     background: transparent;
     border: none;
-    color: rgba(255,255,255,0.5);
+    color: var(--sidebar-texto);
     font-size: 0.6rem;
     font-weight: 600;
     letter-spacing: 0.03em;
@@ -418,9 +418,11 @@
 
 #bottom-nav .bn-item.active,
 #bottom-nav .bn-item:active {
-    color: var(--primaria, #6c63ff);
+    color: var(--acao-texto);
+    background: var(--acao-bg);
 }
 
 body.dark-theme #bottom-nav {
-    background: #000;
+    background: var(--sidebar-bg);
 }
+

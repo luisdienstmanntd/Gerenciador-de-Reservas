@@ -5,58 +5,13 @@
  * usados pelos módulos JS permanecem intactos. Isso permite validar a interface
  * nova sem colocar os fluxos de reserva em risco.
  */
-:root {
-  --primaria: #6a5644;
-  --secundaria: #a58d78;
-  --sidebar-bg: #40352e;
-  --fundo: #f8f7f5;
-  --card-bg: #ffffff;
-  --border: #ded7cf;
-  --texto: #332e2b;
-  --texto-suave: #706761;
-  --shadow: rgba(64, 53, 46, 0.12);
-  --hover-line: #f1ede9;
-  --input-bg: #ffffff;
-  --vermelho: #a34d42;
-  --roomservice: #806b8d;
-  --accent-soft: #f1ece7;
-  --cor-hospede: #7896a3;
-  --cor-externo: #b9895b;
-  --cor-passante: #7a9a80;
-  --cor-roomservice: #8f7a9f;
-  --cor-criancas: #b18d67;
-  --cor-sucesso: #789878;
-  --cor-aviso: #b9895b;
-  --cor-erro: #a45b52;
-  --cor-mesa: #6a5644;
-}
+/* Cores e variantes de tema centralizadas em base.css. */
 
-body,
-body.dark-theme {
+body {
   font-family: Raleway, ui-sans-serif, system-ui, sans-serif;
-  background: var(--fundo) !important;
-  color: var(--texto) !important;
-  /* Permite rolagem e zoom por pinça em qualquer área da aplicação. */
+  background: var(--fundo);
+  color: var(--texto);
   touch-action: pan-x pan-y pinch-zoom;
-}
-
-body.dark-theme {
-  --fundo: #211d1a;
-  --card-bg: #2e2824;
-  --border: #51463e;
-  --texto: #f4efea;
-  --texto-suave: #c8bbb0;
-  --input-bg: #382f2a;
-  --accent-soft: #40352e;
-  --cor-hospede: #9ab5c0;
-  --cor-externo: #d0a77a;
-  --cor-passante: #9cbea0;
-  --cor-roomservice: #b09bc0;
-  --cor-criancas: #d0b18a;
-  --cor-sucesso: #9cbe9c;
-  --cor-aviso: #d0a77a;
-  --cor-erro: #d18b81;
-  --cor-mesa: #d0a77a;
 }
 
 button,
@@ -68,10 +23,12 @@ button { font-family: Montserrat, Raleway, sans-serif; }
 h1, h2, h3, h4, .home-titulo, .modal-content h3 { font-family: Marcellus, Georgia, serif; font-weight: 400; }
 
 button:focus-visible,
+a:focus-visible,
+[tabindex]:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  outline: 3px solid rgba(165, 141, 120, .5);
+  outline: 3px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
@@ -97,7 +54,7 @@ textarea:focus-visible {
 .sidebar.sb-aberta .sb-nav { padding: 18px 14px; gap: 4px; }
 .nav-item,
 .sidebar:hover .nav-item,
-.sidebar.sb-aberta .nav-item { padding: 12px 13px; min-height: 44px; color: rgba(255,255,255,.68); }
+.sidebar.sb-aberta .nav-item { padding: 12px 13px; min-height: 44px; color: var(--sidebar-texto); }
 .nav-item.active { background: #6a5644 !important; color: #fff !important; }
 .nav-item:hover { background: rgba(255,255,255,.1); color: #fff; }
 .sb-footer,
@@ -132,7 +89,7 @@ textarea:focus-visible {
 .home-kpi-card:nth-child(6) { --kpi-color: var(--cor-criancas) !important; }
 .home-kpi-card:nth-child(7) { --kpi-color: var(--secundaria) !important; }
 .home-kpi-card:nth-child(8) { --kpi-color: var(--cor-erro) !important; }
-.home-kpi-icon { background: var(--accent-soft); color: var(--primaria); }
+.home-kpi-icon { background: var(--accent-soft); color: var(--cor-mesa); }
 .home-kpi-label,
 .home-card-titulo,
 .kpi-card h4 { color: var(--texto-suave); opacity: 1; letter-spacing: .08em; }
@@ -163,6 +120,7 @@ body.dark-theme .top-bar-unica { background: rgba(46,40,36,.96) !important; }
 .mini-card { background: var(--accent-soft); border-left-width: 3px; border-radius: 4px; min-width: 88px; padding: 7px 12px; }
 .mini-card span { color: var(--texto-suave); opacity: 1; font-size: .62rem; }
 .mini-card b { color: var(--texto); font-size: 1.05rem; }
+.mini-card[aria-pressed="true"] { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 .mini-card.hosp { border-left-color: var(--cor-hospede) !important; }
 .mini-card.ext { border-left-color: var(--cor-externo) !important; }
 .mini-card.pass { border-left-color: var(--cor-passante) !important; }
@@ -170,7 +128,7 @@ body.dark-theme .top-bar-unica { background: rgba(46,40,36,.96) !important; }
 .mini-card[data-filtro="roomservice"] { border-left-color: var(--cor-roomservice) !important; }
 .mini-card[data-filtro="menuDegustacao"] { border-left-color: var(--secundaria) !important; }
 .mini-card[data-filtro="cancelados"] { border-left-color: var(--cor-erro) !important; }
-.filtro-data { border: 1px solid var(--border); border-radius: 10px; background: var(--card-bg); min-height: 40px; }
+.filtro-data { border: 1px solid var(--input-border); border-radius: 10px; background: var(--card-bg); color: var(--texto); min-height: 40px; }
 .table-container { padding: 22px 24px 36px; }
 .tabela-reservas { border-collapse: separate; border-spacing: 0; }
 .tabela-reservas thead th { color: var(--texto-suave); background: transparent; border: 0; font-size: .68rem; letter-spacing: .08em; }
@@ -208,8 +166,8 @@ body.dark-theme .top-bar-unica { background: rgba(46,40,36,.96) !important; }
 #tela-configuracoes .config-linha,
 #tela-roomservice > div[style*="background"],
 #tela-logs > div[style*="background"] { padding: 22px !important; }
-.btn-main { border-radius: 3px !important; min-height: 40px; background: var(--primaria); letter-spacing: .06em; text-transform: uppercase; }
-.btn-main:hover { filter: brightness(1.08); }
+.btn-main { border-radius: 3px !important; min-height: 40px; letter-spacing: .06em; text-transform: uppercase; }
+
 .modal-content { border: 1px solid var(--border); border-radius: 18px; box-shadow: 0 24px 70px rgba(20,30,23,.22); }
 
 /* Números: mesma largura por dígito melhora comparação e leitura na grade. */
@@ -256,13 +214,15 @@ input[type="number"] {
 .auth-recovery-panel p,
 .auth-recovery-card p { min-height: 18px; margin: 0; font-size: .78rem; line-height: 1.4; text-align: center; color: rgba(255,255,255,.72); }
 .auth-recovery-panel p.is-error,
-.auth-recovery-card p.is-error { color: #ff9d92; }
+.auth-recovery-card p.is-error { color: #ffb5aa; }
 .auth-recovery-panel p.is-success,
-.auth-recovery-card p.is-success { color: #a8ddb1; }
+.auth-recovery-card p.is-success { color: #b7e4bf; }
 .auth-recovery-overlay { position: fixed; inset: 0; z-index: 10001; display: grid; place-items: center; padding: 24px; background: rgba(14, 24, 17, .82); }
 .auth-recovery-card { width: min(390px, 100%); display: flex; flex-direction: column; gap: 10px; padding: 28px; border: 1px solid var(--border); border-radius: 18px; background: var(--card-bg); color: var(--texto); box-shadow: 0 24px 70px rgba(20,30,23,.28); }
 .auth-recovery-card h2 { margin: 0; letter-spacing: -.03em; }
 .auth-recovery-card p { color: var(--texto-suave); text-align: left; }
+.auth-recovery-card p.is-error { color: var(--cor-erro); }
+.auth-recovery-card p.is-success { color: var(--cor-sucesso); }
 .auth-recovery-card label { color: var(--texto-suave); font-size: .78rem; font-weight: 700; }
 .auth-recovery-card input { border-color: var(--border); background: var(--input-bg); color: var(--texto); }
 .auth-eyebrow { color: var(--secundaria); font-size: .7rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
@@ -407,4 +367,32 @@ input[type="number"] {
 .app-fullscreen #tela-reservas .cards-ticker-pausado .cards-ticker-track,
 .app-fullscreen #tela-reservas .cards-ticker-ativo:hover .cards-ticker-track {
   animation-play-state: paused;
+}
+/* Classes compartilhadas pelos componentes gerados em HTML e JavaScript. */
+.ui-surface-card { background: var(--card-bg); color: var(--texto); border: 1px solid var(--border); }
+.ui-text-muted { color: var(--texto-suave); }
+.ui-semantic-success { color: var(--cor-sucesso); }
+.ui-semantic-warning { color: var(--cor-aviso); }
+.ui-semantic-error { color: var(--cor-erro); }
+.ui-semantic-info { color: var(--cor-info); }
+.ui-semantic-roomservice { color: var(--cor-roomservice); }
+.ui-status-badge { background: var(--accent-soft); color: var(--texto-suave); }
+.ui-status-badge.is-success { background: var(--sucesso-bg); color: var(--cor-sucesso); }
+.ui-status-badge.is-warning { background: var(--aviso-bg); color: var(--cor-aviso); }
+.ui-status-badge.is-error { background: var(--erro-bg); color: var(--cor-erro); }
+.ui-status-badge.is-info { background: var(--info-bg); color: var(--cor-info); }
+.ui-status-badge.is-roomservice { background: var(--roomservice-bg); color: var(--cor-roomservice); }
+.ui-action-primary { background: var(--acao-bg); color: var(--acao-texto); border-color: var(--acao-bg); }
+.ui-action-secondary { background: var(--card-bg); color: var(--texto); border-color: var(--input-border); }
+.ui-action-danger { background: var(--erro-bg); color: var(--cor-erro); border-color: var(--cor-erro); }
+.btn-main:not(.cancel-btn):not(.delete-btn):hover,
+.ui-action-primary:hover { background: var(--acao-hover); }
+.cancel-btn:hover, .ui-action-secondary:hover { background: var(--hover-line); }
+.delete-btn:hover, .ui-action-danger:hover { border-color: var(--cor-erro); }
+.auth-recovery-card input { border-color: var(--input-border); }
+input::placeholder, textarea::placeholder { color: var(--texto-suave); opacity: 1; }
+.auth-recovery-panel input { border-color: #a69485; }
+#telaLogin input::placeholder, .auth-recovery-panel input::placeholder { color: #c8bbb0; opacity: 1; }
+@media (prefers-reduced-motion: reduce) {
+  .timer-verde, .timer-amarelo, .timer-vermelho, .timer-piscante { animation: none !important; }
 }

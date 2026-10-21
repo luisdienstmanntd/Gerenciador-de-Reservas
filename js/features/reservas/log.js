@@ -99,12 +99,12 @@ export function _resumir(dados) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const CONFIG_ACAO = {
-    CRIAR:       { cor: '#27ae60', label: 'CRIADO',       icone: _iconeCheck()   },
-    EDITAR:      { cor: '#f39c12', label: 'EDITADO',      icone: _iconeLapis()   },
-    EXCLUIR:     { cor: '#e74c3c', label: 'EXCLUÍDO',     icone: _iconeLixeira() },
-    DESBLOQUEAR: { cor: '#3498db', label: 'DESBLOQUEADO', icone: _iconeCadeado() },
-    CANCELAR:    { cor: '#8e44ad', label: 'CANCELADO',    icone: _iconeLixeira() },
-    RESTAURAR:   { cor: '#27ae60', label: 'RESTAURADO',   icone: _iconeCheck()   },
+    CRIAR:       { cor: 'var(--cor-sucesso)', label: 'CRIADO',       icone: _iconeCheck()   },
+    EDITAR:      { cor: 'var(--cor-aviso)', label: 'EDITADO',      icone: _iconeLapis()   },
+    EXCLUIR:     { cor: 'var(--cor-erro)', label: 'EXCLUÍDO',     icone: _iconeLixeira() },
+    DESBLOQUEAR: { cor: 'var(--cor-info)', label: 'DESBLOQUEADO', icone: _iconeCadeado() },
+    CANCELAR:    { cor: 'var(--roomservice)', label: 'CANCELADO',    icone: _iconeLixeira() },
+    RESTAURAR:   { cor: 'var(--cor-sucesso)', label: 'RESTAURADO',   icone: _iconeCheck()   },
 };
 
 const LABELS_CAMPOS = {
@@ -137,24 +137,24 @@ function _injetarCSS() {
     style.textContent = [
         '.tl-wrapper{position:relative;padding:4px 0 24px}',
         '.tl-wrapper::before{content:"";position:absolute;left:27px;top:0;bottom:0;width:2px;background:linear-gradient(to bottom,transparent,rgba(0,0,0,.1) 5%,rgba(0,0,0,.1) 95%,transparent)}',
-        'body.dark-mode .tl-wrapper::before{background:linear-gradient(to bottom,transparent,rgba(255,255,255,.1) 5%,rgba(255,255,255,.1) 95%,transparent)}',
+        'body.dark-theme .tl-wrapper::before{background:linear-gradient(to bottom,transparent,rgba(255,255,255,.1) 5%,rgba(255,255,255,.1) 95%,transparent)}',
 
         '.tl-hora-sep{display:flex;align-items:center;gap:10px;margin:20px 0 10px;padding-left:56px;position:relative;z-index:1}',
         '.tl-hora-sep::before{content:"";position:absolute;left:22px;top:50%;transform:translateY(-50%);width:10px;height:10px;border-radius:50%;background:var(--fundo,#e8ebef);border:2px solid rgba(0,0,0,.18)}',
         '.tl-hora-sep::after{content:"";flex:1;height:1px;background:rgba(0,0,0,.07)}',
-        'body.dark-mode .tl-hora-sep::before{background:#1e1e1e;border-color:rgba(255,255,255,.22)}',
-        'body.dark-mode .tl-hora-sep::after{background:rgba(255,255,255,.07)}',
-        '.tl-hora-sep span{font-size:.7rem;font-weight:800;letter-spacing:2px;opacity:.4;text-transform:uppercase;white-space:nowrap}',
+        'body.dark-theme .tl-hora-sep::before{background:var(--card-bg);border-color:rgba(255,255,255,.22)}',
+        'body.dark-theme .tl-hora-sep::after{background:rgba(255,255,255,.07)}',
+        '.tl-hora-sep span{font-size:.7rem;font-weight:800;letter-spacing:2px;color:var(--texto-suave);opacity:1;text-transform:uppercase;white-space:nowrap}',
 
         '.tl-item{display:flex;align-items:flex-start;gap:13px;margin-bottom:10px;position:relative}',
 
-        '.tl-icon{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;position:relative;z-index:1;box-shadow:0 2px 8px rgba(0,0,0,.22);color:#fff;margin-top:2px}',
+        '.tl-icon{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;position:relative;z-index:1;box-shadow:0 2px 8px rgba(0,0,0,.22);color:var(--card-bg);margin-top:2px}',
         '.tl-icon.tl-clicavel{cursor:pointer;transition:transform .12s ease,box-shadow .15s ease}',
         '.tl-icon.tl-clicavel:hover{transform:scale(1.08);box-shadow:0 4px 14px rgba(0,0,0,.32)}',
         '.tl-icon.tl-clicavel:active{transform:scale(0.96)}',
 
         '.tl-card{flex:1;min-width:0;background:var(--card-bg,#fff);border-radius:10px;border:1px solid rgba(0,0,0,.07);overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.07);transition:box-shadow .15s,transform .1s}',
-        'body.dark-mode .tl-card{border-color:rgba(255,255,255,.06)}',
+        'body.dark-theme .tl-card{border-color:rgba(255,255,255,.06)}',
         '.tl-card.tl-clicavel{cursor:pointer}',
         '.tl-card.tl-clicavel:hover{box-shadow:0 4px 16px rgba(0,0,0,.14);transform:translateY(-1px)}',
         '.tl-card.tl-clicavel:active{transform:translateY(0)}',
@@ -163,39 +163,39 @@ function _injetarCSS() {
         '.tl-card-corpo{padding:11px 14px 10px}',
 
         '.tl-card-principal{display:flex;align-items:center;gap:9px;flex-wrap:nowrap}',
-        '.tl-badge{font-size:.58rem;font-weight:900;letter-spacing:1.2px;padding:2px 9px;border-radius:20px;color:#fff;white-space:nowrap;flex-shrink:0}',
+        '.tl-badge{font-size:.58rem;font-weight:900;letter-spacing:1.2px;padding:2px 9px;border-radius:20px;color:var(--card-bg);white-space:nowrap;flex-shrink:0}',
         '.tl-nome{font-size:.95rem;font-weight:800;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
-        '.tl-meta{display:flex;align-items:center;gap:10px;flex-shrink:0;opacity:.45;font-size:.71rem}',
+        '.tl-meta{display:flex;align-items:center;gap:10px;flex-shrink:0;color:var(--texto-suave);opacity:1;font-size:.71rem}',
         '.tl-meta-item{display:flex;align-items:center;gap:3px;white-space:nowrap}',
 
-        '.tl-detalhes{display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px;margin-top:5px;font-size:.76rem;opacity:.6}',
+        '.tl-detalhes{display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px;margin-top:5px;font-size:.76rem;color:var(--texto-suave);opacity:1}',
         '.tl-sep{opacity:.3;font-size:.6rem}',
 
-        '.tl-dica{margin-top:6px;font-size:.68rem;opacity:.35;display:flex;align-items:center;gap:4px}',
+        '.tl-dica{margin-top:6px;font-size:.68rem;color:var(--texto-suave);opacity:1;display:flex;align-items:center;gap:4px}',
 
         '.tl-diff{display:none;border-top:1px solid rgba(0,0,0,.07);padding:14px}',
-        'body.dark-mode .tl-diff{border-color:rgba(255,255,255,.07)}',
+        'body.dark-theme .tl-diff{border-color:rgba(255,255,255,.07)}',
         '.tl-diff.aberto{display:block}',
 
-        '.tl-diff-cabecalho{font-size:.67rem;font-weight:900;letter-spacing:1.5px;opacity:.4;text-transform:uppercase;margin-bottom:10px}',
+        '.tl-diff-cabecalho{font-size:.67rem;font-weight:900;letter-spacing:1.5px;color:var(--texto-suave);opacity:1;text-transform:uppercase;margin-bottom:10px}',
 
         '.tl-diff-tabela{width:100%;border-collapse:collapse;font-size:.8rem}',
-        '.tl-diff-tabela th{font-size:.63rem;font-weight:900;letter-spacing:1px;text-transform:uppercase;padding:4px 8px 7px;text-align:left;border-bottom:2px solid rgba(0,0,0,.08);opacity:.5}',
-        'body.dark-mode .tl-diff-tabela th{border-color:rgba(255,255,255,.08)}',
+        '.tl-diff-tabela th{font-size:.63rem;font-weight:900;letter-spacing:1px;text-transform:uppercase;padding:4px 8px 7px;text-align:left;border-bottom:2px solid rgba(0,0,0,.08);opacity:1}',
+        'body.dark-theme .tl-diff-tabela th{border-color:rgba(255,255,255,.08)}',
         '.tl-diff-tabela td{padding:5px 8px;border-bottom:1px solid rgba(0,0,0,.04);vertical-align:middle}',
-        'body.dark-mode .tl-diff-tabela td{border-color:rgba(255,255,255,.04)}',
+        'body.dark-theme .tl-diff-tabela td{border-color:rgba(255,255,255,.04)}',
         '.tl-diff-tabela tr:last-child td{border-bottom:none}',
-        '.tl-diff-tabela .col-campo{opacity:.5;font-size:.74rem;width:80px;white-space:nowrap}',
-        '.tl-diff-tabela .col-antes{color:#e74c3c;text-decoration:line-through;opacity:.8}',
-        '.tl-diff-tabela .col-depois{color:#27ae60;font-weight:700}',
-        '.tl-diff-tabela tr.linha-alterada{background:rgba(243,156,18,.06)}',
-        '.tl-diff-tabela tr.linha-igual td{opacity:.38}',
+        '.tl-diff-tabela .col-campo{opacity:1;font-size:.74rem;width:80px;white-space:nowrap}',
+        '.tl-diff-tabela .col-antes{color:var(--cor-erro);text-decoration:line-through;opacity:1}',
+        '.tl-diff-tabela .col-depois{color:var(--cor-sucesso);font-weight:700}',
+        '.tl-diff-tabela tr.linha-alterada{background:var(--aviso-bg)}',
+        '.tl-diff-tabela tr.linha-igual td{color:var(--texto-suave);opacity:1}',
 
-        '.tl-btn-fechar{margin-top:12px;background:none;border:1px solid rgba(0,0,0,.13);border-radius:6px;padding:5px 13px;font-size:.72rem;cursor:pointer;opacity:.55;display:inline-flex;align-items:center;gap:5px;transition:opacity .1s}',
-        'body.dark-mode .tl-btn-fechar{border-color:rgba(255,255,255,.15);color:inherit}',
+        '.tl-btn-fechar{margin-top:12px;background:var(--card-bg);border:1px solid var(--border);border-radius:6px;padding:5px 13px;font-size:.72rem;cursor:pointer;opacity:1;color:var(--texto);display:inline-flex;align-items:center;gap:5px;transition:opacity .1s}',
+        'body.dark-theme .tl-btn-fechar{border-color:rgba(255,255,255,.15);color:inherit}',
         '.tl-btn-fechar:hover{opacity:1}',
 
-        '.tl-vazio{text-align:center;padding:60px 20px;opacity:.38}',
+        '.tl-vazio{text-align:center;padding:60px 20px;color:var(--texto-suave);opacity:1}',
         '.tl-vazio-icone{font-size:2.8rem;margin-bottom:12px}',
         '.tl-vazio-texto{font-size:.9rem;font-weight:600}',
 
@@ -231,7 +231,7 @@ export async function carregarLogs() {
     const container = document.getElementById('listaLogs');
     if (!container) return;
 
-    container.innerHTML = '<div style="text-align:center;padding:50px;opacity:.45;"><div style="font-size:1.6rem;margin-bottom:10px;">⏳</div><div style="font-size:.82rem;font-weight:600;letter-spacing:1px;">CARREGANDO...</div></div>';
+    container.innerHTML = '<div style="text-align:center;padding:50px;color:var(--texto-suave);opacity:1;"><div style="font-size:1.6rem;margin-bottom:10px;">⏳</div><div style="font-size:.82rem;font-weight:600;letter-spacing:1px;">CARREGANDO...</div></div>';
 
     const inputData = document.getElementById('dataFiltroLog');
     const data = inputData?.value || _hojeLocal();
@@ -266,7 +266,7 @@ export async function carregarLogs() {
     } catch (e) {
         console.error('❌ Erro ao carregar logs:', e);
         notificarErro('Erro ao carregar histórico de alterações.');
-        container.innerHTML = '<p style="color:#e74c3c;text-align:center;padding:40px;">Erro ao carregar logs</p>';
+        container.innerHTML = '<p style="color:var(--cor-erro);text-align:center;padding:40px;">Erro ao carregar logs</p>';
     }
 }
 
@@ -291,7 +291,7 @@ export async function buscarLogsPorNome(nome) {
         return;
     }
 
-    container.innerHTML = '<div style="text-align:center;padding:50px;opacity:.45;"><div style="font-size:1.6rem;margin-bottom:10px;">⏳</div><div style="font-size:.82rem;font-weight:600;letter-spacing:1px;">BUSCANDO...</div></div>';
+    container.innerHTML = '<div style="text-align:center;padding:50px;color:var(--texto-suave);opacity:1;"><div style="font-size:1.6rem;margin-bottom:10px;">⏳</div><div style="font-size:.82rem;font-weight:600;letter-spacing:1px;">BUSCANDO...</div></div>';
 
     try {
         await db.aguardarInicializacao();
@@ -320,7 +320,7 @@ export async function buscarLogsPorNome(nome) {
     } catch (e) {
         console.error('❌ Erro ao buscar logs por nome:', e);
         notificarErro('Erro ao buscar histórico de alterações.');
-        container.innerHTML = '<p style="color:#e74c3c;text-align:center;padding:40px;">Erro ao buscar logs</p>';
+        container.innerHTML = '<p style="color:var(--cor-erro);text-align:center;padding:40px;">Erro ao buscar logs</p>';
     }
 }
 
@@ -359,7 +359,7 @@ function _renderizarTimeline(logs, opcoes) {
 }
 
 function _renderizarItem(log) {
-    var cfg     = CONFIG_ACAO[log.acao] || { cor: '#999', label: log.acao, icone: '' };
+    var cfg     = CONFIG_ACAO[log.acao] || { cor: 'var(--texto-suave)', label: log.acao, icone: '' };
     var dt      = new Date(log.timestamp);
     var horaSec = dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     var reserva = log.dadosDepois || log.dadosAntes || {};
@@ -408,12 +408,12 @@ function _renderizarItem(log) {
 
     return (
         '<div class="tl-item">' +
-            '<div class="tl-icon ' + clicavelClass + '" style="background:' + cfg.cor + ';" ' + onclickAttr + '>' + cfg.icone + '</div>' +
+            '<div class="tl-icon ' + clicavelClass + '" style="background:var(--accent-soft);color:' + cfg.cor + ';" ' + onclickAttr + '>' + cfg.icone + '</div>' +
             '<div id="log-' + log.id + '" class="tl-card ' + clicavelClass + '" ' + onclickAttr + '>' +
                 '<div class="tl-card-topo" style="background:' + cfg.cor + ';"></div>' +
                 '<div class="tl-card-corpo">' +
                     '<div class="tl-card-principal">' +
-                        '<span class="tl-badge" style="background:' + cfg.cor + ';">' + cfg.label + '</span>' +
+                        '<span class="tl-badge" style="background:var(--accent-soft);color:' + cfg.cor + ';">' + cfg.label + '</span>' +
                         '<span class="tl-nome">' + nome + '</span>' +
                         '<div class="tl-meta">' +
                             '<span class="tl-meta-item">' + _iconeRelogio() + ' ' + horaSec + '</span>' +
@@ -466,8 +466,8 @@ function _renderizarDiff(log, camposAlterados) {
             '<table class="tl-diff-tabela">' +
                 '<thead><tr>' +
                     '<th>Campo</th>' +
-                    '<th style="color:#e74c3c;">Antes</th>' +
-                    '<th style="color:#27ae60;">Depois</th>' +
+                    '<th style="color:var(--cor-erro);">Antes</th>' +
+                    '<th style="color:var(--cor-sucesso);">Depois</th>' +
                 '</tr></thead>' +
                 '<tbody>' + linhas + '</tbody>' +
             '</table>' +
@@ -526,7 +526,7 @@ window.destacarLogPorReservaId = async function(reservaId) {
     const container = document.getElementById('listaLogs');
     if (!container) return;
 
-    container.innerHTML = '<div style="text-align:center;padding:50px;opacity:.45;"><div style="font-size:1.6rem;margin-bottom:10px;">⏳</div><div style="font-size:.82rem;font-weight:600;letter-spacing:1px;">CARREGANDO...</div></div>';
+    container.innerHTML = '<div style="text-align:center;padding:50px;color:var(--texto-suave);opacity:1;"><div style="font-size:1.6rem;margin-bottom:10px;">⏳</div><div style="font-size:.82rem;font-weight:600;letter-spacing:1px;">CARREGANDO...</div></div>';
 
     try {
         await db.aguardarInicializacao();

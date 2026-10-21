@@ -105,7 +105,7 @@ body.dark-theme #textoHorario {
   margin-top: 10px;
   display: block;
   color: var(--texto);
-  opacity: 0.8;
+  opacity: 1;
 }
 #formReserva input:not([type="checkbox"]),
 #formReserva select,
@@ -113,7 +113,7 @@ body.dark-theme #textoHorario {
   width: 100%;
   padding: 10px;
   margin-top: 5px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--input-border);
   border-radius: 8px;
   background: var(--input-bg);
   color: var(--texto);
@@ -207,8 +207,8 @@ body.dark-theme .time-separator {
   text-transform: uppercase;
   font-size: 0.85rem;
   letter-spacing: 0.3px;
-  background: var(--card-bg);
-  color: var(--texto);
+  background: var(--acao-bg);
+  color: var(--acao-texto);
   transition: transform 0.12s ease, box-shadow 0.15s ease, border-color 0.15s ease, background 0.15s ease;
 }
 
@@ -222,9 +222,9 @@ body.dark-theme .time-separator {
 }
 
 .save-btn {
-  background: rgba(39, 174, 96, 0.1);
-  border-color: var(--menu);
-  color: var(--menu);
+  background: var(--acao-bg);
+  border-color: var(--acao-bg);
+  color: var(--acao-texto);
 }
 .cancel-btn {
   background: transparent;
@@ -232,7 +232,7 @@ body.dark-theme .time-separator {
   color: var(--texto);
 }
 .delete-btn {
-  background: rgba(231, 76, 60, 0.1);
+  background: var(--erro-bg);
   border-color: var(--vermelho);
   color: var(--vermelho);
   grid-column: span 2;
@@ -245,11 +245,11 @@ body.dark-theme .time-separator {
 /* Botões específicos do modal de mesa */
 #btnIniciarAtendimento {
   grid-column: span 1;
-  background: var(--menu);
+  background: var(--card-bg);
 }
 #btnTrocarMesa {
   grid-column: span 1;
-  background: #f39c12;
+  background: var(--card-bg);
 }
 #btnCancelarMesa {
   grid-column: span 1;
@@ -327,7 +327,7 @@ body.dark-theme .time-separator {
   border-left: 3px solid var(--acento);
 }
 .resumo-btn--roxo {
-  --acento: #8e44ad;
+  --acento: var(--cor-roomservice);
   border-left: 3px solid var(--acento);
 }
 .resumo-btn--danger {
@@ -337,8 +337,8 @@ body.dark-theme .time-separator {
 }
 .resumo-btn--danger-forte {
   --acento: var(--vermelho);
-  background: rgba(231, 76, 60, 0.1);
-  border-color: rgba(231, 76, 60, 0.35);
+  background: var(--erro-bg);
+  border-color: var(--cor-erro);
   color: var(--acento);
 }
 .resumo-btn--ghost {
@@ -360,7 +360,7 @@ body.dark-theme .time-separator {
   font-weight: 700;
   letter-spacing: 0.3px;
   color: var(--vermelho);
-  background: rgba(231, 76, 60, 0.12);
+  background: var(--erro-bg);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -372,6 +372,7 @@ body.dark-theme .time-separator {
   font-weight: 700;
 }
 .resumo-aviso--neutro {
-  color: #7f8c8d;
-  background: rgba(127, 140, 141, 0.15);
+  color: var(--texto-suave);
+  background: var(--accent-soft);
 }
+

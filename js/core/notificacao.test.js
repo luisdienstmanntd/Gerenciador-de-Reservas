@@ -36,8 +36,8 @@ describe('notificar', () => {
     it('usa a cor de acento do tipo na borda esquerda', () => {
         const sucesso = notificar('sucesso', 'ok');
         const erro = notificar('erro', 'falhou');
-        expect(sucesso.style.borderLeft).toContain('rgb(39, 174, 96)');   // #27ae60
-        expect(erro.style.borderLeft).toContain('rgb(231, 76, 60)');      // #e74c3c
+        expect(sucesso.style.borderLeft).toContain('var(--cor-sucesso)');
+        expect(erro.style.borderLeft).toContain('var(--cor-erro)');
     });
 
     it('remove o toast sozinho após a duração padrão do tipo', () => {
@@ -59,7 +59,8 @@ describe('notificar', () => {
     it('adapta as cores no dark mode', () => {
         document.body.classList.add('dark-theme');
         const toast = notificar('sucesso', 'escuro');
-        expect(toast.style.background).toContain('rgb(45, 45, 45)'); // #2d2d2d
+        expect(toast.style.background).toBe('var(--card-bg)');
+        expect(toast.style.color).toBe('var(--texto)');
     });
 });
 
@@ -82,3 +83,4 @@ describe('notificarErrosValidacao', () => {
         expect(document.contains(toast)).toBe(true); // duração 0 — só fecha ao clicar
     });
 });
+

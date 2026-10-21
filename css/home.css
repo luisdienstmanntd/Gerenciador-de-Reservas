@@ -27,7 +27,7 @@
   margin: 4px 0 0;
   font-size: 0.85rem;
   color: var(--texto);
-  opacity: 0.6;
+  opacity: 1;
   text-transform: capitalize;
 }
 .home-refresh-btn {
@@ -35,8 +35,8 @@
   align-items: center;
   gap: 6px;
   padding: 8px 16px;
-  background: var(--primaria);
-  color: #fff;
+  background: var(--acao-bg);
+  color: var(--acao-texto);
   border: none;
   border-radius: 8px;
   font-size: 0.82rem;
@@ -46,7 +46,7 @@
   font-family: inherit;
 }
 .home-refresh-btn:hover {
-  background: #6a2a2a;
+  background: var(--acao-hover);
   transform: translateY(-1px);
 }
 
@@ -94,7 +94,7 @@
   text-transform: uppercase;
   letter-spacing: 0.4px;
   color: var(--texto);
-  opacity: 0.6;
+  opacity: 1;
   white-space: nowrap;
 }
 .home-kpi-valor {
@@ -168,7 +168,7 @@
   text-transform: uppercase;
   letter-spacing: 0.4px;
   color: var(--texto);
-  opacity: 0.75;
+  opacity: 1;
 }
 .home-card-lista {
   overflow-y: auto;
@@ -236,7 +236,7 @@
   font-weight: 700;
   flex: 1;
   line-height: 1.4;
-  opacity: 0.75;
+  opacity: 1;
   color: var(--texto);
   display: flex;
   flex-direction: column;
@@ -245,19 +245,19 @@
 /* ✅ v4.9: Estilos para menuDegustacao e nome na Obs da Noite */
 .home-obs-nome {
   font-size: 0.78rem;
-  opacity: 0.7;
+  opacity: 1;
   font-weight: 600;
 }
 .home-obs-deg {
   font-size: 0.82rem;
   font-weight: 800;
-  color: #d4a373;
+  color: var(--primaria);
   letter-spacing: 0.3px;
 }
 .home-obs-cancelada {
   font-size: 0.82rem;
   font-weight: 800;
-  color: #e74c3c;
+  color: var(--cor-erro);
   letter-spacing: 0.3px;
 }
 
@@ -270,7 +270,7 @@
 
 .home-obs-vazio {
   font-size: 0.82rem;
-  opacity: .45;
+  opacity: 1;
   padding: 10px 0;
   text-align: center;
 }
@@ -288,8 +288,8 @@
 }
 .home-pendente-hora  { font-weight: 700; color: var(--primaria); font-size: 0.8rem; white-space: nowrap; }
 .home-pendente-nome  { flex: 1; padding: 0 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.home-pendente-pax   { font-weight: 700; color: var(--texto); opacity: 0.6; font-size: 0.78rem; white-space: nowrap; }
-.home-vazio          { text-align: center; padding: 30px 0; opacity: 0.4; font-size: 0.9rem; color: var(--texto); }
+.home-pendente-pax   { font-weight: 700; color: var(--texto); opacity: 1; font-size: 0.78rem; white-space: nowrap; }
+.home-vazio          { text-align: center; padding: 30px 0; opacity: 1; font-size: 0.9rem; color: var(--texto); }
 
 /* Responsivo home */
 @media (max-width: 767px) {
@@ -304,8 +304,8 @@
 /* Campo obrigatório inválido — borda amarela */
 #formReserva input.campo-invalido,
 #formReserva select.campo-invalido {
-    border-color: #f39c12 !important;
-    box-shadow: 0 0 0 2px rgba(243, 156, 18, 0.25);
+    border-color: var(--cor-aviso) !important;
+    box-shadow: 0 0 0 2px var(--aviso-bg);
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 /* ── Sino de notificação (v4.13) ── */
@@ -319,7 +319,7 @@
     border-radius: 50%;
     cursor: pointer;
     color: var(--texto);
-    opacity: 0.6;
+    opacity: 1;
     transition: opacity 0.2s;
 }
 .sino-wrap:hover { opacity: 1; }
@@ -330,7 +330,7 @@
     right: 4px;
     width: 8px;
     height: 8px;
-    background: #e74c3c;
+    background: var(--cor-erro);
     border-radius: 50%;
     border: 2px solid var(--card-bg);
 }
@@ -347,7 +347,7 @@
 .sino-animando #sino-icone {
     animation: sino-piscar 0.7s ease infinite;
     transform-origin: top center;
-    color: #e74c3c;
+    color: var(--cor-erro);
     opacity: 1;
 }
 

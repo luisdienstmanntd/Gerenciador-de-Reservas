@@ -4,40 +4,87 @@
    ========================================================================== */
 
 :root {
-  /* Paleta de Cores (Modo Claro Padrão) */
-  --primaria: #4a1a1a;
-  --secundaria: #d4a373;
-  --sidebar-bg: #1e1e1e;
-  --fundo: #e8ebef;
+  --primaria: #6a5644;
+  --secundaria: #a58d78;
+  --acao-bg: #6a5644;
+  --acao-hover: #584636;
+  --acao-texto: #ffffff;
+  --sidebar-bg: #40352e;
+  --sidebar-texto: #e5dbd2;
+  --fundo: #f8f7f5;
   --card-bg: #ffffff;
-  --border: #dddddd;
-  --texto: #333333;
-
-  /* Cores de Status */
-  --hospede: #3498db;
-  --externo: #f39c12;
-  --passante: #27ae60;
-  --roomservice: #9b59b6;
-  --menu: #27ae60;
-  --vermelho: #e74c3c;
-
-  /* UI Elements */
-  --shadow: rgba(0, 0, 0, 0.15);
-  --hover-line: #f1f4f8;
+  --border: #ded7cf;
+  --input-border: #89786a;
+  --texto: #332e2b;
+  --texto-suave: #706761;
   --input-bg: #ffffff;
+  --shadow: rgba(64,53,46,.12);
+  --hover-line: #f1ede9;
+  --accent-soft: #f1ece7;
+  --cor-hospede: #486676;
+  --cor-externo: #805a30;
+  --cor-passante: #3f6948;
+  --cor-roomservice: #72557e;
+  --cor-criancas: #805a30;
+  --cor-sucesso: #3f6948;
+  --cor-aviso: #805a30;
+  --cor-erro: #a34d42;
+  --cor-info: #486676;
+  --cor-mesa: #6a5644;
+  --sucesso-bg: #edf3ed;
+  --aviso-bg: #f5eee5;
+  --erro-bg: #f9eeeb;
+  --info-bg: #edf2f4;
+  --roomservice-bg: #f2edf5;
+  --focus-ring: #6a5644;
+  --chart-grid: rgba(106,86,68,.22);
+  --chart-livre: rgba(106,86,68,.20);
 }
 
-/* --- MODO ESCURO (VARIÁVEIS REAJUSTADAS) --- */
 body.dark-theme {
-  --primaria: #4a1a1a;
-  --fundo: #121212 !important;
-  --card-bg: #1e1e1e !important;
-  --sidebar-bg: #000000 !important;
-  --texto: #e0e0e0 !important; /* Texto Cinza Claro para contraste */
-  --border: #333333 !important;
-  --shadow: rgba(0, 0, 0, 0.5);
-  --hover-line: #2c2c2c !important;
-  --input-bg: #2c2c2c !important;
+  color-scheme: dark;
+  --primaria: #d0b18a;
+  --secundaria: #c6aa91;
+  --sidebar-bg: #40352e;
+  --fundo: #211d1a;
+  --card-bg: #2e2824;
+  --border: #675a50;
+  --input-border: #a69485;
+  --texto: #f4efea;
+  --texto-suave: #c8bbb0;
+  --input-bg: #382f2a;
+  --shadow: rgba(0,0,0,.3);
+  --hover-line: #40352e;
+  --accent-soft: #40352e;
+  --cor-hospede: #9ab5c0;
+  --cor-externo: #d0a77a;
+  --cor-passante: #9cbea0;
+  --cor-roomservice: #c8afd6;
+  --cor-criancas: #d0b18a;
+  --cor-sucesso: #9cbe9c;
+  --cor-aviso: #d0a77a;
+  --cor-erro: #e4a297;
+  --cor-info: #9ab5c0;
+  --cor-mesa: #d0b18a;
+  --sucesso-bg: #29392c;
+  --aviso-bg: #403325;
+  --erro-bg: #432c28;
+  --info-bg: #29363d;
+  --roomservice-bg: #392e40;
+  --focus-ring: #e2c6a7;
+  --chart-grid: rgba(244,239,234,.22);
+  --chart-livre: rgba(244,239,234,.20);
+}
+
+/* Aliases precisam resolver no mesmo elemento dos tokens do tema. Se forem
+   definidos só no :root, o body escuro herda a cor já resolvida do tema claro. */
+:root, body.dark-theme {
+  --hospede: var(--cor-hospede);
+  --externo: var(--cor-externo);
+  --passante: var(--cor-passante);
+  --roomservice: var(--cor-roomservice);
+  --menu: var(--cor-sucesso);
+  --vermelho: var(--cor-erro);
 }
 
 /* --- RESET BÁSICO E TIPOGRAFIA --- */

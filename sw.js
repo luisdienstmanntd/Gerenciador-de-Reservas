@@ -8,7 +8,7 @@
             uma mudança em dashboard.js que não aparecia mesmo após deploy).
    ========================================================================================= */
 
-const CACHE_NAME = 'osteria-di-lucca-auditoria-20261020-v3';
+const CACHE_NAME = 'osteria-di-lucca-paleta-20261021-v4';
 
 // Arquivos essenciais pré-cacheados na instalação — o resto é cacheado
 // dinamicamente conforme o usuário navega (ver estratégia no fetch abaixo).

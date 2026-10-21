@@ -34,7 +34,7 @@ export async function carregarRoomServices() {
         
         if (roomServices.length === 0) {
             container.innerHTML = `
-                <div style="text-align: center; padding: 60px; opacity: 0.6;">
+                <div style="text-align: center; padding: 60px; color: var(--texto-suave);">
                     <div style="font-size: 4rem;">🍽️</div>
                     <p style="margin-top: 20px; font-size: 1.1rem;">Nenhum Room Service nesta data</p>
                 </div>
@@ -49,7 +49,7 @@ export async function carregarRoomServices() {
         
         roomServices.forEach(rs => {
             const statusMesa = rs.fimMesa ? '✅ Finalizado' : (rs.inicioMesa ? '🔥 Em preparo' : '⏳ Aguardando');
-            const corStatus = rs.fimMesa ? '#27ae60' : (rs.inicioMesa ? '#e67e22' : '#95a5a6');
+            const classeStatus = rs.fimMesa ? 'is-success' : (rs.inicioMesa ? 'is-warning' : 'is-neutral');
             
             let tempo = '--';
             if (rs.inicioMesa && rs.fimMesa) {
@@ -61,19 +61,19 @@ export async function carregarRoomServices() {
                 <div style="background: var(--fundo); padding: 20px; border-radius: 10px; border-left: 5px solid var(--roomservice); cursor: pointer;" onclick="abrirEditar('${rs.id}')">
                     <div style="display: flex; justify-content: space-between; align-items: start;">
                         <div>
-                            <div style="font-size: 0.8rem; opacity: 0.7; margin-bottom: 5px;">${rs.horario}</div>
+                            <div style="font-size: 0.8rem; color: var(--texto-suave); margin-bottom: 5px;">${rs.horario}</div>
                             <div style="font-size: 1.3rem; font-weight: 900; color: var(--roomservice);">APTO ${escapeHtml(rs.apto)}</div>
                             <div style="margin-top: 8px; font-size: 0.95rem;">${rs.nomes ? escapeHtml(rs.nomes) : 'Sem nome'}</div>
-                            <div style="margin-top: 5px; font-size: 0.85rem; opacity: 0.8;">
+                            <div style="margin-top: 5px; font-size: 0.85rem; color: var(--texto-suave);">
                                 👤 ${rs.paxs || 0} adultos ${rs.chd ? `+ ${rs.chd} crianças` : ''}
                             </div>
-                            ${rs.obs ? `<div style="margin-top: 8px; font-size: 0.8rem; background: #fff3cd; color: #856404; padding: 5px 10px; border-radius: 5px; display: inline-block;">${escapeHtml(rs.obs)}</div>` : ''}
+                            ${rs.obs ? `<div style="margin-top: 8px; font-size: 0.8rem; background: var(--aviso-bg); color: var(--cor-aviso); padding: 5px 10px; border-radius: 5px; display: inline-block;">${escapeHtml(rs.obs)}</div>` : ''}
                         </div>
                         <div style="text-align: right;">
-                            <div style="background: ${corStatus}; color: white; padding: 5px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; margin-bottom: 10px;">
+                            <div class="ui-status-badge ${classeStatus}" style="padding: 5px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; margin-bottom: 10px;">
                                 ${statusMesa}
                             </div>
-                            ${tempo !== '--' ? `<div style="font-size: 0.9rem; opacity: 0.7;">⏱️ ${tempo}</div>` : ''}
+                            ${tempo !== '--' ? `<div style="font-size: 0.9rem; color: var(--texto-suave);">⏱️ ${tempo}</div>` : ''}
                         </div>
                     </div>
                 </div>
@@ -83,7 +83,7 @@ export async function carregarRoomServices() {
         html += '</div>';
         
         html += `
-            <div style="margin-top: 30px; padding: 20px; background: linear-gradient(135deg, #9b59b6, #8e44ad); color: white; border-radius: 10px; text-align: center;">
+            <div style="margin-top: 30px; padding: 20px; background: var(--roomservice-bg); color: var(--roomservice); border-radius: 10px; text-align: center;">
                 <div style="font-size: 0.9rem; opacity: 0.9; margin-bottom: 10px;">TOTAL DE ROOM SERVICES</div>
                 <div style="font-size: 3rem; font-weight: 900;">${roomServices.length}</div>
             </div>
@@ -95,7 +95,7 @@ export async function carregarRoomServices() {
         if (!vigente()) return;
         console.error("Erro ao carregar room services:", error);
         notificarErro("Erro ao carregar room services.");
-        container.innerHTML = '<p style="color: red; text-align: center; padding: 40px;">Erro ao carregar dados</p>';
+        container.innerHTML = '<p style="color: var(--cor-erro); text-align: center; padding: 40px;">Erro ao carregar dados</p>';
     }
 }
 

@@ -1018,7 +1018,7 @@ export class ReservaModal {
     painel.innerHTML = `
       <div style="display:flex;flex-direction:column;gap:16px;padding:10px 0;">
         <div style="display:flex;align-items:center;justify-content:center;gap:10px;font-size:0.9rem;">
-          <span style="opacity:0.7;">Data atual:</span>
+          <span style="color:var(--texto-suave);">Data atual:</span>
           <strong id="textoDataAtual">${dataAtualReserva}</strong>
           <span id="btnAbrirCalendario" style="cursor:pointer;font-size:1.3rem;line-height:1;" title="Selecionar nova data">📅</span>
           <input
@@ -1028,8 +1028,8 @@ export class ReservaModal {
             style="position:absolute;visibility:hidden;width:1px;height:1px;"
           />
         </div>
-        <button type="button" id="btnConfirmarData" style="padding:14px;background:#8e44ad;color:#fff;border:none;border-radius:8px;font-weight:900;font-size:1rem;cursor:pointer;letter-spacing:1px;">CONFIRMAR</button>
-        <button type="button" id="btnCancelarData"  style="padding:14px;background:transparent;color:var(--texto-principal);border:2px solid var(--borda,#555);border-radius:8px;font-weight:700;font-size:1rem;cursor:pointer;letter-spacing:1px;">CANCELAR</button>
+        <button type="button" id="btnConfirmarData" class="ui-action-primary" style="padding:14px;background:var(--acao-bg);color:var(--acao-texto);border:none;border-radius:8px;font-weight:900;font-size:1rem;cursor:pointer;letter-spacing:1px;">CONFIRMAR</button>
+        <button type="button" id="btnCancelarData"  style="padding:14px;background:transparent;color:var(--texto);border:2px solid var(--border);border-radius:8px;font-weight:700;font-size:1rem;cursor:pointer;letter-spacing:1px;">CANCELAR</button>
       </div>
     `;
     if (titulo) titulo.after(painel);

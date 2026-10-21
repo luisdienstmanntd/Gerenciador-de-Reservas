@@ -40,9 +40,13 @@ let chartSemanaInstance = null;
 let _unsubscribeHome    = null;
 let _tickerInicializado = false;
 
-const PALETA = {
-    ...CORES_OSTERIA,
-};
+const PALETA = CORES_OSTERIA;
+let ultimosDadosGraficos = null;
+document.addEventListener('osteria:themechange', () => {
+    if (ultimosDadosGraficos && (chartGaugeInstance || chartBarrasInstance || chartSemanaInstance)) {
+        _renderizarGraficos(...ultimosDadosGraficos);
+    }
+});
 
 const DIAS_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
@@ -190,7 +194,7 @@ function _renderizarGiroMesa(reservas) {
         }
     }
 
-    const bgAlert = isDark ? 'rgba(164,91,82,.18)' : 'rgba(164,91,82,.10)';
+    const bgAlert = 'var(--erro-bg)';
 
     const elTempoLabel = document.getElementById('home-giro-tempo-label');
     if (elTempoLabel) {
@@ -203,7 +207,7 @@ function _renderizarGiroMesa(reservas) {
     let html = '';
 
     if (emCurso.length === 0) {
-        html += `<div style="padding:8px 0; opacity:.5; font-size:0.8rem;">Nenhuma mesa em atendimento agora.</div>`;
+        html += `<div style="padding:8px 0; color:var(--texto-suave); font-size:0.8rem;">Nenhuma mesa em atendimento agora.</div>`;
     } else {
         const previsoes = emCurso.map(r => {
             const prevFim = new Date(new Date(r.inicioMesa).getTime() + referencia * 60000);
@@ -211,18 +215,18 @@ function _renderizarGiroMesa(reservas) {
             return { reserva: r, prevFim, diffMin };
         }).sort((a, b) => a.prevFim - b.prevFim);
 
-        html += `<div style="font-size:0.85rem;font-weight:700;letter-spacing:0.4px;opacity:.75;margin-bottom:8px;">Próxima liberação prevista</div>`;
+        html += `<div style="font-size:0.85rem;font-weight:700;letter-spacing:0.4px;color:var(--texto-suave);margin-bottom:8px;">Próxima liberação prevista</div>`;
 
         previsoes.forEach(({ reserva: r, prevFim, diffMin }) => {
             const hrPrev   = prevFim.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
             const corLib   = diffMin <= 0 ? CORES_OSTERIA.erro : diffMin <= 15 ? CORES_OSTERIA.sucesso : diffMin <= 30 ? CORES_OSTERIA.aviso : 'var(--texto)';
             const labelMin = diffMin <= 0 ? 'agora' : `em ${diffMin} min`;
-            const border   = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+            const border = 'var(--border)';
             html += `
         <div style="display:flex;align-items:center;gap:12px;padding:7px 0;border-bottom:1px solid ${border};">
             <span style="font-size:0.85rem;font-weight:700;color:${corLib};min-width:46px;letter-spacing:0.2px;">${hrPrev}</span>
-            <span style="font-size:0.85rem;font-weight:700;opacity:.75;flex:1;">Mesa ${r.mesa}</span>
-            <span style="font-size:0.85rem;font-weight:400;opacity:.45;">· ${labelMin}</span>
+            <span style="font-size:0.85rem;font-weight:700;color:var(--texto-suave);flex:1;">Mesa ${r.mesa}</span>
+            <span style="font-size:0.85rem;font-weight:400;color:var(--texto-suave);">· ${labelMin}</span>
         </div>`;
         });
     }
@@ -242,6 +246,7 @@ function _renderizarGiroMesa(reservas) {
 // Gráficos
 // ─────────────────────────────────────────────────────────────────────────────
 function _renderizarGraficos(reaisHoje, reaisSemana, hoje) {
+    ultimosDadosGraficos = [reaisHoje, reaisSemana, hoje];
     const isDark   = document.body.classList.contains('dark-theme');
     const { texto: corTexto, grade: corGrid } = coresGrafico(isDark);
 
@@ -268,7 +273,10 @@ function _renderizarGraficos(reaisHoje, reaisSemana, hoje) {
             legOcupado.querySelector('span').style.background = cor;
             legOcupado.lastChild.textContent = ` Ocupado — ${totalPax}`;
         }
-        if (legLivre) { legLivre.lastChild.textContent = ` Livre — ${livre}`; }
+        if (legLivre) {
+            legLivre.querySelector('span').style.background = corLivre;
+            legLivre.lastChild.textContent = ` Livre — ${livre}`;
+        }
 
         chartGaugeInstance = new Chart(ctxGauge.getContext('2d'), {
             type: 'doughnut',
@@ -334,7 +342,7 @@ function _renderizarGraficos(reaisHoje, reaisSemana, hoje) {
 
         chartSemanaInstance = new Chart(ctxSemana.getContext('2d'), {
             type: 'line',
-            data: { labels, datasets: [{ label: 'PAX', data: valores, borderColor: PALETA.accent, backgroundColor: isDark ? 'rgba(140,111,85,.24)' : 'rgba(140,111,85,.14)', pointBackgroundColor: PALETA.accent, pointBorderColor: '#fff', pointBorderWidth: 2, pointRadius: 5, pointHoverRadius: 7, borderWidth: 2.5, fill: true, tension: 0.4 }] },
+            data: { labels, datasets: [{ label: 'PAX', data: valores, borderColor: PALETA.accent, backgroundColor: coresGrafico(isDark).livre, pointBackgroundColor: PALETA.accent, pointBorderColor: getComputedStyle(document.body).getPropertyValue('--card-bg').trim() || coresGrafico(isDark).texto, pointBorderWidth: 2, pointRadius: 5, pointHoverRadius: 7, borderWidth: 2.5, fill: true, tension: 0.4 }] },
             options: {
                 responsive: true, maintainAspectRatio: false,
                 plugins: { legend: { display: false }, tooltip: { callbacks: { title: ctx => ctx[0].label, label: ctx => ` ${ctx.parsed.y} pax previstos` } } },
@@ -471,7 +479,7 @@ function _renderizarObsNoite(reservas) {
     }
 
     const isDark = document.body.classList.contains('dark-theme');
-    const border = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+    const border = 'var(--border)';
 
     const itemHtml = comObs.map(r => {
         const linhas = [];
@@ -551,12 +559,12 @@ function _mostrarSkeleton() {
      'home-kpi-passantes','home-kpi-roomservice','home-kpi-criancas']
         .forEach(id => _setKPI(id, '…'));
     const giro = document.getElementById('home-giro');
-    if (giro) giro.innerHTML = `<div style="text-align:center;padding:28px 0;opacity:.4;font-size:0.85rem;">Carregando…</div>`;
+    if (giro) giro.innerHTML = `<div style="text-align:center;padding:28px 0;color:var(--texto-suave);font-size:0.85rem;">Carregando…</div>`;
 }
 
 function _mostrarErro() {
     const giro = document.getElementById('home-giro');
-    if (giro) giro.innerHTML = `<div style="text-align:center;padding:28px 0;color:#e74c3c;font-size:0.85rem;">Erro ao carregar dados.</div>`;
+    if (giro) giro.innerHTML = `<div style="text-align:center;padding:28px 0;color:var(--cor-erro);font-size:0.85rem;">Erro ao carregar dados.</div>`;
 }
 
 window.carregarHome = carregarHome;
