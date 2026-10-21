@@ -88,6 +88,9 @@ function fecharMenu() {
 function navegar(tela) {
     console.log(`📄 Navegando para: ${tela}`);
 
+    if (tela !== 'dashboard') window.suspenderDashboard?.();
+    if (tela !== 'home') window.suspenderHome?.();
+
     // Fecha sidebar ao navegar (mobile)
     if (_sidebarAberta) _fecharSidebar();
 
@@ -115,7 +118,7 @@ function navegar(tela) {
     }
 
     if (tela === 'dashboard' && typeof window.carregarDadosDashboard === 'function') {
-        setTimeout(() => window.carregarDadosDashboard(), 100);
+        window.carregarDadosDashboard();
     }
 
     if (tela === 'roomservice') {

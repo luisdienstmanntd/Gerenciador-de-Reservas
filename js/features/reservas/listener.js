@@ -60,6 +60,20 @@ function resetarFlags() {
     configCarregada = false;
 }
 
+function estadoGrade(mensagem, valor = '…') {
+    setTodasReservas([]);
+    const grid = document.getElementById('gridReservas');
+    if (grid) {
+        grid.inert = true; grid.replaceChildren();
+        const status = document.createElement('p'); status.className = 'analise-status'; status.setAttribute('role', 'status');
+        status.textContent = mensagem; grid.append(status);
+    }
+    const cards = document.querySelector('#tela-reservas .cards-header'); if (cards) cards.inert = true;
+    for (const id of ['dashTotalPax','dashCriancas','dashHospedes','dashExternos','dashPassantes','dashRoomService','dashMenuDegustacao','countTempo','dashCancelamentos']) {
+        const el = document.getElementById(id); if (el) el.innerText = valor;
+    }
+}
+
 /**
  * Tenta renderizar a grade.
  * Só executa se ambos os listeners já tiverem entregue sua primeira carga.
@@ -72,14 +86,11 @@ function tentarRenderizar() {
         return;
     }
     const reservas = getTodasReservas();
+    const grid = document.getElementById('gridReservas'); if (grid) grid.inert = false;
+    const cards = document.querySelector('#tela-reservas .cards-header'); if (cards) cards.inert = false;
     renderizarGrid(reservas);
 
-    if (typeof window.processarDashboard === 'function') {
-        const telaDashboard = document.getElementById('tela-dashboard');
-        if (telaDashboard && !telaDashboard.classList.contains('hidden')) {
-            window.processarDashboard(reservas, 1);
-        }
-    }
+
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -165,6 +176,9 @@ function iniciarListenerConfig(dataFiltro, geracao) {
  */
 export async function escutarReservas(data = null) {
     const geracao = ++geracaoReservas;
+    const dataFiltro = data || getDataAtual();
+    resetarFlags();
+    estadoGrade('Carregando reservas de ' + dataFiltro.split('-').reverse().join('/') + '…');
     console.log('🔄 Iniciando escuta de reservas...');
 
     try {
@@ -172,6 +186,8 @@ export async function escutarReservas(data = null) {
         if (geracao !== geracaoReservas) return;
         console.log('✅ DatabaseService inicializado');
     } catch (error) {
+        if (geracao !== geracaoReservas) return;
+        estadoGrade('Não foi possível consultar as reservas. Recarregue a página para tentar novamente.', '—');
         console.error('❌ Erro ao inicializar DatabaseService:', error);
         notificarErro('Erro ao conectar com o banco de dados. Recarregue a página.', 0);
         return;
@@ -187,7 +203,6 @@ export async function escutarReservas(data = null) {
         console.log('ℹ️ Listener reservas anterior cancelado');
     }
 
-    const dataFiltro = data || getDataAtual();
     console.log(`📅 Buscando reservas para: ${dataFiltro}`);
 
     // Inicia listener de config_dia para a mesma data
@@ -214,6 +229,11 @@ export async function escutarReservas(data = null) {
             (mudancas) => {
                 // A notificação é criada uma única vez pelo banco no INSERT da reserva.
                 // Clientes Realtime apenas leem; múltiplos tablets não geram duplicatas.
+            },
+            () => {
+                if (geracao !== geracaoReservas) return;
+                reservasCarregadas = false;
+                estadoGrade('Dados indisponíveis para esta data. Recarregue a página para tentar novamente.', '—');
             }
         );
 
@@ -344,6 +364,7 @@ export function iniciarEscutaConfigSistema() {
     db.aguardarInicializacao().then(() => {
         const unsub = db.escutarConfigSistema((config) => {
             setConfigSistema(config);
+            document.dispatchEvent(new CustomEvent('osteria:configchange'));
             console.log('🔧 config_sistema aplicado:', config);
             // A config real acabou de chegar — reavalia os bloqueios antecipados da
             // data em exibição (no boot, escutarReservas pode ter rodado ANTES da

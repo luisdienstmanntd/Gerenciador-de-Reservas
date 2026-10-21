@@ -30,6 +30,7 @@
     <link rel="stylesheet" href="css/home.css">
     <link rel="stylesheet" href="css/osteria-redesign.css">
     <link rel="stylesheet" href="css/responsive-fixes.css">
+    <link rel="stylesheet" href="css/analytics.css">
 </head>
 <body>
 
@@ -449,10 +450,12 @@
                     <h2 class="home-titulo">Bem-vindo</h2>
                     <p class="home-subtitulo" id="home-data-label">—</p>
                 </div>
-
+                <button type="button" class="home-refresh-btn" onclick="carregarHome()">ATUALIZAR</button>
             </div>
 
             <!-- KPI Cards -->
+            <p id="home-analise-status" class="analise-status" role="status" aria-live="polite"></p>
+            <p class="analise-nota">PAX de reservas, incluindo Room Service e no-show. A ocupação considera somente o restaurante; cancelamentos ficam à parte.</p>
             <div class="home-kpis" id="home-kpis-grid">
                 <div class="home-kpi-card" style="--kpi-color: #4a90e2;">
                     <div class="home-kpi-icon">
@@ -542,7 +545,7 @@
 
                 <!-- Gauge: taxa de ocupação -->
                 <div class="home-card">
-                    <h3 class="home-card-titulo">Taxa de Ocupação</h3>
+                    <h3 class="home-card-titulo">Ocupação do Restaurante</h3>
                     <div style="position: relative; height: 160px;">
                         <canvas id="home-chart-gauge"></canvas>
                         <div style="
@@ -699,9 +702,11 @@
                 <div id="dashChipsDatas" style="display: flex; gap: 6px; flex-wrap: wrap;"></div>
             </div>
 
+            <p id="dashStatus" class="analise-status" role="status" aria-live="polite">Escolha as datas e clique em ANALISAR.</p>
+            <p class="analise-nota">Totais em PAX de reservas, incluindo Room Service e no-show; não representam comparecimento. Ocupação considera apenas o restaurante. Cancelamentos são contados à parte.</p>
             <div class="dashboard-kpis">
                 <div class="kpi-card">
-                    <h4>OCUPAÇÃO</h4>
+                    <h4>OCUPAÇÃO DO RESTAURANTE</h4>
                     <p class="value" id="kpiOcupacao">0%</p>
                 </div>
                 <div class="kpi-card">
@@ -729,7 +734,7 @@
             <div class="charts-grid">
                 <div class="chart-card"><h3>Curva de Horário</h3><div class="chart-container"><canvas id="chartHorario"></canvas></div></div>
                 <div class="chart-card"><h3>Uso de Mesas</h3><div class="chart-container"><canvas id="chartMesas"></canvas></div></div>
-                <div class="chart-card"><h3>Perfil Cliente</h3><div class="chart-container"><canvas id="chartTipo"></canvas></div></div>
+                <div class="chart-card"><h3>Perfil de Cliente (PAX)</h3><div class="chart-container"><canvas id="chartTipo"></canvas></div></div>
                 <div class="chart-card"><h3>Movimento por Dia da Semana</h3><div class="chart-container"><canvas id="chartDiaSemana"></canvas></div></div>
             </div>
         </div>

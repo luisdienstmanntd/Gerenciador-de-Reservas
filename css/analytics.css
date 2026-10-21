@@ -1,0 +1,9 @@
+.analise-status, .analise-nota { color: var(--texto-suave); padding: 8px 12px; font-size: .85rem; overflow-wrap: anywhere; }
+.analise-status { min-height: 36px; }
+.analise-status[data-estado="erro"] { color: var(--cor-erro); background: var(--erro-bg); }
+.analise-status[data-estado="carregando"], .analise-status[data-estado="pendente"] { color: var(--cor-aviso); background: var(--aviso-bg); }
+.dashboard-kpis .kpi-card { min-width: 0; overflow-wrap: anywhere; }
+@media (max-width: 767px) {
+  .dashboard-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .home-refresh-btn { min-height: 44px; }
+}

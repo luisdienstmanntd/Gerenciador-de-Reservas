@@ -4,7 +4,7 @@ const mock = vi.hoisted(() => ({ subscription: null }));
 vi.mock('./js/core/database.js', () => ({ db: {
     aguardarInicializacao: vi.fn().mockResolvedValue(),
     getReservasPorPeriodo: vi.fn().mockResolvedValue([]),
-    escutarReservasPorData: vi.fn((date, callback) => { mock.subscription = callback; return vi.fn(); }),
+    escutarReservasPorPeriodo: vi.fn((date, fim, callback) => { mock.subscription = callback; return vi.fn(); }),
 } }));
 vi.mock('./js/features/reservas/service.js', () => ({
     buscarReservasPorPeriodo: vi.fn().mockResolvedValue([]), buscarReservasPorData: vi.fn().mockResolvedValue([]),
@@ -30,7 +30,7 @@ it('a troca de tema recria Home e Dashboard com os tokens atuais sem consultar o
     document.body.style.setProperty('--primaria', '#6a5644');
     document.body.style.setProperty('--cor-hospede', '#486676');
     await carregarHome();
-    await mock.subscription([{ nomes: 'Cliente fictício', tipo: 'hospede', paxs: 2, horario: '20:00' }]);
+    await mock.subscription([{ data: new Date().toLocaleDateString('en-CA',{timeZone:'America/Sao_Paulo'}), nomes: 'Cliente fictício', tipo: 'hospede', paxs: 2, horario: '20:00' }]);
     window.processarDashboard([{ nomes: 'Cliente fictício', tipo: 'hospede', paxs: 2, horario: '20:00' }]);
     const previous = [...charts];
     expect(previous.length).toBeGreaterThanOrEqual(2);
@@ -54,8 +54,8 @@ it('a troca de tema recria Home e Dashboard com os tokens atuais sem consultar o
     const last = charts.at(-1).config;
     expect(last.options.scales.x.ticks.color).toBe('#332e2b');
     expect(last.data.datasets[0].backgroundColor).toBe('#486676');
-    expect(db.getReservasPorPeriodo).toHaveBeenCalledTimes(1);
-    expect(db.escutarReservasPorData).toHaveBeenCalledTimes(1);
+    expect(db.getReservasPorPeriodo).not.toHaveBeenCalled();
+    expect(db.escutarReservasPorPeriodo).toHaveBeenCalledTimes(1);
 });
 
 it('filtro selecionado mantém cartões utilizáveis opacos e anuncia a seleção', () => {

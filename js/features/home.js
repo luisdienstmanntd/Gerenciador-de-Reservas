@@ -28,6 +28,7 @@
             NOME"), mesmo sem obs/degustação registrada
    ========================================================================================= */
 
+import { reservaAtiva, tipoCliente, paxReserva, horariosAnalise } from '../core/analytics.js';
 import { db } from '../core/database.js';
 import { escapeHtml } from './reservas/validators.js';
 import { getHorariosPadrao, getConfig } from '../core/state.js';
@@ -50,52 +51,67 @@ document.addEventListener('osteria:themechange', () => {
 
 const DIAS_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
+let geracaoHome = 0;
+let dataHome = null;
+
+export function suspenderHome() {
+    ++geracaoHome;
+    if (_unsubscribeHome) { _unsubscribeHome(); _unsubscribeHome = null; }
+    ++_kpiGen; ++_obsGen;
+    if (_kpiRafId) cancelAnimationFrame(_kpiRafId);
+    if (_obsRafId) cancelAnimationFrame(_obsRafId);
+    _kpiRafId = null; _obsRafId = null;
+}
+
+function statusHome(mensagem, estado) {
+    const el = document.getElementById('home-analise-status');
+    if (el) { el.textContent = mensagem; el.dataset.estado = estado; }
+}
+
 export async function carregarHome() {
-    console.log('🏠 Carregando Home v1.5...');
-
-    _mostrarSkeleton();
-    _tickerInicializado = false;
-
+    suspenderHome();
+    const geracao = geracaoHome;
+    _mostrarSkeleton(); _tickerInicializado = false;
+    _destruirGraficos(); ultimosDadosGraficos = null;
+    statusHome('Consultando reservas de hoje e dos próximos seis dias…', 'carregando');
     try {
         await db.aguardarInicializacao();
-    } catch (e) {
-        console.error('❌ Erro ao inicializar DB:', e);
-        _mostrarErro();
-        return;
-    }
-
-    if (_unsubscribeHome) {
-        _unsubscribeHome();
-        _unsubscribeHome = null;
-    }
-
-    const hoje = _dataHoje();
-
-    _unsubscribeHome = db.escutarReservasPorData(hoje, async (reservasHoje) => {
-        console.log(`📡 Home: ${reservasHoje.length} reservas recebidas`);
-
-        const reaisHoje = reservasHoje.filter(r => r.nomes && !r.bloqueado && !r.somenteHospedes && !r.canceladoEm);
-        const cancelamentosHoje = reservasHoje.filter(r => r.canceladoEm).length;
-
-        _renderizarKPIs(reaisHoje, cancelamentosHoje);
-        _atualizarClonesKpiTicker();
-        if (!_tickerInicializado) { _tickerInicializado = true; _iniciarKpiTicker(); }
-
-        _renderizarGiroMesa(reservasHoje);
-        _renderizarObsNoite(reservasHoje);
-
-        try {
-            const reaisSemana = (await db.getReservasPorPeriodo(hoje, _somarDias(hoje, 6)))
-                .filter(r => r.nomes && !r.bloqueado && !r.somenteHospedes && !r.canceladoEm);
+        if (geracao !== geracaoHome) return;
+        const hoje = _dataHoje(); dataHome = hoje;
+        _unsubscribeHome = db.escutarReservasPorPeriodo(hoje, _somarDias(hoje, 6), reservasSemana => {
+            if (geracao !== geracaoHome) return;
+            const reservasHoje = reservasSemana.filter(r => r.data === hoje);
+            const reaisHoje = reservasHoje.filter(reservaAtiva);
+            const reaisSemana = reservasSemana.filter(reservaAtiva);
+            _renderizarKPIs(reaisHoje, reservasHoje.filter(r => r.canceladoEm).length);
+            _atualizarClonesKpiTicker();
+            if (!_tickerInicializado) { _tickerInicializado = true; _iniciarKpiTicker(); }
+            _renderizarGiroMesa(reaisHoje.filter(r => tipoCliente(r) !== 'roomservice' && r.statusRecepcao !== 'no_show'));
+            _renderizarObsNoite(reservasHoje);
             _renderizarGraficos(reaisHoje, reaisSemana, hoje);
-        } catch (e) {
-            console.error('❌ Erro ao carregar semana:', e);
-            _renderizarGraficos(reaisHoje, [], hoje);
-        }
-
-        console.log('✅ Home atualizada');
-    });
+            statusHome('Reservas de ' + hoje.split('-').reverse().join('/') + ' · Previsão dos próximos 7 dias · Atualizado às ' + new Date().toLocaleTimeString('pt-BR', {timeZone:'America/Sao_Paulo'}), 'pronto');
+        }, () => {
+            if (geracao !== geracaoHome) return;
+            _destruirGraficos(); ultimosDadosGraficos = null;
+            _mostrarErro();
+            statusHome('Dados indisponíveis. Use ATUALIZAR para consultar novamente.', 'erro');
+        });
+    } catch (error) {
+        if (geracao !== geracaoHome) return;
+        _mostrarErro(); statusHome('Não foi possível carregar as reservas. Use ATUALIZAR para tentar novamente.', 'erro');
+    }
 }
+
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && !document.getElementById('tela-home')?.classList.contains('hidden')) carregarHome();
+});
+document.addEventListener('osteria:configchange', () => {
+    if (!document.getElementById('tela-home')?.classList.contains('hidden')) carregarHome();
+});
+// Se o restaurante atravessar a meia-noite com a página aberta, troca o escopo.
+setInterval(() => {
+    if (dataHome && dataHome !== _dataHoje() && !document.hidden && !document.getElementById('tela-home')?.classList.contains('hidden')) carregarHome();
+}, 60000);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // KPIs
@@ -155,7 +171,10 @@ function _renderizarGiroMesa(reservas) {
     const agora    = new Date();
     const HORARIOS = getHorariosPadrao();
 
-    const finalizadas = reservas.filter(r => r.inicioMesa && r.fimMesa);
+    const finalizadas = [...new Map(reservas.filter(r => {
+        const minutos = (new Date(r.fimMesa) - new Date(r.inicioMesa)) / 60000;
+        return r.inicioMesa && r.fimMesa && Number.isFinite(minutos) && minutos >= 0 && minutos < 300;
+    }).map(r => [r.mesa + ':' + r.inicioMesa, r])).values()];
     let tempoMedioMin = null;
 
     if (finalizadas.length > 0) {
@@ -164,7 +183,10 @@ function _renderizarGiroMesa(reservas) {
         tempoMedioMin = Math.round(somaMs / finalizadas.length / 60000);
     }
 
-    const emCurso   = reservas.filter(r => r.inicioMesa && !r.fimMesa && r.mesa && r.mesa !== 'ROOM');
+    const porMesa = new Map();
+    reservas.filter(r => r.inicioMesa && !r.fimMesa && Number.isFinite(new Date(r.inicioMesa).getTime()) && r.mesa && r.mesa !== '-' && r.mesa !== 'ROOM')
+        .forEach(r => { const anterior = porMesa.get(r.mesa); if (!anterior || new Date(r.inicioMesa) > new Date(anterior.inicioMesa)) porMesa.set(r.mesa, r); });
+    const emCurso = [...porMesa.values()];
     const referencia = tempoMedioMin || 90;
 
     const horaAtual = agora.getHours() * 60 + agora.getMinutes();
@@ -177,7 +199,7 @@ function _renderizarGiroMesa(reservas) {
 
         const resDoHr = reservas.filter(r => {
             const base = r.originalBase || r.horario;
-            return base === hr && !r.mesa;
+            return base === hr && (!r.mesa || r.mesa === '-');
         });
 
         if (resDoHr.length > 0) {
@@ -255,10 +277,9 @@ function _renderizarGraficos(reaisHoje, reaisSemana, hoje) {
     const ctxGauge = document.getElementById('home-chart-gauge');
     if (ctxGauge) {
         const capacidade = getConfig().capacidade || 30;
-        let totalPax     = 0;
-        reaisHoje.forEach(r => { totalPax += (parseInt(r.paxs) || 0) + (parseInt(r.chd) || 0); });
+        const totalPax = reaisHoje.filter(r => tipoCliente(r) !== 'roomservice').reduce((n, r) => n + paxReserva(r), 0);
 
-        const taxa    = Math.min(totalPax / capacidade, 1);
+        const taxa    = totalPax / capacidade;
         const taxaPct = Math.round(taxa * 100);
         const livre   = Math.max(0, capacidade - totalPax);
         const cor     = taxa > 0.9 ? CORES_OSTERIA.erro : taxa > 0.7 ? CORES_OSTERIA.aviso : PALETA.accent;
@@ -295,7 +316,7 @@ function _renderizarGraficos(reaisHoje, reaisSemana, hoje) {
     if (ctxBarras) {
         // ✅ v2.4: Barra empilhada por tipo de cliente (hóspede/externo/passante),
         // mesma quebra do gráfico "Curva de Horário" do Dashboard (bug #45)
-        const horarios  = getHorariosPadrao();
+        const horarios  = horariosAnalise(reaisHoje);
         const paxPorHr  = {};
         horarios.forEach(h => paxPorHr[h] = { hospede: 0, externo: 0, passante: 0 });
         reaisHoje.forEach(r => {
@@ -544,8 +565,7 @@ function _destruirGraficos() {
 }
 
 function _dataHoje() {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    return new Date().toLocaleDateString('en-CA', {timeZone:'America/Sao_Paulo'});
 }
 
 function _somarDias(dataStr, dias) {
@@ -556,16 +576,28 @@ function _somarDias(dataStr, dias) {
 
 function _mostrarSkeleton() {
     ['home-kpi-pax','home-kpi-hospedes','home-kpi-externos',
-     'home-kpi-passantes','home-kpi-roomservice','home-kpi-criancas']
+     'home-kpi-passantes','home-kpi-roomservice','home-kpi-criancas','home-kpi-degustacao','home-kpi-cancelamentos','home-gauge-pct']
         .forEach(id => _setKPI(id, '…'));
+    _atualizarClonesKpiTicker();
+    const obs = document.getElementById('home-obs-lista'); if (obs) obs.textContent = 'Carregando…';
+    const label = document.getElementById('home-giro-tempo-label'); if (label) label.textContent = '';
+    for (const id of ['home-gauge-leg-ocupado','home-gauge-leg-livre']) { const el = document.getElementById(id); if (el?.lastChild) el.lastChild.textContent = ' Carregando…'; }
     const giro = document.getElementById('home-giro');
     if (giro) giro.innerHTML = `<div style="text-align:center;padding:28px 0;color:var(--texto-suave);font-size:0.85rem;">Carregando…</div>`;
 }
 
 function _mostrarErro() {
+    ['home-kpi-pax','home-kpi-hospedes','home-kpi-externos','home-kpi-passantes','home-kpi-roomservice','home-kpi-criancas','home-kpi-degustacao','home-kpi-cancelamentos','home-gauge-pct'].forEach(id => _setKPI(id, '—'));
+    _atualizarClonesKpiTicker();
+    const obs = document.getElementById('home-obs-lista'); if (obs) obs.textContent = 'Dados indisponíveis.';
+    const label = document.getElementById('home-giro-tempo-label'); if (label) label.textContent = '';
+    for (const id of ['home-gauge-leg-ocupado','home-gauge-leg-livre']) { const el = document.getElementById(id); if (el?.lastChild) el.lastChild.textContent = ' Dados indisponíveis'; }
+
     const giro = document.getElementById('home-giro');
     if (giro) giro.innerHTML = `<div style="text-align:center;padding:28px 0;color:var(--cor-erro);font-size:0.85rem;">Erro ao carregar dados.</div>`;
 }
 
 window.carregarHome = carregarHome;
 
+
+window.suspenderHome = suspenderHome;
