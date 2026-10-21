@@ -18,7 +18,9 @@
 
 import { buscarReservasPorPeriodo, buscarReservasPorData } from './reservas/service.js';
 import { notificarErro } from '../core/notificacao.js';
-import { getHorariosPadrao, getConfig } from '../core/state.js';
+import { getConfig } from '../core/state.js';
+import { db } from '../core/database.js';
+import { reservaAtiva, tipoCliente, horariosAnalise } from '../core/analytics.js';
 import { CORES_OSTERIA, coresGrafico } from '../core/theme.js';
 
 // --- VARIÁVEIS GLOBAIS ---
@@ -44,12 +46,12 @@ let datasEspecificas = [];    // usado no modo 'especificas' — datas avulsas a
 function processarDashboard(reservas, diasNoPeriodo = 1) {
     console.log("📊 Dashboard processando", reservas.length, "reservas em", diasNoPeriodo, "dias");
 
-    let kpis = { totalPax: 0, adultos: 0, criancas: 0, tempoTotalMinutos: 0, mesasFinalizadasCount: 0, cancelamentos: 0 };
+    let kpis = { totalPax: 0, adultos: 0, criancas: 0, tempoTotalMinutos: 0, mesasFinalizadasCount: 0, cancelamentos: 0, paxRestaurante: 0 };
     let mixCliente = { hospede: 0, externo: 0, passante: 0, roomservice: 0 };
     // ✅ v3.11: ocupacaoHorario agora separa por tipo (hospede/externo/passante) — Room
     // Service fica de fora dessa quebra específica (decisão do dono do projeto)
     let ocupacaoHorario = Object.fromEntries(
-        getHorariosPadrao().map(h => [h, { hospede: 0, externo: 0, passante: 0 }])
+        horariosAnalise(reservas).map(h => [h, { hospede: 0, externo: 0, passante: 0 }])
     );
     let usoMesas = {};
     const config = getConfig();
@@ -63,8 +65,7 @@ function processarDashboard(reservas, diasNoPeriodo = 1) {
         // Cancelada (soft-delete) conta separadamente — não entra em nenhum KPI/gráfico
         // de reserva ativa, mas o restaurante precisa ver que aconteceu (bug #57).
         if (r.canceladoEm) { kpis.cancelamentos++; return; }
-        if (r.somenteHospedes && !r.nomes) return;
-        if (!r.nomes) return;
+        if (!reservaAtiva(r)) return;
 
         let qtdAdultos = parseInt(r.paxs) || 0;
         let qtdCriancas = parseInt(r.chd) || 0;
@@ -74,10 +75,11 @@ function processarDashboard(reservas, diasNoPeriodo = 1) {
         kpis.adultos += qtdAdultos;
         kpis.criancas += qtdCriancas;
 
-        let tipo = r.tipo ? r.tipo.toLowerCase() : 'hospede';
+        let tipo = tipoCliente(r);
+        if (tipo !== 'roomservice') kpis.paxRestaurante += totalReserva;
         if (mixCliente[tipo] !== undefined) {
-            // ✅ Room service conta por apto (1), demais por pessoa
-            mixCliente[tipo] += (tipo === 'roomservice') ? 1 : totalReserva;
+            // A composição usa a mesma unidade (PAX) para todos os tipos.
+            mixCliente[tipo] += totalReserva;
         }
 
         let h = r.originalBase || r.horario;
@@ -88,7 +90,7 @@ function processarDashboard(reservas, diasNoPeriodo = 1) {
         // ✅ v3.12: 'T12:00:00' evita problema de fuso horário na conversão de string pra Date
         if (r.data) {
             const diaSemana = new Date(r.data + 'T12:00:00').getDay();
-            if (porDiaSemana[diaSemana][tipo] !== undefined) {
+            if (porDiaSemana[diaSemana]?.[tipo] !== undefined) {
                 porDiaSemana[diaSemana][tipo] += totalReserva;
             }
         }
@@ -98,7 +100,7 @@ function processarDashboard(reservas, diasNoPeriodo = 1) {
             if (usoMesas[numMesa] !== undefined) usoMesas[numMesa]++;
         }
 
-        if (r.inicioMesa && r.fimMesa) {
+        if (tipo !== 'roomservice' && r.statusRecepcao !== 'no_show' && r.inicioMesa && r.fimMesa) {
             let diffMins = Math.floor((new Date(r.fimMesa) - new Date(r.inicioMesa)) / 1000 / 60);
             if (diffMins >= 0 && diffMins < 300) {
                 kpis.tempoTotalMinutos += diffMins;
@@ -108,7 +110,7 @@ function processarDashboard(reservas, diasNoPeriodo = 1) {
     });
 
     let capacidadeTotalPeriodo = (Number(config.capacidade) || 30) * diasNoPeriodo;
-    let taxaOcupacao = capacidadeTotalPeriodo > 0 ? (kpis.totalPax / capacidadeTotalPeriodo) * 100 : 0;
+    let taxaOcupacao = capacidadeTotalPeriodo > 0 ? (kpis.paxRestaurante / capacidadeTotalPeriodo) * 100 : 0;
     let tempoMedio = kpis.mesasFinalizadasCount > 0 ? Math.round(kpis.tempoTotalMinutos / kpis.mesasFinalizadasCount) : 0;
     let mesaTop = Object.keys(usoMesas).reduce((a, b) => usoMesas[a] > usoMesas[b] ? a : b);
     if (usoMesas[mesaTop] === 0) mesaTop = "-";
@@ -189,7 +191,7 @@ function renderizarGraficosAvancados(dadosHorario, dadosTipo, dadosDiaSemana, da
     if (ctxTipo) {
         chartTipoInstance = new Chart(ctxTipo.getContext('2d'), {
             type: 'doughnut',
-            data: { labels: ['Hóspede', 'Externo', 'Passante', 'Room Service'], datasets: [{ data: [dadosTipo.hospede, dadosTipo.externo, dadosTipo.passante, dadosTipo.roomservice], backgroundColor: [CORES_OSTERIA.hospede, CORES_OSTERIA.externo, CORES_OSTERIA.passante, CORES_OSTERIA.roomservice], borderWidth: 0 }] },
+            data: { labels: ['Hóspede (PAX)', 'Externo (PAX)', 'Passante (PAX)', 'Room Service (PAX)'], datasets: [{ data: [dadosTipo.hospede, dadosTipo.externo, dadosTipo.passante, dadosTipo.roomservice], backgroundColor: [CORES_OSTERIA.hospede, CORES_OSTERIA.externo, CORES_OSTERIA.passante, CORES_OSTERIA.roomservice], borderWidth: 0 }] },
             options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { color: corTexto, font: { size: 11 } } } } }
         });
     }
@@ -227,61 +229,107 @@ function destruirGraficos() {
     if (chartMesasInstance) { chartMesasInstance.destroy(); chartMesasInstance = null; }
 }
 
-async function carregarDadosDashboard() {
-    console.log("🔄 Carregando Dashboard...");
+let geracaoConsulta = 0;
+let ultimaConsulta = null;
+let pararAtualizacoes = null;
+let timerAtualizacao;
 
-    try {
-        let reservasPeriodo, diasNoPeriodo;
+function statusAnalise(mensagem, estado) {
+    const el = document.getElementById('dashStatus');
+    if (el) { el.textContent = mensagem; el.dataset.estado = estado; }
+}
 
-        if (modoConsulta === 'especificas') {
-            if (datasEspecificas.length === 0) {
-                notificarErro('Adicione ao menos uma data específica para analisar.');
-                return;
-            }
-            console.log("📅 Buscando", datasEspecificas.length, "data(s) específica(s):", datasEspecificas);
-            const resultados = await Promise.all(datasEspecificas.map(d => buscarReservasPorData(d)));
-            reservasPeriodo = resultados.flat();
-            diasNoPeriodo = datasEspecificas.length;
-
-        } else {
-            let inicio = document.getElementById("dashInicio")?.value;
-            let fim = document.getElementById("dashFim")?.value;
-
-            if (!inicio || !fim) {
-                const hoje = new Date();
-                const dataLocal = `${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}-${String(hoje.getDate()).padStart(2,'0')}`;
-                const inputInicio = document.getElementById("dashInicio");
-                const inputFim = document.getElementById("dashFim");
-                if (inputInicio && !inputInicio.value) { inputInicio.value = dataLocal; inicio = dataLocal; }
-                if (inputFim && !inputFim.value) { inputFim.value = dataLocal; fim = dataLocal; }
-                if (!inicio || !fim) return;
-            }
-
-            console.log("📅 Buscando dados de", inicio, "até", fim, "— excluindo", datasExcluidas.length, "data(s)");
-
-            const todasReservasPeriodo = await buscarReservasPorPeriodo(inicio, fim);
-            reservasPeriodo = todasReservasPeriodo.filter(r => !datasExcluidas.includes(r.data));
-
-            const diffDays = Math.ceil(Math.abs(new Date(fim) - new Date(inicio)) / (1000 * 60 * 60 * 24)) + 1;
-            // Só desconta do denominador as exceções que realmente caem dentro do intervalo pesquisado
-            const excluidasNoIntervalo = datasExcluidas.filter(d => d >= inicio && d <= fim).length;
-            diasNoPeriodo = Math.max(1, diffDays - excluidasNoIntervalo);
-        }
-
-        console.log("✅ Carregadas", reservasPeriodo.length, "reservas em", diasNoPeriodo, "dia(s)");
-        processarDashboard(reservasPeriodo, diasNoPeriodo);
-
-    } catch (e) {
-        console.error("❌ Erro ao carregar Dashboard:", e);
-        notificarErro("Erro ao carregar dados do dashboard.");
+function limparAnalise() {
+    destruirGraficos(); ultimosDadosGraficos = null;
+    for (const id of ['kpiOcupacao','kpiTotalPax','kpiTempoMedio','kpiMesaTop','kpiCriancas','kpiCancelamentos']) {
+        const el = document.getElementById(id); if (el) el.innerText = '—';
     }
 }
+
+function invalidarAnalise() {
+    ++geracaoConsulta; ultimaConsulta = null; clearTimeout(timerAtualizacao);
+    limparAnalise(); statusAnalise('Filtros alterados. Clique em ANALISAR para atualizar os resultados.', 'pendente');
+}
+
+function suspenderDashboard() {
+    ++geracaoConsulta; clearTimeout(timerAtualizacao);
+    if (pararAtualizacoes) { pararAtualizacoes(); pararAtualizacoes = null; }
+}
+
+function iniciarAtualizacoesDashboard() {
+    if (pararAtualizacoes || typeof db.escutarAlteracoesReservas !== 'function') return;
+    pararAtualizacoes = db.escutarAlteracoesReservas(() => {
+        if (!ultimaConsulta || document.getElementById('tela-dashboard')?.classList.contains('hidden')) return;
+        ++geracaoConsulta; limparAnalise(); statusAnalise('Atualizando o período analisado…', 'carregando');
+        clearTimeout(timerAtualizacao);
+        timerAtualizacao = setTimeout(() => carregarDadosDashboard(ultimaConsulta), 200);
+    }, () => {
+        ++geracaoConsulta; clearTimeout(timerAtualizacao); limparAnalise();
+        statusAnalise('Conexão interrompida. Clique em ANALISAR para consultar novamente.', 'erro');
+    });
+}
+
+function capturarConsulta() {
+    if (modoConsulta === 'especificas') {
+        const datas = [...new Set(datasEspecificas)].sort();
+        if (!datas.length) throw new Error('Adicione ao menos uma data específica para analisar.');
+        return { modo: 'especificas', datas, dias: datas.length };
+    }
+    const inputInicio = document.getElementById('dashInicio'), inputFim = document.getElementById('dashFim');
+    if (!inputInicio || !inputFim) return null;
+    if (!inputInicio.value && !inputFim.value) {
+        const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+        inputInicio.value = hoje; inputFim.value = hoje;
+    }
+    const inicio = inputInicio.value, fim = inputFim.value;
+    if (!inicio || !fim || inicio > fim) throw new Error('Informe um período válido: a data inicial deve ser anterior ou igual à final.');
+    const excluidas = [...new Set(datasExcluidas)].filter(d => d >= inicio && d <= fim);
+    const dias = Math.round((new Date(fim) - new Date(inicio)) / 86400000) + 1 - excluidas.length;
+    if (dias <= 0) throw new Error('O período não contém dias para analisar. Remova uma exclusão ou escolha outro período.');
+    return { modo: 'periodo', inicio, fim, excluidas, dias };
+}
+
+async function carregarDadosDashboard(contexto = null) {
+    const geracao = ++geracaoConsulta;
+    if (!contexto) ultimaConsulta = null;
+    clearTimeout(timerAtualizacao); limparAnalise();
+    statusAnalise('Consultando reservas…', 'carregando');
+    try {
+        const consulta = contexto || capturarConsulta();
+        if (!consulta) return;
+        // Cópias imutáveis: nenhuma lista global é lida depois dos awaits.
+        ultimaConsulta = consulta;
+        const reservas = consulta.modo === 'especificas'
+            ? (await Promise.all(consulta.datas.map(d => buscarReservasPorData(d)))).flat()
+            : (await buscarReservasPorPeriodo(consulta.inicio, consulta.fim)).filter(r => !consulta.excluidas.includes(r.data));
+        if (geracao !== geracaoConsulta) return;
+        processarDashboard(reservas, consulta.dias);
+        const periodo = consulta.modo === 'especificas' ? consulta.datas.map(_formatarDataChip).join(', ') : _formatarDataChip(consulta.inicio) + ' a ' + _formatarDataChip(consulta.fim);
+        statusAnalise('Análise: ' + periodo + ' · ' + consulta.dias + ' dia(s) · Atualizado às ' + new Date().toLocaleTimeString('pt-BR', {timeZone:'America/Sao_Paulo'}), 'pronto');
+        iniciarAtualizacoesDashboard();
+    } catch (error) {
+        if (geracao !== geracaoConsulta) return;
+        limparAnalise(); statusAnalise(error.message || 'Não foi possível consultar os dados.', 'erro');
+        notificarErro(error.message || 'Erro ao carregar dados do dashboard.');
+    }
+}
+
+document.addEventListener('change', event => {
+    if (['dashInicio', 'dashFim'].includes(event.target.id)) invalidarAnalise();
+});
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && ultimaConsulta && !document.getElementById('tela-dashboard')?.classList.contains('hidden')) carregarDadosDashboard(ultimaConsulta);
+});
+document.addEventListener('osteria:configchange', () => {
+    if (ultimaConsulta && !document.getElementById('tela-dashboard')?.classList.contains('hidden')) carregarDadosDashboard(ultimaConsulta);
+});
 
 /**
  * Alterna entre "Período contínuo" e "Datas específicas" — mostra/oculta os
  * campos correspondentes e re-renderiza os chips do modo ativo.
  */
 function alternarModoDashboard() {
+    invalidarAnalise();
     modoConsulta = document.getElementById('dashModo')?.value || 'periodo';
 
     const grupoPeriodo = document.getElementById('dashGrupoPeriodo');
@@ -323,11 +371,13 @@ function adicionarDataExcluida() {
     if (!data) return;
     if (!datasExcluidas.includes(data)) datasExcluidas.push(data);
     input.value = '';
+    invalidarAnalise();
     _renderizarChipsDatas();
 }
 
 function removerDataExcluida(data) {
     datasExcluidas = datasExcluidas.filter(d => d !== data);
+    invalidarAnalise();
     _renderizarChipsDatas();
 }
 
@@ -337,11 +387,13 @@ function adicionarDataEspecifica() {
     if (!data) return;
     if (!datasEspecificas.includes(data)) datasEspecificas.push(data);
     input.value = '';
+    invalidarAnalise();
     _renderizarChipsDatas();
 }
 
 function removerDataEspecifica(data) {
     datasEspecificas = datasEspecificas.filter(d => d !== data);
+    invalidarAnalise();
     _renderizarChipsDatas();
 }
 
@@ -354,3 +406,5 @@ window.removerDataExcluida = removerDataExcluida;
 window.adicionarDataEspecifica = adicionarDataEspecifica;
 window.removerDataEspecifica = removerDataEspecifica;
 
+
+window.suspenderDashboard = suspenderDashboard;

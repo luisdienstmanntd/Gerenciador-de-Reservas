@@ -255,18 +255,67 @@ class DatabaseService {
     // ─────────────────────────────────────────────────────────────────────────
 
     async getReservasPorData(data) {
-        const { data: rows, error } = await this.client
-            .from('reservas').select('*, hospedes(*)').eq('data', data);
-        if (error) throw error;
-        return rows.map(r => this._paraReservaApp(r));
+        return this._lerReservasCompletas(query => query.eq('data', data));
     }
 
     async getReservasPorPeriodo(dataInicio, dataFim) {
-        const { data: rows, error } = await this.client
-            .from('reservas').select('*, hospedes(*)')
-            .gte('data', dataInicio).lte('data', dataFim);
-        if (error) throw error;
-        return rows.map(r => this._paraReservaApp(r));
+        return this._lerReservasCompletas(query => query.gte('data', dataInicio).lte('data', dataFim));
+    }
+
+    async _lerReservasCompletas(filtrar) {
+        const linhas = [], ids = new Set();
+        let total = null;
+        do {
+            const { data: pagina, count, error } = await filtrar(this.client.from('reservas')
+                .select('*, hospedes(*)', { count: 'exact' })).order('id').range(linhas.length, linhas.length + 499);
+            if (error) throw error;
+            if (!Number.isInteger(count) || count < 0 || (total !== null && count !== total)) {
+                throw new Error('Os dados mudaram durante a consulta. Atualize a análise.');
+            }
+            total = count;
+            if (!Array.isArray(pagina) || (!pagina.length && linhas.length < total)) {
+                throw new Error('Leitura incompleta das reservas. Tente novamente.');
+            }
+            for (const row of pagina) {
+                if (ids.has(row.id)) throw new Error('Os dados mudaram durante a consulta. Atualize a análise.');
+                ids.add(row.id); linhas.push(row);
+            }
+        } while (linhas.length < total);
+        if (linhas.length !== total) throw new Error('Leitura inconsistente das reservas. Tente novamente.');
+        return linhas.map(row => this._paraReservaApp(row));
+    }
+
+    // Sem filtro de data no canal: transferências para fora do período também
+    // precisam invalidar o resultado. A leitura continua limitada pelo período/RLS.
+    escutarAlteracoesReservas(callback, onError = () => {}) {
+        let ativo = true;
+        const channel = this.client.channel(`analise-${crypto.randomUUID()}`)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'reservas' }, () => { if (ativo) callback(); })
+            .subscribe(status => {
+                if (!ativo) return;
+                if (status === 'SUBSCRIBED') callback(); // ressincroniza também após reconexão
+                if (['CHANNEL_ERROR', 'TIMED_OUT', 'CLOSED'].includes(status)) onError(new Error('Atualização em tempo real indisponível.'));
+            });
+        // Hóspedes não integra a publicação Realtime deste projeto. A revisão
+        // periódica também cobre alterações externas e eventos eventualmente perdidos.
+        const revisao = setInterval(() => { if (ativo) callback(); }, 60000);
+        return () => { ativo = false; clearInterval(revisao); return this.client.removeChannel(channel); };
+    }
+
+    escutarReservasPorPeriodo(inicio, fim, callback, onError = () => {}) {
+        let ativo = true, geracao = 0, timer;
+        const buscar = async () => {
+            const atual = ++geracao;
+            try {
+                const reservas = await this.getReservasPorPeriodo(inicio, fim);
+                if (ativo && atual === geracao) callback(reservas);
+            } catch (error) { if (ativo && atual === geracao) onError(error); }
+        };
+        const parar = this.escutarAlteracoesReservas(() => {
+            ++geracao; clearTimeout(timer); timer = setTimeout(buscar, 150);
+        }, error => { ++geracao; if (ativo) onError(error); });
+        buscar();
+        return () => { ativo = false; ++geracao; clearTimeout(timer); parar(); };
     }
 
     /**
@@ -422,7 +471,7 @@ class DatabaseService {
 
         const channel = this.client
             .channel(`reservas-${data}`)
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'reservas', filter: `data=eq.${data}` }, buscar)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'reservas' }, buscar)
             .subscribe();
 
         return () => { ativo = false; geracao++; return this.client.removeChannel(channel); };
@@ -515,7 +564,7 @@ class DatabaseService {
      * @param {Function} callbackMudancas  - (changes[{type, antes, depois}])
      * @returns {Function} unsubscribe
      */
-    escutarReservasPorDataComMudancas(data, callbackReservas, callbackMudancas) {
+    escutarReservasPorDataComMudancas(data, callbackReservas, callbackMudancas, onError = () => {}) {
         let ativo = true;
         let geracao = 0;
         const buscar = async () => {
@@ -525,6 +574,7 @@ class DatabaseService {
                 if (ativo && minhaGeracao === geracao) callbackReservas(reservas);
             } catch (error) {
                 console.error('❌ Erro ao escutar reservas:', error);
+                if (ativo && minhaGeracao === geracao) onError(error);
             }
         };
         buscar();
@@ -555,8 +605,14 @@ class DatabaseService {
 
         const channel = this.client
             .channel(`reservas-mudancas-${data}`)
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'reservas', filter: `data=eq.${data}` }, tratarMudanca)
-            .subscribe();
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'reservas' }, tratarMudanca)
+            .subscribe(status => {
+                if (!ativo) return;
+                if (status === 'SUBSCRIBED') buscar();
+                if (['CHANNEL_ERROR','TIMED_OUT','CLOSED'].includes(status)) {
+                    ++geracao; onError(new Error('Atualização das reservas indisponível.'));
+                }
+            });
 
         return () => { ativo = false; geracao++; return this.client.removeChannel(channel); };
     }

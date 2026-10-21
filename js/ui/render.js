@@ -86,7 +86,7 @@ export function atualizarMiniCards(reservas) {
 
         if (r.menuDegustacao) totais.menuDegustacao += qtdAdultos;
 
-        if (r.inicioMesa && r.fimMesa) {
+        if (tipo !== 'roomservice' && r.statusRecepcao !== 'no_show' && r.inicioMesa && r.fimMesa) {
             let inicio = new Date(r.inicioMesa);
             let fim = new Date(r.fimMesa);
             let diffMins = Math.floor((fim - inicio) / 1000 / 60);

@@ -11,10 +11,10 @@ it('RV04b removing channel suppresses old pending HTTP callback',async()=>{
  const original=db.client;let release;
  const deferred=new Promise(r=>{release=r;});const channel={on(){return this;},subscribe(){return this;}};
  const callback=vi.fn();const removeChannel=vi.fn();
- db.client={from:()=>({select:()=>({eq:()=>deferred})}),channel:()=>channel,removeChannel};
+ db.client={from:()=>({select:()=>({eq:()=>({order:()=>({range:()=>deferred})})})}),channel:()=>channel,removeChannel};
  try{
   const stop=db.escutarReservasPorDataComMudancas('2026-10-20',callback,vi.fn());stop();
-  release({data:[{id:'old',data:'2026-10-20',hospedes:{nome:'ANA'}}]});
+  release({data:[{id:'old',data:'2026-10-20',hospedes:{nome:'ANA'}}],count:1});
   await deferred;await Promise.resolve();await Promise.resolve();
   expect(removeChannel).toHaveBeenCalledWith(channel);expect(callback).not.toHaveBeenCalled();
  }finally{db.client=original;}
