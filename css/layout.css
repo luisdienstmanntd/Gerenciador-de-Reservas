@@ -120,7 +120,7 @@ body.dark-theme .sidebar {
 
 .sb-sub {
   font-size: 0.65rem;
-  color: rgba(255,255,255,0.4);
+  color: var(--sidebar-texto);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-top: 2px;
@@ -216,12 +216,12 @@ body.dark-theme .sidebar {
 }
 
 .nav-logout {
-  color: rgba(255,255,255,0.45) !important;
+  color: var(--sidebar-texto);
 }
 
 .nav-logout:hover {
-  background: rgba(231,76,60,0.15) !important;
-  color: #e74c3c !important;
+  background: rgba(255,181,170,.10);
+  color: #ffb5aa;
 }
 
 .sb-theme-row {
@@ -229,7 +229,7 @@ body.dark-theme .sidebar {
   align-items: center;
   gap: 10px;
   padding: 10px 9px;
-  color: rgba(255,255,255,0.45);
+  color: var(--sidebar-texto);
   font-size: 0.82rem;
   font-weight: 500;
   overflow: hidden;
@@ -338,7 +338,7 @@ input:checked + .slider-round:before {
 .config-input {
   width: 150px;
   padding: 10px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--input-border);
   border-radius: 8px;
   background: var(--input-bg);
   color: var(--texto);
@@ -351,8 +351,8 @@ input:checked + .slider-round:before {
 .config-linha small {
   display: block;
   margin-top: 8px;
-  color: var(--texto);
-  opacity: 0.7;
+  color: var(--texto-suave);
+  opacity: 1;
 }
 
 /* Editor de bloqueios antecipados (dias de movimento) — uma linha por regra:
@@ -510,4 +510,5 @@ input:checked + .slider-round:before {
   background: var(--card-bg);
   color: var(--texto);
 }
+
 

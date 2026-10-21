@@ -410,8 +410,8 @@ function modalConfirmar(mensagem, onConfirm) {
     `;
 
     const isDark = document.body.classList.contains('dark-theme');
-    const bgCard  = isDark ? '#2d2d2d' : '#fff';
-    const txtPrin = isDark ? '#e0e0e0' : '#1a1a1a';
+    const bgCard = 'var(--card-bg)';
+    const txtPrin = 'var(--texto)';
 
     overlay.innerHTML = `
         <div style="
@@ -425,13 +425,13 @@ function modalConfirmar(mensagem, onConfirm) {
             </p>
             <div style="display:flex; gap:12px; justify-content:center;">
                 <button id="_btnConfNao" style="
-                    flex:1; padding:12px; border:1px solid #ccc; border-radius:8px;
+                    flex:1; padding:12px; border:1px solid var(--border); border-radius:8px;
                     background:transparent; color:${txtPrin}; font-size:0.9rem;
                     font-weight:700; cursor:pointer; letter-spacing:.5px;
                 ">NÃO</button>
                 <button id="_btnConfSim" style="
                     flex:1; padding:12px; border:none; border-radius:8px;
-                    background:#e74c3c; color:#fff; font-size:0.9rem;
+                    background:var(--erro-bg); color:var(--cor-erro); font-size:0.9rem;
                     font-weight:700; cursor:pointer; letter-spacing:.5px;
                 ">SIM</button>
             </div>
@@ -470,8 +470,8 @@ function modalCancelarReserva(onEscolher) {
     `;
 
     const isDark = document.body.classList.contains('dark-theme');
-    const bgCard  = isDark ? '#2d2d2d' : '#fff';
-    const txtPrin = isDark ? '#e0e0e0' : '#1a1a1a';
+    const bgCard = 'var(--card-bg)';
+    const txtPrin = 'var(--texto)';
 
     overlay.innerHTML = `
         <div style="
@@ -486,21 +486,21 @@ function modalCancelarReserva(onEscolher) {
             <div style="display:flex; flex-direction:column; gap:10px;">
                 <button id="_btnCancSemEstorno" style="
                     padding:13px; border:none; border-radius:8px;
-                    background:#e74c3c; color:#fff; font-size:0.9rem;
+                    background:var(--erro-bg); color:var(--cor-erro); font-size:0.9rem;
                     font-weight:700; cursor:pointer; letter-spacing:.3px;
                 ">SEM ESTORNO</button>
                 <button id="_btnCancEstornado" style="
                     padding:13px; border:none; border-radius:8px;
-                    background:#27ae60; color:#fff; font-size:0.9rem;
+                    background:var(--sucesso-bg); color:var(--cor-sucesso); font-size:0.9rem;
                     font-weight:700; cursor:pointer; letter-spacing:.3px;
                 ">ESTORNADO</button>
                 <button id="_btnCancSemDeposito" style="
-                    padding:13px; border:1px solid #999; border-radius:8px;
+                    padding:13px; border:1px solid var(--border); border-radius:8px;
                     background:transparent; color:${txtPrin}; font-size:0.9rem;
                     font-weight:700; cursor:pointer; letter-spacing:.3px;
                 ">SEM DEPÓSITO</button>
                 <button id="_btnCancAbortar" style="
-                    padding:12px; border:1px solid #ccc; border-radius:8px;
+                    padding:12px; border:1px solid var(--border); border-radius:8px;
                     background:transparent; color:${txtPrin}; font-size:0.85rem;
                     font-weight:700; cursor:pointer; letter-spacing:.3px; margin-top:6px;
                 ">CANCELAR</button>

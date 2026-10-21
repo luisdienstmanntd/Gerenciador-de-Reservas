@@ -409,7 +409,7 @@ function _abrirPainelSino() {
 
     // Cabeçalho
     const cab = document.createElement('div');
-    cab.style.cssText = 'padding: 10px 14px; font-weight: 700; font-size: 0.75rem; opacity: 0.55; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border, #eee);';
+    cab.style.cssText = 'padding: 10px 14px; font-weight: 700; font-size: 0.75rem; color:var(--texto-suave); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border);';
     cab.textContent = `🔔 Nova${_notificacoesPendentes.length > 1 ? 's reservas' : ' reserva'}`;
     painel.appendChild(cab);
 
@@ -427,7 +427,7 @@ function _abrirPainelSino() {
     btn.style.cssText = `
         display: block; width: calc(100% - 28px); margin: 10px 14px;
         padding: 7px; border: none; border-radius: 6px;
-        background: var(--primaria, #d4a373); color: #fff;
+        background: var(--acao-bg); color: var(--acao-texto);
         font-weight: 700; font-size: 0.82rem; cursor: pointer;
     `;
     btn.onclick = async () => {

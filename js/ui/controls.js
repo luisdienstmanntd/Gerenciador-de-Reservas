@@ -50,6 +50,9 @@ export function alternarTema() {
         localStorage.setItem('tema', 'light');
         console.log('☀️ Tema alterado para: Claro');
     }
+    document.dispatchEvent(new CustomEvent('osteria:themechange', {
+        detail: { dark: body.classList.contains('dark-theme') },
+    }));
 }
 
 /**
@@ -445,3 +448,4 @@ window.toggleAlterarHorario = toggleAlterarHorario;
 window.salvarConfiguracoes = salvarConfiguracoes;
 window.carregarConfiguracoes = carregarConfiguracoes;
 window.alternarEdicaoConfig = alternarEdicaoConfig;
+

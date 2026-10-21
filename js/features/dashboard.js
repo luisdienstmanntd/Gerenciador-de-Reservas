@@ -27,6 +27,13 @@ let chartTipoInstance = null;
 let chartDiaSemanaInstance = null;
 let chartMesasInstance = null;
 
+let ultimosDadosGraficos = null;
+document.addEventListener('osteria:themechange', () => {
+    if (ultimosDadosGraficos && (chartHorarioInstance || chartTipoInstance || chartDiaSemanaInstance || chartMesasInstance)) {
+        renderizarGraficosAvancados(...ultimosDadosGraficos);
+    }
+});
+
 const DIAS_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
 // ✅ v3.13: Consulta por período com exceções, ou por datas específicas (bug #48)
@@ -122,7 +129,7 @@ function atualizarKpisNaTela(ocupacao, total, tempo, mesaTop, criancas, cancelam
 
     if (el.ocupacao) {
         el.ocupacao.innerText = ocupacao.toFixed(1) + '%';
-        el.ocupacao.style.color = ocupacao > 90 ? CORES_OSTERIA.erro : (ocupacao > 70 ? CORES_OSTERIA.sucesso : 'var(--texto)');
+        el.ocupacao.style.color = ocupacao > 90 ? 'var(--cor-erro)' : (ocupacao > 70 ? 'var(--cor-sucesso)' : 'var(--texto)');
     }
     if (el.total) el.total.innerText = total;
     if (el.tempo) el.tempo.innerText = tempo > 0 ? tempo + ' min' : '--';
@@ -132,6 +139,7 @@ function atualizarKpisNaTela(ocupacao, total, tempo, mesaTop, criancas, cancelam
 }
 
 function renderizarGraficosAvancados(dadosHorario, dadosTipo, dadosDiaSemana, dadosMesas) {
+    ultimosDadosGraficos = [dadosHorario, dadosTipo, dadosDiaSemana, dadosMesas];
     const isDark = document.body.classList.contains('dark-theme');
     const { texto: corTexto, grade: corGrid } = coresGrafico(isDark);
 
@@ -299,13 +307,12 @@ function _renderizarChipsDatas() {
 
     const lista = modoConsulta === 'periodo' ? datasExcluidas : datasEspecificas;
     const funcaoRemover = modoConsulta === 'periodo' ? 'removerDataExcluida' : 'removerDataEspecifica';
-    const isDark = document.body.classList.contains('dark-theme');
-    const bgChip = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
+    const bgChip = 'var(--accent-soft)';
 
     container.innerHTML = [...lista].sort().map(d => `
         <span style="background:${bgChip}; border-radius:20px; padding:4px 6px 4px 12px; font-size:0.8rem; display:inline-flex; align-items:center; gap:6px;">
             ${_formatarDataChip(d)}
-            <span onclick="${funcaoRemover}('${d}')" style="cursor:pointer; font-weight:700; opacity:0.7; padding:0 4px;">✕</span>
+            <button type="button" aria-label="Remover data ${_formatarDataChip(d)}" onclick="${funcaoRemover}('${d}')" style="cursor:pointer; font-weight:700; color:var(--texto-suave); background:transparent; border:0; padding:0 4px;">✕</button>
         </span>
     `).join('');
 }
