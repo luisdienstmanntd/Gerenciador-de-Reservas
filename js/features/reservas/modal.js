@@ -58,6 +58,7 @@ import {
   desbloquearReserva,
   salvarApenasHorario,
   alterarData,
+  consultarHorariosTransferencia,
   restaurarReserva,
   atualizarStatusRecepcao,
 } from "./service.js";
@@ -472,7 +473,7 @@ export class ReservaModal {
             <span class="resumo-btn-icone">${ICONES.horario}</span>Horário
           </button>
           <button type="button" id="btnResumoData" class="resumo-btn resumo-btn--roxo">
-            <span class="resumo-btn-icone">${ICONES.calendario}</span>Data
+            <span class="resumo-btn-icone">${ICONES.calendario}</span>Data e horário
           </button>
         </div>
         <div class="resumo-linha-dupla">
@@ -995,12 +996,8 @@ export class ReservaModal {
   // =========================================================================
 
   /**
-   * Abre formulário simples para trocar a data de uma reserva existente.
-   * Exibe um input[date] pré-preenchido com a data atual da reserva,
-   * confirmação e botão cancelar. Salva via alterarData() do service.js.
-   *
-   * ✅ v3.0: Novo fluxo — não reutiliza _abrirFormularioCompleto para manter
-   *          a tela limpa (só o seletor de data, sem campos desnecessários).
+   * Permite escolher data e horário juntos. A consulta de vagas não altera
+   * dados e não substitui a validação de capacidade no momento da gravação.
    */
   _abrirFormularioAlterarData(id, reserva) {
     console.log(`📅 Abrindo alterar data: ${id}`);
@@ -1009,82 +1006,108 @@ export class ReservaModal {
     this._ocultarConteudoModal();
 
     const titulo = this.modal?.querySelector("h3");
-    if (titulo) titulo.innerText = `ALTERAR DATA — ${reserva.nomes || reserva.horario}`;
+    if (titulo) titulo.innerText = `ALTERAR DATA E HORÁRIO — ${reserva.nomes || reserva.horario}`;
 
     const dataAtualReserva = reserva.data || getDataAtual();
 
     const painel = document.createElement("div");
     painel.id = "resumoReserva";
     painel.innerHTML = `
-      <div style="display:flex;flex-direction:column;gap:16px;padding:10px 0;">
-        <div style="display:flex;align-items:center;justify-content:center;gap:10px;font-size:0.9rem;">
-          <span style="color:var(--texto-suave);">Data atual:</span>
-          <strong id="textoDataAtual">${dataAtualReserva}</strong>
-          <span id="btnAbrirCalendario" style="cursor:pointer;font-size:1.3rem;line-height:1;" title="Selecionar nova data">📅</span>
-          <input
-            type="date"
-            id="inputNovaData"
-            value="${dataAtualReserva}"
-            style="position:absolute;visibility:hidden;width:1px;height:1px;"
-          />
-        </div>
+      <div class="transferencia-reserva">
+        <p class="ui-text-muted">Reserva atual: <strong>${escapeHtml(_formatarDataBR(dataAtualReserva))} às ${escapeHtml(reserva.horario)}</strong></p>
+        <label for="inputNovaData">Nova data</label>
+        <input type="date" id="inputNovaData" class="filtro-data" value="${escapeHtml(dataAtualReserva)}" />
+        <label for="inputNovoHorario">Horário de destino</label>
+        <select id="inputNovoHorario" class="filtro-data" aria-describedby="disponibilidadeTransferencia" disabled>
+          <option value="">Consultando horários…</option>
+        </select>
+        <p id="disponibilidadeTransferencia" class="ui-text-muted" role="status" aria-live="polite">Consultando disponibilidade…</p>
         <button type="button" id="btnConfirmarData" class="ui-action-primary" style="padding:14px;background:var(--acao-bg);color:var(--acao-texto);border:none;border-radius:8px;font-weight:900;font-size:1rem;cursor:pointer;letter-spacing:1px;">CONFIRMAR</button>
         <button type="button" id="btnCancelarData"  style="padding:14px;background:transparent;color:var(--texto);border:2px solid var(--border);border-radius:8px;font-weight:700;font-size:1rem;cursor:pointer;letter-spacing:1px;">CANCELAR</button>
       </div>
     `;
     if (titulo) titulo.after(painel);
 
-    const inputData = document.getElementById("inputNovaData");
-    document.getElementById("btnAbrirCalendario")?.addEventListener("click", () => {
-      if (inputData) {
-        try { inputData.showPicker(); } catch(e) { inputData.click(); }
-      }
-    });
-
-    inputData?.addEventListener("change", (e) => {
-      const texto = document.getElementById("textoDataAtual");
-      if (texto) texto.textContent = e.target.value;
-    });
-
-    document.getElementById("btnConfirmarData")?.addEventListener("click", async () => {
-      const novaData = document.getElementById("inputNovaData")?.value;
-      if (!novaData) return;
-      if (novaData === dataAtualReserva) {
-        this.fechar();
-        return;
-      }
-      const btn = document.getElementById("btnConfirmarData");
-      if (btn) { btn.disabled = true; btn.innerText = "SALVANDO..."; }
-
-      const finalizarAlteracaoData = () => {
-        this.fechar();
-        // ✅ A Realtime do Supabase filtra por `data=eq.<data atual>` — quando a
-        // própria coluna filtrada muda de valor, o UPDATE some do escopo do filtro
-        // e o canal antigo nunca recebe o evento (a reserva "fica pra trás" na
-        // grade de origem até alguém recarregar). Força um refetch da data atual
-        // pra não depender dessa lacuna do Realtime.
-        recarregarReservas(getDataAtual());
-      };
-
+    const inputData = painel.querySelector('#inputNovaData');
+    const inputHorario = painel.querySelector('#inputNovoHorario');
+    const status = painel.querySelector('#disponibilidadeTransferencia');
+    const btn = painel.querySelector('#btnConfirmarData');
+    const abertura = this._abertura;
+    const vigente = () => painel.isConnected && abertura === this._abertura;
+    let consulta = 0, horarios = [], carregando = true, salvando = false;
+    const atualizarEstado = () => {
+      btn.disabled = carregando || salvando || !inputData.value || !inputHorario.value;
+      btn.textContent = salvando ? 'SALVANDO…' : 'CONFIRMAR';
+      inputData.disabled = salvando;
+      inputHorario.disabled = carregando || salvando;
+    };
+    const mostrarDisponibilidade = () => {
+      const selecionado = horarios.find(h => h.horario === inputHorario.value);
+      status.className = selecionado?.disponivel ? 'ui-text-muted' : 'ui-semantic-warning';
+      status.textContent = selecionado?.disponivel
+        ? 'Horário disponível. A disponibilidade será conferida novamente ao confirmar.'
+        : 'Sem vaga neste horário. Escolha outro horário disponível ou confirme para solicitar um encaixe.';
+    };
+    const carregarHorarios = async () => {
+      const minhaConsulta = ++consulta;
+      const preferido = inputHorario.value || reserva.horario;
+      carregando = true;
+      status.className = 'ui-text-muted';
+      status.textContent = 'Consultando disponibilidade…';
+      atualizarEstado();
       try {
-        await alterarData(id, novaData);
-        finalizarAlteracaoData();
-      } catch (e) {
-        // ✅ Sem linha base livre no horário desse bloco na data de destino — pergunta
-        // antes de criar uma linha nova, mesma lógica do bug #65 (ALTERAR HORÁRIO)
-        if (e.semDisponibilidade) {
-          const horarioBloco = reserva.originalBase || reserva.horario;
-          window.modalConfirmar(
-            `${_formatarDataBR(novaData)} ${horarioBloco}<br>Sem disponibilidade.<br>Deseja criar uma nova linha para esta reserva?`,
-            async () => {
-              await alterarData(id, novaData, { permitirNovaLinha: true });
-              finalizarAlteracaoData();
-            }
-          );
-        }
-        if (btn) { btn.disabled = false; btn.innerText = "CONFIRMAR"; }
+        const resultado = await consultarHorariosTransferencia(reserva, inputData.value);
+        if (!vigente() || minhaConsulta !== consulta) return;
+        horarios = resultado;
+        inputHorario.replaceChildren(...horarios.map(h => new Option(
+          `${h.horario} — ${h.disponivel ? 'Disponível' : 'Sem vaga'}`, h.horario,
+        )));
+        inputHorario.value = horarios.some(h => h.horario === preferido) ? preferido : (horarios[0]?.horario || '');
+        mostrarDisponibilidade();
+      } catch (erro) {
+        if (!vigente() || minhaConsulta !== consulta) return;
+        horarios = [];
+        inputHorario.replaceChildren(new Option('Não foi possível consultar', ''));
+        status.className = 'ui-semantic-error';
+        status.textContent = 'Não foi possível consultar os horários. Selecione a data novamente para tentar.';
+      } finally {
+        if (vigente() && minhaConsulta === consulta) { carregando = false; atualizarEstado(); }
       }
-    }, { once: true });
+    };
+    inputData.addEventListener('change', carregarHorarios);
+    inputHorario.addEventListener('change', mostrarDisponibilidade);
+    const salvarDestino = async (novaData, horario, permitirNovaLinha = false) => {
+      if (!vigente() || salvando || inputData.value !== novaData || inputHorario.value !== horario) return;
+      salvando = true;
+      atualizarEstado();
+      try {
+        await alterarData(id, novaData, { horario, ...(permitirNovaLinha ? { permitirNovaLinha: true } : {}) });
+        if (vigente()) {
+          this.fechar();
+          recarregarReservas(getDataAtual());
+          notificarSucesso('Data e horário da reserva atualizados.');
+        }
+      } catch (erro) {
+        if (!vigente()) return;
+        if (erro.semDisponibilidade && !permitirNovaLinha && typeof window.modalConfirmar === 'function') {
+          window.modalConfirmar(
+            `${_formatarDataBR(novaData)} ${escapeHtml(horario)}<br>Sem disponibilidade.<br>Deseja criar uma nova linha para esta reserva?`,
+            () => salvarDestino(novaData, horario, true),
+          );
+        } else {
+          notificarErro('Não foi possível transferir a reserva. Confira os dados e tente novamente.');
+        }
+      } finally {
+        salvando = false;
+        if (vigente()) atualizarEstado();
+      }
+    };
+    btn.addEventListener('click', () => {
+      if (btn.disabled) return;
+      if (inputData.value === dataAtualReserva && inputHorario.value === reserva.horario) { this.fechar(); return; }
+      salvarDestino(inputData.value, inputHorario.value);
+    });
+    carregarHorarios();
 
     document.getElementById("btnCancelarData")?.addEventListener("click", () => {
       this.fechar();

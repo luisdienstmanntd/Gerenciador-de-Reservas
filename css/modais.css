@@ -242,6 +242,12 @@ body.dark-theme .time-separator {
   grid-column: span 1;
 }
 
+.transferencia-reserva { display: flex; flex-direction: column; gap: 12px; padding: 10px 0; }
+.transferencia-reserva p { margin: 0; font-size: .85rem; line-height: 1.5; }
+.transferencia-reserva label { color: var(--texto); font-size: .85rem; font-weight: 700; }
+.transferencia-reserva .filtro-data { width: 100%; min-width: 0; padding: 10px; }
+.transferencia-reserva button:disabled { opacity: .6; cursor: wait; }
+
 /* Botões específicos do modal de mesa */
 #btnIniciarAtendimento {
   grid-column: span 1;

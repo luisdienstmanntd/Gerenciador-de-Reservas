@@ -25,6 +25,7 @@ Este sistema nasceu para resolver esses pontos: uma grade de reservas em tempo r
 - **Log de auditoria** — cada criação, edição e exclusão de reserva registra quem fez e quando.
 - **Dashboard analítico** com estatísticas de ocupação, tipos de cliente e movimento por período (Chart.js).
 - **Room service** com sua própria fila e controle de tempo.
+- **Transferência de reserva por data e horário**, com indicação de vagas na data escolhida e nova validação ao confirmar. Encaixes em horários sem vaga continuam exigindo confirmação explícita.
 - **Login por usuário** (recepção / osteria / gerência), cada um com sua sessão.
 
 ## Stack técnica
@@ -81,3 +82,4 @@ npx vitest run
 ```
 
 O plano completo (ferramenta escolhida, prioridades, convenções, o que ainda falta) está documentado em [`TESTES.md`](TESTES.md).
+

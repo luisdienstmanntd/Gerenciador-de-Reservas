@@ -48,6 +48,7 @@ import {
 import { registrarLog } from './log.js';
 import { db } from '../../core/database.js';
 import { notificarErro, notificarAviso, notificarSucesso } from '../../core/notificacao.js';
+import { validarHorario } from './validators.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HELPERS INTERNOS
@@ -658,13 +659,12 @@ export async function adicionarObservacao(id, novaObs) {
 }
 
 /**
- * Altera a data de uma reserva existente.
- * Atualiza apenas o campo `data` — horario, posicao e todos os outros campos
- * permanecem intactos. Registra log de auditoria com a mudança.
+ * Transfere uma reserva para outra data e, opcionalmente, outro horário.
+ * Data/horário/bloco/posição são gravados juntos, após conferir o destino.
  *
  * @param {string} id        - ID da reserva
  * @param {string} novaData  - Nova data no formato YYYY-MM-DD
- * @param {{permitirNovaLinha?: boolean}} [opcoes]
+ * @param {{horario?: string, permitirNovaLinha?: boolean}} [opcoes]
  */
 export async function alterarData(id, novaData, opcoes = {}) {
     if (!id) throw new Error('ID obrigatório');
@@ -672,22 +672,28 @@ export async function alterarData(id, novaData, opcoes = {}) {
 
     const client = await _getClient();
 
-    const dadosAntes = await db.getReservaPorId(id) || { id };
+    const dadosAntes = await db.getReservaPorId(id);
+    if (!dadosAntes) throw new Error('Reserva não encontrada');
+    const horario = opcoes.horario ?? dadosAntes.horario;
+    if (!validarHorario(horario)) throw new Error('Horário de destino inválido');
+    const mudouHorario = horario !== dadosAntes.horario;
+    const originalBase = mudouHorario ? horario : (dadosAntes.originalBase || dadosAntes.horario);
+    const roomservice = dadosAntes.tipo === 'roomservice';
+    // As regras semanais precisam existir antes da última consulta de capacidade.
+    // A prévia abaixo é somente leitura; a semeadura só ocorre ao confirmar.
+    if (!roomservice) await aplicarBloqueiosSemanais(novaData);
 
     // Verifica colisão de posição no bloco destino. Sem isso, se o bloco
     // (originalBase, posicao) já existir na data destino, duas reservas reais ficam
     // sobrepostas na mesma célula da grade.
-    const originalBase = dadosAntes.originalBase || dadosAntes.horario;
-    const snapBlocoDestino = await db.buscarReservasPorBloco(novaData, originalBase);
+    const snapBlocoDestino = (await db.buscarReservasPorBloco(novaData, originalBase))
+        .filter(r => r.id !== id && r.bloqueioOrigemId !== id && r.tipo !== 'roomservice');
 
-    const novaPosicao = _calcularPosicaoLivre(snapBlocoDestino, dadosAntes.posicao ?? 0);
-
-    // ✅ Mesma checagem de capacidade do bug #65 (salvarApenasHorario) — aqui o bloco
-    // (originalBase) não muda, só a data, então reaproveitar a posição antiga como
-    // desejada continua fazendo sentido. Mas se as linhas base do destino já estiverem
-    // todas ocupadas, também precisa perguntar antes de criar uma linha nova sozinha.
     const capacidadeBase = await _totalLinhasNaData(originalBase, novaData);
-    if (novaPosicao >= capacidadeBase && !opcoes.permitirNovaLinha) {
+    const preferida = mudouHorario || (dadosAntes.posicao ?? 0) >= capacidadeBase ? 0 : (dadosAntes.posicao ?? 0);
+    const novaPosicao = roomservice ? (dadosAntes.posicao ?? 0) : _calcularPosicaoLivre(snapBlocoDestino, preferida);
+    // Nunca abre posição extra sem a confirmação existente de capacidade.
+    if (!roomservice && novaPosicao >= capacidadeBase && !opcoes.permitirNovaLinha) {
         const erro = new Error(`Sem linha disponível em ${novaData} ${originalBase}`);
         erro.semDisponibilidade = true;
         throw erro;
@@ -700,16 +706,46 @@ export async function alterarData(id, novaData, opcoes = {}) {
     await _confirmarEscrita(client.from('reservas').update({
         data: novaData,
         posicao: novaPosicao,
+        ...(mudouHorario ? { horario, original_base: originalBase } : {}),
     }).eq('id', id));
 
     await _reconciliarBloqueioAutomatico(id, dadosAntes, {
-        data: novaData, originalBase, posicao: novaPosicao, paxs: dadosAntes.paxs,
+        ...dadosAntes, data: novaData, horario, originalBase, posicao: novaPosicao,
     });
 
-    const dadosDepois = { ...dadosAntes, data: novaData, posicao: novaPosicao };
+    const dadosDepois = { ...dadosAntes, data: novaData, horario, originalBase, posicao: novaPosicao };
     await registrarLog('EDITAR', dadosAntes, dadosDepois);
 
     console.log(`✅ Data alterada: ${dadosAntes.data} → ${novaData} | pos: ${dadosAntes.posicao} → ${novaPosicao} (id: ${id})`);
+}
+
+/** Prévia sem gravar dados. A disponibilidade é conferida novamente ao salvar. */
+export async function consultarHorariosTransferencia(reserva, data) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(data || '')) throw new Error('Selecione uma data válida');
+    const [reservas, extras, semeada] = await Promise.all([
+        db.getReservasPorData(data), db.getLinhasExtrasPorData(data),
+        db.getBloqueiosSemanaisAplicados(data),
+    ]);
+    const ativas = reservas.filter(r => !r.canceladoEm && r.id !== reserva.id
+        && r.bloqueioOrigemId !== reserva.id && r.tipo !== 'roomservice');
+    const horarios = [...new Set([...getHorariosPadrao(), reserva.horario])].filter(Boolean).sort();
+    const hoje = new Date().toLocaleDateString('en-CA');
+    const regras = !semeada && data >= hoje && isConfigSistemaCarregada()
+        ? (getConfig().bloqueiosSemanais?.[_diaSemanaDe(data)] || {}) : {};
+    return horarios.map(horario => {
+        const base = horario === reserva.horario ? (reserva.originalBase || horario) : horario;
+        const ocupadas = new Set(ativas.filter(r => (r.originalBase || r.horario) === base
+            && (r.nomes || r.bloqueado || r.somenteHospedes)).map(r => r.posicao ?? 0));
+        // Mesma semeadura da RPC: apenas as três posições base livres.
+        let antecipados = Math.min(3, Math.max(0, Number(regras[base]) || 0));
+        for (let pos = 0; pos < 3 && antecipados > 0; pos++) {
+            if (!ocupadas.has(pos)) { ocupadas.add(pos); antecipados--; }
+        }
+        const capacidade = (getHorariosPadrao().includes(base) ? 3 : 1) + (extras[base] || 0);
+        const disponivel = reserva.tipo === 'roomservice'
+            || Array.from({ length: Math.max(0, capacidade) }, (_, pos) => pos).some(pos => !ocupadas.has(pos));
+        return { horario, disponivel };
+    });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
