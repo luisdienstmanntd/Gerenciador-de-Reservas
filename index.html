@@ -29,6 +29,7 @@
     <link rel="stylesheet" href="css/responsive.css">
     <link rel="stylesheet" href="css/home.css">
     <link rel="stylesheet" href="css/osteria-redesign.css">
+    <link rel="stylesheet" href="css/responsive-fixes.css">
 </head>
 <body>
 
@@ -432,9 +433,10 @@
 
     </div><!-- fim .sidebar -->
 
+    <div class="menu-overlay" id="overlay"></div>
     <div class="main-content">
         
-        <div class="menu-overlay" id="overlay"></div>
+
 
         <!-- ═══════════════════════════════════════════════════════════════
              TELA HOME — Dashboard inicial do dia
@@ -734,6 +736,10 @@
 
         <!-- TELA DE CONFIGURAÇÕES -->
         <div id="tela-configuracoes" class="view hidden" style="padding: 20px;">
+        <div class="conta-mobile" aria-label="Conta e aparência">
+            <button type="button" class="btn-main" onclick="document.getElementById('theme-switch').checked = !document.body.classList.contains('dark-theme'); alternarTema()">Alternar tema claro/escuro</button>
+            <button type="button" class="btn-main cancel-btn" onclick="trocarUsuario()">Sair da conta</button>
+        </div>
             <div class="top-bar-unica" style="position: relative; top: 0; margin-bottom: 20px; z-index: 100;">
                  <div class="left-group">
                     <button class="menu-toggle" onclick="toggleMenu()">☰</button>
@@ -794,7 +800,6 @@
                 <button class="btn-main cancel-btn" onclick="navegar('reservas')">↩VOLTAR</button>
             </div>
         </div>
-    </div>
     <!-- TELA DE ROOM SERVICE -->
 <div id="tela-roomservice" class="view hidden" style="padding: 20px;">
     <div class="top-bar-unica" style="position: relative; top: 0; margin-bottom: 20px; z-index: 100;">
@@ -805,7 +810,7 @@
     </div>
 
     <div style="background: var(--card-bg); padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px var(--shadow);">
-        <div style="display: flex; gap: 15px; align-items: center; margin-bottom: 20px;">
+        <div class="relatorio-filtros">
             <div>
                 <label style="font-size: 0.8rem;">Data:</label>
                 <input type="date" id="dataRoomService" class="filtro-data" style="margin: 0;">
@@ -826,13 +831,13 @@
             </div>
         </div>
         <div style="background: var(--card-bg); padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px var(--shadow);">
-            <div style="display: flex; gap: 15px; align-items: center; margin-bottom: 20px;">
+            <div class="relatorio-filtros">
                 <div>
                     <label style="font-size: 0.8rem;">Data:</label>
                     <input type="date" id="dataFiltroLog" class="filtro-data" style="margin: 0;">
                 </div>
                 <button class="btn-main" onclick="document.getElementById('filtroNomeLog').value=''; carregarLogs()" style="padding: 5px 15px; height: 38px; background: var(--acao-bg); color: var(--acao-texto);">BUSCAR</button>
-                <div style="flex: 1; min-width: 160px;">
+                <div class="relatorio-filtro-nome">
                     <label style="font-size: 0.8rem;">Nome:</label>
                     <input type="text" id="filtroNomeLog" class="filtro-data" placeholder="Buscar por nome (todas as datas)..." style="margin: 0; width: 100%;" oninput="buscarLogsPorNomeDebounced(this.value)">
                 </div>
@@ -840,6 +845,7 @@
             <div id="listaLogs" style="min-height: 300px;"></div>
         </div>
     </div>
+    </div><!-- fim .main-content: todas as telas -->
     <!-- MODAL DE RESERVA -->
     <div id="modalReserva" class="modal">
         <div class="modal-content">

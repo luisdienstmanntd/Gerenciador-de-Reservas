@@ -170,6 +170,51 @@ function inicializarNavegacao() {
     document.body.classList.remove('sidebar-aberta');
     _atualizarAriaSidebar();
 
+    // Diálogos acima da navegação também isolam o foco e os toques do fundo.
+    let dialogoAtual = null;
+    let focoAnterior = null;
+    const fundos = () => [...document.querySelectorAll('.main-content, #sidebar, #bottom-nav, #overlay')];
+    const focaveis = dialogo => [...dialogo.querySelectorAll('button, input, select, textarea, a[href], [tabindex]')]
+        .filter(el => !el.disabled && el.tabIndex >= 0 && el.getClientRects().length);
+    const sincronizarDialogo = () => {
+        if (typeof document === 'undefined') return;
+        const abertos = [...document.querySelectorAll('.modal, #modalConfirmacao')]
+            .filter(el => getComputedStyle(el).display !== 'none' && !el.classList.contains('hidden'));
+        const proximo = abertos.sort((a, b) => (Number(getComputedStyle(a).zIndex) || 0) - (Number(getComputedStyle(b).zIndex) || 0)).at(-1) || null;
+        fundos().forEach(el => { el.inert = Boolean(proximo); });
+        if (proximo === dialogoAtual) return;
+        if (!dialogoAtual && proximo) focoAnterior = document.activeElement;
+        dialogoAtual = proximo;
+        if (proximo) {
+            proximo.setAttribute('role', 'dialog');
+            proximo.setAttribute('aria-modal', 'true');
+            if (!proximo.contains(document.activeElement)) {
+                const alvo = focaveis(proximo)[0] || proximo;
+                if (alvo === proximo) proximo.tabIndex = -1;
+                alvo.focus();
+            }
+        } else if (focoAnterior?.isConnected) {
+            focoAnterior.focus();
+            focoAnterior = null;
+        }
+    };
+    new MutationObserver(sincronizarDialogo).observe(document.body, {
+        subtree: true, childList: true, attributes: true, attributeFilter: ['style', 'class'],
+    });
+    document.addEventListener('keydown', event => {
+        if (!dialogoAtual || event.key !== 'Tab') return;
+        const alvos = focaveis(dialogoAtual);
+        const primeiro = alvos[0];
+        const ultimo = alvos.at(-1);
+        if (!primeiro) { event.preventDefault(); return; }
+        if (event.shiftKey && (document.activeElement === primeiro || !dialogoAtual.contains(document.activeElement))) {
+            event.preventDefault(); ultimo.focus();
+        } else if (!event.shiftKey && (document.activeElement === ultimo || !dialogoAtual.contains(document.activeElement))) {
+            event.preventDefault(); primeiro.focus();
+        }
+    });
+    sincronizarDialogo();
+
     // Overlay: garante estado inicial e registra listener de fechamento
     const overlay = document.getElementById('overlay');
     if (overlay) {

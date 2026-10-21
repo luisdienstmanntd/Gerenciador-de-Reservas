@@ -1,0 +1,61 @@
+/* Estrutura comum e limites intrínsecos de tabelas, filtros e gráficos. */
+.main-content, .view, .home-card, .chart-card, .chart-container { min-width: 0; }
+.home-grid, .home-row-dupla, .charts-grid { min-width: 0; }
+.home-row-dupla { grid-template-columns: minmax(0, 55fr) minmax(0, 45fr); }
+.home-card canvas, .chart-container canvas { max-width: 100%; }
+.relatorio-filtros { display: flex; flex-wrap: wrap; gap: 15px; align-items: end; margin-bottom: 20px; }
+.relatorio-filtros > div { min-width: 0; }
+.relatorio-filtro-nome { flex: 1 1 220px; }
+.relatorio-filtros input { max-width: 100%; }
+#dashGrupoExclusao { flex-wrap: wrap; max-width: 100%; min-width: 0; }
+.conta-mobile { display: none; }
+.modal { z-index: 12000; }
+body:has(.modal[style*="flex"]) { overflow: hidden; }
+
+/* Os indicadores podem rolar; calendário e sino mantêm seu espaço. */
+@media (max-width: 1200px) {
+  #tela-reservas .top-bar-unica { flex-wrap: nowrap; }
+  #tela-reservas .cards-header { min-width: 0; flex: 1 1 0; overflow-x: auto; flex-wrap: nowrap; }
+  #tela-reservas .cards-header:not(:has(.cards-ticker-track)) { display: flex; }
+  #tela-reservas .left-group { width: auto; flex: 0 0 auto; flex-wrap: nowrap; }
+  .modal .modal-content { max-width: 100% !important; }
+  .modal { padding: 12px !important; padding-bottom: max(12px, env(safe-area-inset-bottom)) !important; }
+  .modal .modal-content { max-height: calc(100dvh - 24px - env(safe-area-inset-bottom)) !important; }
+  #sb-btn-toggle, .sino-wrap, .regra-remover { min-width: 44px; min-height: 44px; }
+}
+
+@media (max-width: 1200px) and (orientation: portrait) {
+  #tela-reservas .cards-header:has(.cards-ticker-track) { overflow: hidden; }
+}
+
+/* Rail sempre visível no celular deitado; o botão continua alcançável. */
+@media (max-width: 767px) and (orientation: landscape) {
+  .sidebar, .sidebar:hover { width: 52px !important; left: 0 !important; height: 100dvh; }
+  .sidebar.sb-aberta, .sidebar.sb-aberta:hover { width: 236px !important; }
+  .main-content { margin-left: 52px !important; }
+  #sb-btn-toggle { display: flex !important; margin: 0 auto; }
+  body:not(.sidebar-aberta) .sb-header { padding: 8px 4px !important; }
+  body:not(.sidebar-aberta) .sb-nav, body:not(.sidebar-aberta) .sb-footer { padding: 4px !important; }
+  body:not(.sidebar-aberta) .nav-item { padding: 10px 9px !important; }
+  body:not(.sidebar-aberta) .sb-avatar { display: none; }
+  body:not(.sidebar-aberta) .sb-brand,
+  body:not(.sidebar-aberta) .nav-item span,
+  body:not(.sidebar-aberta) .sb-theme-row span,
+  body:not(.sidebar-aberta) .sb-theme-row .switch { opacity: 0 !important; pointer-events: none !important; }
+}
+
+@media (max-width: 767px) {
+  .conta-mobile { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+  .conta-mobile .btn-main { flex: 1 1 200px; min-height: 44px; }
+  .relatorio-filtro-nome { flex-basis: 100%; }
+  .charts-grid { grid-template-columns: minmax(0, 1fr) !important; padding: 12px; }
+  .home-grid, .home-row-dupla { grid-template-columns: minmax(0, 1fr) !important; }
+  #formReserva input:not([type="checkbox"]), #formReserva select, #formReserva textarea,
+  .transferencia-reserva input, .transferencia-reserva select, .relatorio-filtros input { font-size: 16px !important; min-height: 44px; }
+  .modal-actions button, .relatorio-filtros button { min-height: 44px; }
+}
+
+@media (max-width: 767px) and (orientation: portrait) {
+  #bottom-nav { height: calc(56px + env(safe-area-inset-bottom)); padding-bottom: env(safe-area-inset-bottom); }
+  .main-content { padding-bottom: calc(56px + env(safe-area-inset-bottom)); }
+}
