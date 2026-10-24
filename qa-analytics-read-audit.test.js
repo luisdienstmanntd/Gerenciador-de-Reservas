@@ -35,15 +35,32 @@ it('assinatura observa transferências e reconexão e revisa periodicamente alte
     try{const stop=db.escutarAlteracoesReservas(callback,error);events.reservas();status('SUBSCRIBED');await vi.advanceTimersByTimeAsync(60000);expect(callback).toHaveBeenCalledTimes(3);expect(events.hospedes).toBeUndefined();status('CHANNEL_ERROR');expect(error).toHaveBeenCalledTimes(1);stop();events.reservas();status('CLOSED');await vi.advanceTimersByTimeAsync(60000);expect(callback).toHaveBeenCalledTimes(3);expect(error).toHaveBeenCalledTimes(1);expect(removeChannel).toHaveBeenCalledWith(channel);}finally{db.client=original;}
 });
 
-it('consulta do intervalo descarta resposta antiga e também resultados após unsubscribe',async()=>{
+it('consulta do intervalo agrupa eventos, evita leituras paralelas e descarta resultados após unsubscribe',async()=>{
     vi.useFakeTimers();const releases=[];let changed;const callback=vi.fn();
     vi.spyOn(db,'getReservasPorPeriodo').mockImplementation(()=>new Promise(resolve=>releases.push(resolve)));
     vi.spyOn(db,'escutarAlteracoesReservas').mockImplementation(cb=>{changed=cb;return vi.fn();});
     const stop=db.escutarReservasPorPeriodo('2026-10-20','2026-10-26',callback);
     changed();await vi.advanceTimersByTimeAsync(150);
-    releases[1]([{id:'novo'}]);await Promise.resolve();releases[0]([{id:'antigo'}]);await Promise.resolve();
-    expect(callback).toHaveBeenCalledExactlyOnceWith([{id:'novo'}]);
-    changed();await vi.advanceTimersByTimeAsync(150);stop();releases[2]([{id:'depois'}]);await Promise.resolve();expect(callback).toHaveBeenCalledTimes(1);
+    expect(releases).toHaveLength(1);
+    releases[0]([{id:'inicial'}]);await Promise.resolve();
+    expect(callback).toHaveBeenCalledExactlyOnceWith([{id:'inicial'}]);
+    await vi.advanceTimersByTimeAsync(150);
+    releases[1]([{id:'novo'}]);await Promise.resolve();
+    expect(callback).toHaveBeenLastCalledWith([{id:'novo'}]);
+    changed();await vi.advanceTimersByTimeAsync(150);stop();releases[2]([{id:'depois'}]);await Promise.resolve();expect(callback).toHaveBeenCalledTimes(2);
+});
+
+it('falha no canal não invalida REST e falha de leitura recupera automaticamente',async()=>{
+    vi.useFakeTimers();let channelError;const callback=vi.fn(),error=vi.fn();
+    vi.spyOn(db,'escutarAlteracoesReservas').mockImplementation((_cb,err)=>{channelError=err;return vi.fn();});
+    const get=vi.spyOn(db,'getReservasPorPeriodo').mockResolvedValueOnce([{id:'inicial'}]).mockRejectedValueOnce(new Error('offline')).mockResolvedValue([{id:'recuperado'}]);
+    const stop=db.escutarReservasPorPeriodo('2026-10-20','2026-10-26',callback,error);
+    channelError(new Error('canal'));await Promise.resolve();
+    expect(callback).toHaveBeenCalledExactlyOnceWith([{id:'inicial'}]);expect(error).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(150);expect(error).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(4999);expect(get).toHaveBeenCalledTimes(2);
+    await vi.advanceTimersByTimeAsync(1);expect(callback).toHaveBeenLastCalledWith([{id:'recuperado'}]);
+    stop();await vi.advanceTimersByTimeAsync(60000);expect(get).toHaveBeenCalledTimes(3);
 });
 
 it('grade atualiza origem quando outro dispositivo transfere reserva para fora do dia',async()=>{
