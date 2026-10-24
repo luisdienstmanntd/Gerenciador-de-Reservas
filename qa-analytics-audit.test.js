@@ -121,15 +121,16 @@ it('A7: horário personalizado aparece na curva e nos totais',()=>{
 it('A8: callbacks da assinatura anterior da Home são descartados',async()=>{
     const hoje=new Date().toLocaleDateString('en-CA',{timeZone:'America/Sao_Paulo'});
     const callbacks=[];db.escutarReservasPorPeriodo.mockImplementation((_inicio,_fim,cb)=>{callbacks.push(cb);return vi.fn();});
-    await home.carregarHome();await home.carregarHome();callbacks[1]([row('NOVO',hoje,8)]);callbacks[0]([row('ANTIGO',hoje,2)]);
+    await home.carregarHome();home.suspenderHome();await home.carregarHome();callbacks[1]([row('NOVO',hoje,8)]);callbacks[0]([row('ANTIGO',hoje,2)]);
     expect(document.getElementById('home-kpi-pax').textContent).toBe('8');expect(charts.at(-3).config.data.datasets[0].data[0]).toBe(8);
 });
 
-it('A9: erro da semana apresenta indisponibilidade em vez de série de zeros',async()=>{
+it('A9: erro transitório da semana preserva últimos dados e informa que estão pendentes de atualização',async()=>{
     let callback,error;db.escutarReservasPorPeriodo.mockImplementation((_inicio,_fim,cb,err)=>{callback=cb;error=err;return vi.fn();});await home.carregarHome();
     callback([row('HOJE',new Date().toLocaleDateString('en-CA',{timeZone:'America/Sao_Paulo'}),8)]);error(new Error('offline'));
-    expect(document.getElementById('home-kpi-pax').textContent).toBe('—');expect(document.getElementById('home-analise-status').dataset.estado).toBe('erro');
-    expect(charts.every(c=>c.destroy.mock.calls.length===1)).toBe(true);
+    expect(document.getElementById('home-kpi-pax').textContent).toBe('8');expect(document.getElementById('home-analise-status').dataset.estado).toBe('erro');
+    expect(document.getElementById('home-analise-status').textContent).toContain('últimos dados');
+    expect(charts.some(c=>c.destroy.mock.calls.length===0)).toBe(true);
 });
 
 it('A10: canceladas e no-show não entram no giro de mesas',async()=>{

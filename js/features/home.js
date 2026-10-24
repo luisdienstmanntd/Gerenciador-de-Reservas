@@ -53,10 +53,20 @@ const DIAS_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
 let geracaoHome = 0;
 let dataHome = null;
+let _carregandoHome = false;
+let _reservasHome = null;
+let _assinaturaHome = null;
+let _relogioHome = null;
+let _retryHome = null;
+let _falhasInicializacao = 0;
 
 export function suspenderHome() {
     ++geracaoHome;
     if (_unsubscribeHome) { _unsubscribeHome(); _unsubscribeHome = null; }
+    _carregandoHome = false;
+    _reservasHome = null; _assinaturaHome = null;
+    clearInterval(_relogioHome); _relogioHome = null;
+    clearTimeout(_retryHome); _retryHome = null;
     ++_kpiGen; ++_obsGen;
     if (_kpiRafId) cancelAnimationFrame(_kpiRafId);
     if (_obsRafId) cancelAnimationFrame(_obsRafId);
@@ -65,12 +75,21 @@ export function suspenderHome() {
 
 function statusHome(mensagem, estado) {
     const el = document.getElementById('home-analise-status');
-    if (el) { el.textContent = mensagem; el.dataset.estado = estado; }
+    if (el) {
+        el.hidden = estado !== 'erro';
+        el.textContent = estado === 'erro' ? mensagem : '';
+        el.dataset.estado = estado;
+    }
 }
 
 export async function carregarHome() {
+    if (dataHome === _dataHoje() && (_unsubscribeHome || _carregandoHome)) {
+        _unsubscribeHome?.atualizar?.();
+        return;
+    }
     suspenderHome();
     const geracao = geracaoHome;
+    dataHome = _dataHoje(); _carregandoHome = true;
     _mostrarSkeleton(); _tickerInicializado = false;
     _destruirGraficos(); ultimosDadosGraficos = null;
     statusHome('Consultando reservas de hoje e dos próximos seis dias…', 'carregando');
@@ -80,38 +99,66 @@ export async function carregarHome() {
         const hoje = _dataHoje(); dataHome = hoje;
         _unsubscribeHome = db.escutarReservasPorPeriodo(hoje, _somarDias(hoje, 6), reservasSemana => {
             if (geracao !== geracaoHome) return;
-            const reservasHoje = reservasSemana.filter(r => r.data === hoje);
-            const reaisHoje = reservasHoje.filter(reservaAtiva);
-            const reaisSemana = reservasSemana.filter(reservaAtiva);
-            _renderizarKPIs(reaisHoje, reservasHoje.filter(r => r.canceladoEm).length);
-            _atualizarClonesKpiTicker();
-            if (!_tickerInicializado) { _tickerInicializado = true; _iniciarKpiTicker(); }
-            _renderizarGiroMesa(reaisHoje.filter(r => tipoCliente(r) !== 'roomservice' && r.statusRecepcao !== 'no_show'));
-            _renderizarObsNoite(reservasHoje);
-            _renderizarGraficos(reaisHoje, reaisSemana, hoje);
-            statusHome('Reservas de ' + hoje.split('-').reverse().join('/') + ' · Previsão dos próximos 7 dias · Atualizado às ' + new Date().toLocaleTimeString('pt-BR', {timeZone:'America/Sao_Paulo'}), 'pronto');
+            _reservasHome = reservasSemana;
+            _atualizarHome();
+            statusHome('', 'pronto');
         }, () => {
             if (geracao !== geracaoHome) return;
-            _destruirGraficos(); ultimosDadosGraficos = null;
-            _mostrarErro();
-            statusHome('Dados indisponíveis. Use ATUALIZAR para consultar novamente.', 'erro');
+            if (!_reservasHome) {
+                _destruirGraficos(); ultimosDadosGraficos = null;
+                _mostrarErro();
+            }
+            statusHome(_reservasHome ? 'Não foi possível atualizar. Exibindo os últimos dados recebidos; nova tentativa automática em instantes.' : 'Dados indisponíveis. Tentando novamente automaticamente…', 'erro');
         });
+        _carregandoHome = false;
+        _falhasInicializacao = 0;
+        _relogioHome = setInterval(() => {
+            if (!_homeVisivel()) return;
+            if (dataHome !== _dataHoje()) carregarHome();
+            else if (_reservasHome) _atualizarGiroHome();
+        }, 30000);
     } catch (error) {
         if (geracao !== geracaoHome) return;
-        _mostrarErro(); statusHome('Não foi possível carregar as reservas. Use ATUALIZAR para tentar novamente.', 'erro');
+        _carregandoHome = false;
+        _mostrarErro(); statusHome('Não foi possível carregar as reservas. Tentando novamente automaticamente…', 'erro');
+        _retryHome = setTimeout(() => {
+            if (geracao === geracaoHome && _homeVisivel()) carregarHome();
+        }, Math.min(5000 * 2 ** _falhasInicializacao++, 30000));
     }
 }
 
+function _homeVisivel() {
+    const tela = document.getElementById('tela-home');
+    return Boolean(tela && !tela.classList.contains('hidden') && !document.hidden);
+}
+
+function _atualizarGiroHome() {
+    _renderizarGiroMesa(_reservasHome.filter(r => r.data === dataHome && reservaAtiva(r) && tipoCliente(r) !== 'roomservice' && r.statusRecepcao !== 'no_show'));
+}
+
+function _atualizarHome() {
+    // A revisão periódica não deve recriar gráficos nem reiniciar o ticker se
+    // os dados e configurações continuam iguais.
+    const assinatura = JSON.stringify([_reservasHome, getConfig(), getHorariosPadrao()]);
+    if (_assinaturaHome === assinatura) return;
+    const reservasHoje = _reservasHome.filter(r => r.data === dataHome);
+    const reaisHoje = reservasHoje.filter(reservaAtiva);
+    _renderizarKPIs(reaisHoje, reservasHoje.filter(r => r.canceladoEm).length);
+    _atualizarClonesKpiTicker();
+    if (!_tickerInicializado) { _tickerInicializado = true; _iniciarKpiTicker(); }
+    _atualizarGiroHome();
+    _renderizarObsNoite(reservasHoje);
+    _renderizarGraficos(reaisHoje, _reservasHome.filter(reservaAtiva), dataHome);
+    _assinaturaHome = assinatura;
+}
+
 document.addEventListener('visibilitychange', () => {
-    if (!document.hidden && !document.getElementById('tela-home')?.classList.contains('hidden')) carregarHome();
+    if (_homeVisivel()) carregarHome();
 });
+window.addEventListener('online', () => { if (_homeVisivel()) carregarHome(); });
 document.addEventListener('osteria:configchange', () => {
-    if (!document.getElementById('tela-home')?.classList.contains('hidden')) carregarHome();
+    if (_homeVisivel() && _reservasHome) _atualizarHome();
 });
-// Se o restaurante atravessar a meia-noite com a página aberta, troca o escopo.
-setInterval(() => {
-    if (dataHome && dataHome !== _dataHoje() && !document.hidden && !document.getElementById('tela-home')?.classList.contains('hidden')) carregarHome();
-}, 60000);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // KPIs
