@@ -1,0 +1,138 @@
+/* =========================================================================================
+   OSTERIA DI LUCCA - LOG.CSS
+   Tela "Log de Alterações" (auditoria). Visual deliberadamente neutro: cartões na
+   superfície padrão, tipografia e bordas da paleta; a cor semântica (--tl-tom) aparece
+   apenas no ponto do selo e no ícone. Só tokens de base.css — nada de cor literal,
+   para claro/escuro e contraste (qa-palette-contrast) continuarem valendo.
+   Antes este CSS era injetado por log.js (_injetarCSS) com cores literais.
+   ========================================================================================= */
+
+/* ── Barra de filtros ───────────────────────────────────────────────────────── */
+.log-barra[hidden] { display: none; }
+.log-barra { display: flex; flex-wrap: wrap; gap: 12px 14px; align-items: end; margin-bottom: 14px; }
+.log-campo { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.log-campo label { font-size: .72rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--texto-suave); }
+.log-campo .filtro-data { margin: 0; }
+.log-campo-busca { flex: 1 1 240px; }
+.log-campo-busca .filtro-data { width: 100%; }
+.log-barra .btn-main { height: 40px; padding: 0 16px; }
+
+.log-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.log-chip {
+  border: 1px solid var(--border); background: var(--card-bg); color: var(--texto);
+  border-radius: 999px; padding: 6px 14px; min-height: 34px; font: inherit; font-size: .8rem; cursor: pointer;
+  transition: background .15s, border-color .15s;
+}
+.log-chip:hover { background: var(--hover-line); }
+.log-chip[aria-pressed="true"] { background: var(--acao-bg); border-color: var(--acao-bg); color: var(--acao-texto); }
+
+/* ── Resumo do período ──────────────────────────────────────────────────────── */
+.log-resumo { margin-bottom: 18px; }
+.log-resumo-grade {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  border: 1px solid var(--border); border-radius: 10px; background: var(--accent-soft); overflow: hidden;
+}
+.log-resumo-item { display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; border-right: 1px solid var(--border); min-width: 0; }
+.log-resumo-item:last-child { border-right: 0; }
+.log-resumo-valor { font-size: 1.15rem; font-weight: 700; color: var(--texto); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.log-resumo-rotulo { font-size: .68rem; letter-spacing: .06em; text-transform: uppercase; color: var(--texto-suave); }
+.log-resumo-nota { margin-top: 6px; font-size: .72rem; color: var(--texto-suave); }
+
+/* ── Painel do histórico de uma reserva ─────────────────────────────────────── */
+.log-historico {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  padding: 14px 16px; margin-bottom: 18px; border: 1px solid var(--border); border-radius: 10px; background: var(--accent-soft);
+}
+.log-historico[hidden] { display: none; }
+.log-historico-titulo { font-size: .68rem; letter-spacing: .08em; text-transform: uppercase; color: var(--texto-suave); }
+.log-historico-nome { font-size: 1.05rem; font-weight: 700; color: var(--texto); }
+.log-historico-sub { font-size: .75rem; color: var(--texto-suave); }
+
+/* ── Timeline ───────────────────────────────────────────────────────────────── */
+.tl-wrapper { position: relative; padding: 4px 0 12px; }
+.tl-wrapper::before { content: ""; position: absolute; left: 19px; top: 0; bottom: 0; width: 1px; background: var(--border); }
+
+.tl-hora-sep { display: flex; align-items: center; gap: 10px; margin: 18px 0 10px; padding-left: 48px; position: relative; z-index: 1; }
+.tl-hora-sep::before { content: ""; position: absolute; left: 15px; top: 50%; transform: translateY(-50%); width: 9px; height: 9px; border-radius: 50%; background: var(--card-bg); border: 2px solid var(--secundaria); }
+.tl-hora-sep::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+.tl-hora-sep span { font-size: .72rem; font-weight: 700; letter-spacing: .1em; color: var(--texto-suave); white-space: nowrap; }
+
+.tl-item { --tl-tom: var(--texto-suave); display: flex; align-items: flex-start; gap: 12px; margin-bottom: 8px; position: relative; }
+.tl-item[data-tom="sucesso"] { --tl-tom: var(--cor-sucesso); }
+.tl-item[data-tom="aviso"]   { --tl-tom: var(--cor-aviso); }
+.tl-item[data-tom="erro"]    { --tl-tom: var(--cor-erro); }
+.tl-item[data-tom="info"]    { --tl-tom: var(--cor-info); }
+
+.tl-icon {
+  width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0; position: relative; z-index: 1; margin-top: 2px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--card-bg); border: 1px solid var(--border); color: var(--tl-tom);
+}
+
+.tl-card { flex: 1; min-width: 0; background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; transition: border-color .15s, box-shadow .15s; }
+.tl-card:hover { border-color: var(--secundaria); }
+.tl-card.tl-destaque { border-color: var(--focus-ring); box-shadow: 0 0 0 3px var(--accent-soft); }
+.tl-card-corpo { padding: 11px 14px 10px; }
+.tl-card-corpo.tl-clicavel { cursor: pointer; }
+.tl-card-corpo:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: -3px; }
+
+.tl-card-principal { display: flex; align-items: center; gap: 10px; }
+.tl-badge {
+  display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; white-space: nowrap;
+  font-size: .64rem; font-weight: 700; letter-spacing: .08em; padding: 2px 9px;
+  border: 1px solid var(--border); border-radius: 999px; color: var(--texto); background: var(--accent-soft);
+}
+.tl-badge::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--tl-tom); }
+.tl-nome { font-size: .95rem; font-weight: 700; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--texto); }
+.tl-meta { display: flex; align-items: center; gap: 12px; flex-shrink: 0; color: var(--texto-suave); font-size: .72rem; }
+.tl-meta-item { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+
+.tl-detalhes { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-top: 6px; font-size: .78rem; color: var(--texto-suave); }
+.tl-sep { opacity: .6; }
+.tl-dica { margin-top: 6px; font-size: .7rem; color: var(--texto-suave); }
+
+.tl-acoes { display: flex; flex-wrap: wrap; gap: 8px; padding: 8px 14px 12px; }
+.tl-btn {
+  border: 1px solid var(--border); background: var(--card-bg); color: var(--texto); border-radius: 6px;
+  padding: 5px 12px; min-height: 32px; font: inherit; font-size: .74rem; cursor: pointer;
+}
+.tl-btn:hover { background: var(--hover-line); }
+.tl-btn-primario { background: var(--acao-bg); border-color: var(--acao-bg); color: var(--acao-texto); }
+.tl-btn-primario:hover { background: var(--acao-hover); }
+
+/* ── Detalhe expandido (diff / dados registrados) ───────────────────────────── */
+.tl-diff { display: none; border-top: 1px solid var(--border); padding: 14px; background: var(--accent-soft); }
+.tl-diff.aberto { display: block; }
+.tl-diff-cabecalho { font-size: .68rem; font-weight: 700; letter-spacing: .08em; color: var(--texto-suave); text-transform: uppercase; margin-bottom: 10px; }
+.tl-diff-tabela { width: 100%; border-collapse: collapse; font-size: .82rem; margin-bottom: 12px; }
+.tl-diff-tabela th { font-size: .64rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 4px 8px 7px; text-align: left; border-bottom: 1px solid var(--border); color: var(--texto-suave); }
+.tl-diff-tabela td { padding: 6px 8px; border-bottom: 1px solid var(--border); vertical-align: top; overflow-wrap: anywhere; color: var(--texto); }
+.tl-diff-tabela tr:last-child td { border-bottom: 0; }
+.tl-diff-tabela .col-campo { color: var(--texto-suave); font-size: .76rem; width: 110px; white-space: nowrap; }
+.tl-diff-tabela .col-antes { color: var(--cor-erro); text-decoration: line-through; }
+.tl-diff-tabela .col-depois { color: var(--cor-sucesso); font-weight: 600; }
+
+/* ── Vazio / rodapé ─────────────────────────────────────────────────────────── */
+.tl-vazio { text-align: center; padding: 56px 20px; color: var(--texto-suave); }
+.tl-vazio-texto { font-size: .92rem; font-weight: 500; }
+.log-rodape { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+.log-rodape[hidden], .log-rodape [hidden] { display: none; }
+.log-contador { font-size: .78rem; color: var(--texto-suave); }
+
+@media (max-width: 768px) {
+  .tl-wrapper::before { left: 15px; }
+  .tl-hora-sep { padding-left: 40px; }
+  .tl-hora-sep::before { left: 11px; }
+  .tl-icon { width: 30px; height: 30px; }
+  .tl-icon svg { width: 13px; height: 13px; }
+  .tl-nome { font-size: .88rem; }
+  /* Quem alterou e a hora exata sao requisito central da auditoria: no celular quebram para a 2a linha em vez de sumir. */
+  .tl-card-principal { flex-wrap: wrap; }
+  .tl-meta { order: 3; flex-basis: 100%; gap: 14px; }
+  .tl-detalhes { font-size: .74rem; }
+  .tl-diff-tabela { font-size: .76rem; }
+  .tl-diff-tabela .col-campo { width: 76px; }
+  .log-barra .log-campo { flex: 1 1 140px; }
+  .log-barra .btn-main { flex: 1 1 120px; min-height: 44px; }
+  .log-resumo-item { border-right: 0; border-bottom: 1px solid var(--border); }
+}

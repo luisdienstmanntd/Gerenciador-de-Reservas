@@ -31,6 +31,7 @@
     <link rel="stylesheet" href="css/osteria-redesign.css">
     <link rel="stylesheet" href="css/responsive-fixes.css">
     <link rel="stylesheet" href="css/analytics.css">
+    <link rel="stylesheet" href="css/log.css">
 </head>
 <body>
 
@@ -283,6 +284,10 @@
                 if (error) throw error;
                 erroEl.style.display = 'none';
                 localStorage.setItem('usuario_nome', usuario);
+                // window.registrarLogEvento é definido por log.js (módulo carregado depois
+                // deste script) — lido só aqui, em tempo de execução, nunca na carga.
+                // Passa o usuário explicitamente: o localStorage acabou de ser gravado.
+                try { window.registrarLogEvento?.('LOGIN', null, null, { usuario }); } catch (_) { /* log nunca bloqueia o login */ }
                 // esconderTelaLogin() e recarregarReservas() disparam via onAuthStateChange acima
             } catch (e) {
                 // Mensagem genérica de propósito — não revela se o usuário existe ou não
@@ -294,6 +299,14 @@
 
         // ✅ Expõe função global para trocar usuário (útil nas configurações)
         async function trocarUsuario() {
+            // O LOGOUT precisa ser gravado ANTES do signOut (depois não há sessão para o
+            // RLS). O timeout garante que um log lento/offline nunca trave a saída.
+            try {
+                await Promise.race([
+                    window.registrarLogEvento?.('LOGOUT', null, null),
+                    new Promise(r => setTimeout(r, 1500)),
+                ]);
+            } catch (_) { /* log nunca bloqueia a saída */ }
             await supabase.auth.signOut();
             localStorage.removeItem('usuario_nome');
             location.reload();
@@ -803,18 +816,41 @@
             </div>
         </div>
         <div style="background: var(--card-bg); padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px var(--shadow);">
-            <div class="relatorio-filtros">
-                <div>
-                    <label style="font-size: 0.8rem;">Data:</label>
-                    <input type="date" id="dataFiltroLog" class="filtro-data" style="margin: 0;">
+            <div id="logFiltros" class="log-barra">
+                <div class="log-campo">
+                    <label for="dataFiltroLog">De</label>
+                    <input type="date" id="dataFiltroLog" class="filtro-data">
                 </div>
-                <button class="btn-main" onclick="document.getElementById('filtroNomeLog').value=''; carregarLogs()" style="padding: 5px 15px; height: 38px; background: var(--acao-bg); color: var(--acao-texto);">BUSCAR</button>
-                <div class="relatorio-filtro-nome">
-                    <label style="font-size: 0.8rem;">Nome:</label>
-                    <input type="text" id="filtroNomeLog" class="filtro-data" placeholder="Buscar por nome (todas as datas)..." style="margin: 0; width: 100%;" oninput="buscarLogsPorNomeDebounced(this.value)">
+                <div class="log-campo">
+                    <label for="dataFiltroLogAte">Até</label>
+                    <input type="date" id="dataFiltroLogAte" class="filtro-data">
                 </div>
+                <div class="log-campo">
+                    <label for="logModo">Período refere-se a</label>
+                    <select id="logModo" class="filtro-data">
+                        <option value="alteracao">Dia da alteração</option>
+                        <option value="noite">Noite da reserva</option>
+                    </select>
+                </div>
+                <div class="log-campo">
+                    <label for="logUsuario">Usuário</label>
+                    <select id="logUsuario" class="filtro-data"><option value="">Todos</option></select>
+                </div>
+                <div class="log-campo log-campo-busca">
+                    <label for="filtroNomeLog">Buscar</label>
+                    <input type="search" id="filtroNomeLog" class="filtro-data" placeholder="Nome, apto, código ou mesa..." autocomplete="off">
+                </div>
+                <button type="button" id="logBtnAplicar" class="btn-main">Aplicar</button>
+                <button type="button" id="logBtnLimpar" class="btn-main cancel-btn">Limpar</button>
             </div>
+            <div id="logChips" class="log-chips" role="group" aria-label="Filtrar por tipo de ação"></div>
+            <div id="logPainelHistorico" class="log-historico" hidden></div>
+            <div id="logResumo" class="log-resumo" aria-live="polite"></div>
             <div id="listaLogs" style="min-height: 300px;"></div>
+            <div id="logRodape" class="log-rodape" hidden>
+                <span id="logContador" class="log-contador"></span>
+                <button type="button" id="logCarregarMais" class="btn-main cancel-btn" hidden>Carregar mais</button>
+            </div>
         </div>
     </div>
     </div><!-- fim .main-content: todas as telas -->
