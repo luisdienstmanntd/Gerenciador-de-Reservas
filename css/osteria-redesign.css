@@ -258,6 +258,39 @@ input[type="number"] {
   body.sidebar-aberta .sidebar:hover { width: 236px !important; left: 0 !important; }
 }
 
+/* Tablet/janela estreita COM mouse: a rail de ícones abre ao passar o mouse e recolhe ao sair.
+   Em touch (hover: none) nada muda — lá o botão ☰ continua sendo o único jeito de abrir.
+   Fica depois do bloco acima e com a mesma especificidade para vencer o "trava em 52px". */
+@media (min-width: 768px) and (max-width: 1200px) and (hover: hover) and (pointer: fine) {
+  body:not(.sidebar-aberta) .sidebar:hover { width: 236px !important; }
+  body:not(.sidebar-aberta) .sidebar:hover .sb-header { padding: 24px 20px 20px !important; }
+  body:not(.sidebar-aberta) .sidebar:hover .sb-nav { padding: 18px 14px !important; gap: 4px !important; }
+  body:not(.sidebar-aberta) .sidebar:hover .nav-item { padding: 12px 13px !important; }
+  body:not(.sidebar-aberta) .sidebar:hover .sb-footer { padding: 0 14px 20px !important; }
+  body:not(.sidebar-aberta) .sidebar:hover .sb-brand,
+  body:not(.sidebar-aberta) .sidebar:hover .nav-item span,
+  body:not(.sidebar-aberta) .sidebar:hover .sb-theme-row span,
+  body:not(.sidebar-aberta) .sidebar:hover .sb-theme-row .switch { opacity: 1 !important; pointer-events: auto !important; }
+}
+
+/* Desktop COM mouse: mesma rail de ícones (52px). Ao passar o mouse abre por cima do conteúdo
+   (position: fixed, sem empurrar a lista) e recolhe ao sair. Quando está em :hover valem as regras
+   de menu aberto definidas lá em cima; aqui só se define o estado recolhido (:not(:hover)).
+   Touch >1200px (hover: none) continua com o menu aberto de sempre. */
+@media (min-width: 1201px) and (hover: hover) and (pointer: fine) {
+  .sidebar { width: 52px !important; }
+  .sidebar:hover { width: 236px !important; }
+  .main-content { margin-left: 52px !important; }
+  .sidebar:not(:hover) .sb-header { padding: 22px 7px 18px; }
+  .sidebar:not(:hover) .sb-nav { padding: 10px 7px; gap: 2px; }
+  .sidebar:not(:hover) .nav-item { padding: 10px 9px; }
+  .sidebar:not(:hover) .sb-footer { padding: 0 7px 20px; }
+  .sidebar:not(:hover) .sb-brand,
+  .sidebar:not(:hover) .nav-item span,
+  .sidebar:not(:hover) .sb-theme-row span,
+  .sidebar:not(:hover) .sb-theme-row .switch { opacity: 0 !important; pointer-events: none !important; }
+}
+
 @media (max-width: 767px) {
   .view[style*="padding"] { padding: 16px 12px 24px !important; }
   .top-bar-unica { padding: 10px 12px; }
