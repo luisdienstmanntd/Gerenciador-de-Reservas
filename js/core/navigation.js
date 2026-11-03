@@ -2,11 +2,14 @@
    OSTERIA DI LUCCA - NAVIGATION.JS v5.3
    RESPONSABILIDADE: Navegação entre telas + controle da sidebar em touch devices
 
-   Comportamento por dispositivo:
-   ┌──────────────────────────────────────────────────────────────────────────┐
-   │  Desktop (> 768px)  │ Hover CSS expande 52px → 220px. Botão ☰ oculto.  │
-   │  Tablet / Mobile    │ Sidebar fora da tela. Botão ☰ abre/fecha via JS. │
-   └──────────────────────────────────────────────────────────────────────────┘
+   Comportamento por dispositivo (a sidebar é sempre uma rail de ícones de 52px):
+   ┌─────────────────────────────────────────────────────────────────────────────┐
+   │  Desktop/tablet     │ Com mouse: CSS expande a rail no :hover (236px) e      │
+   │  (> 768px)          │ recolhe ao sair. Foco por teclado (Tab) também expande.│
+   │  Tablet touch       │ Botão ☰ abre/fecha via JS (classe sb-aberta).          │
+   │  Notebook touch     │ Mouse + tela de toque (>1200px): ☰ visível, abre via JS│
+   │  Celular deitado    │ Rail + ☰.  Celular em pé: sem sidebar (bottombar).     │
+   └─────────────────────────────────────────────────────────────────────────────┘
 
    ✅ v5.1: Hook home → carregarHome() + label de data
    ✅ v5.2: Remove código duplicado v4.10
@@ -23,9 +26,11 @@ let _sidebarAberta = false;
 // ===== HELPERS =====
 function _isMobile() {
     // Mobile landscape E tablet (até 1200px) usam sidebar com toggle JS
-    // Desktop (> 1200px) usa hover CSS
+    // Desktop (> 1200px) usa hover CSS — exceto notebook com tela de toque, onde o
+    // botão ☰ também precisa funcionar (o toque não é um :hover confiável)
     return window.matchMedia('(max-width: 1200px) and (orientation: landscape)').matches
-        || window.matchMedia('(min-width: 768px) and (max-width: 1200px)').matches;
+        || window.matchMedia('(min-width: 768px) and (max-width: 1200px)').matches
+        || window.matchMedia('(min-width: 1201px) and (hover: hover) and (pointer: fine) and (any-pointer: coarse)').matches;
 }
 
 function _isPortrait() {
@@ -75,7 +80,7 @@ function _fecharSidebar() {
 function toggleMenu() {
     // Portrait: sem sidebar, bottombar cuida da navegação
     if (_isPortrait()) return;
-    // Desktop/tablet: hover CSS cuida de tudo
+    // Desktop com mouse puro: hover CSS cuida de tudo
     if (!_isMobile()) return;
     _sidebarAberta ? _fecharSidebar() : _abrirSidebar();
 }
