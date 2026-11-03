@@ -10,21 +10,12 @@ import {salvarReserva,salvarApenasHorario} from './js/features/reservas/service.
 import {ReservaModal} from './js/features/reservas/modal.js';
 import {escutarReservas,pararEscuta} from './js/features/reservas/listener.js';
 import './js/core/navigation.js';
-import {carregarRoomServices} from './js/features/roomservice.js';
 beforeEach(()=>{vi.clearAllMocks();document.body.innerHTML='';setConfigSistema({bloqueioAutomatico:false,bloqueiosSemanais:{}});setTodasReservas([]);});
 afterEach(()=>{vi.useRealTimers();vi.restoreAllMocks();pararEscuta();});
-it('RV01 Room Service keeps local date after 21h Sao Paulo',()=>{
- vi.useFakeTimers();vi.setSystemTime(new Date('2026-10-21T01:30:00Z'));
- document.body.innerHTML='<input id="dataRoomService"><div id="tela-roomservice"></div>';
- window.carregarRoomServices=vi.fn();window.navegar('roomservice');
- expect(new Date().toLocaleDateString('en-CA',{timeZone:'America/Sao_Paulo'})).toBe('2026-10-20');
- expect(document.getElementById('dataRoomService').value).toBe('2026-10-20');
-});
 it('RV02 Room Service from another date opens and preserves its date on edit',async()=>{
- document.body.innerHTML='<div id="modalReserva" style="display:none"><h3></h3></div><input id="reservaId"><input id="horario"><input id="originalBase"><input type="checkbox" id="checkAlterarHorario"><span id="displayHoras"></span><span id="displayMinutos"></span><input id="dataRoomService" value="2026-10-21"><div id="listaRoomServices"></div>';
+ document.body.innerHTML='<div id="modalReserva" style="display:none"><h3></h3></div><input id="reservaId"><input id="horario"><input id="originalBase"><input type="checkbox" id="checkAlterarHorario"><span id="displayHoras"></span><span id="displayMinutos"></span>';
  setTodasReservas([{id:'today',data:'2026-10-20',nomes:'ANA'}]);
  db.getReservasPorData.mockResolvedValue([{id:'tomorrow-room',data:'2026-10-21',tipo:'roomservice',nomes:'BRUNO',apto:'102'}]);
- await carregarRoomServices();expect(document.getElementById('listaRoomServices').textContent).toContain('BRUNO');
  const reserva={id:'tomorrow-room',data:'2026-10-21',horario:'20:00',tipo:'roomservice',nomes:'BRUNO',apto:'102'};
  db.getReservaPorId.mockResolvedValue(reserva);
  const modal=new ReservaModal();await modal.abrirEditar('tomorrow-room');
@@ -70,19 +61,4 @@ it('RV02 time change outside grid uses reservation date and that day capacity',a
  expect(db.buscarReservasPorBloco).toHaveBeenCalledWith('2026-10-21','20:30');
  expect(db.getLinhasExtrasPorData).toHaveBeenCalledWith('2026-10-21');
  expect(getLinhasExtras()).toEqual({'20:30':5});
-});
-it.each(['resolve','reject'])('Room Service ignores old %s after a newer search',async(outcome)=>{
- document.body.innerHTML='<input id="dataRoomService" value="2026-10-20"><div id="listaRoomServices"></div>';
- let resolveOld,rejectOld;
- db.getReservasPorData.mockReturnValueOnce(new Promise((resolve,reject)=>{resolveOld=resolve;rejectOld=reject;}));
- const first=carregarRoomServices();
- document.getElementById('dataRoomService').value='2026-10-21';
- db.getReservasPorData.mockResolvedValueOnce([{id:'new',data:'2026-10-21',horario:'20:00',tipo:'roomservice',nomes:'BRUNO',apto:'102'}]);
- await carregarRoomServices();
- if(outcome==='resolve')resolveOld([{id:'old',data:'2026-10-20',horario:'20:00',tipo:'roomservice',nomes:'ANA',apto:'101'}]);
- else rejectOld(new Error('old request failed'));
- await first;
- expect(document.getElementById('listaRoomServices').textContent).toContain('BRUNO');
- expect(document.getElementById('listaRoomServices').textContent).not.toContain('ANA');
- expect(document.getElementById('listaRoomServices').textContent).not.toContain('Erro ao carregar');
 });

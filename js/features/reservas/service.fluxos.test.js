@@ -27,7 +27,7 @@ vi.mock('../../core/database.js', () => {
 // registrarLog grava no Supabase — nos testes vira um no-op observável.
 vi.mock('./log.js', () => ({ registrarLog: vi.fn().mockResolvedValue(undefined) }));
 
-import { salvarApenasHorario, alterarData, aplicarBloqueiosSemanais, OBS_BLOQUEIO_SEMANAL, salvarReserva } from './service.js';
+import { salvarApenasHorario, alterarData, aplicarBloqueiosSemanais, OBS_BLOQUEIO_SEMANAL, salvarReserva, recriarReservaDoLog, adicionarObservacao, atualizarBloqueio } from './service.js';
 import { db } from '../../core/database.js';
 import { registrarLog } from './log.js';
 import { setConfigSistema, setLinhasExtras } from '../../core/state.js';
@@ -217,3 +217,108 @@ describe('salvarReserva — log de auditoria (bug: editar paxs não abria detalh
     });
 });
 
+
+describe('recriarReservaDoLog — desfazer exclusão a partir do snapshot do log', () => {
+    const snapshot = {
+        id: 'excluida-1', data: '2027-07-15', horario: '20:00', originalBase: '20:00', posicao: 1,
+        nomes: 'ANA', apto: '101', codigoReserva: 'ABC', tipo: 'hospede', paxs: 2, chd: 0,
+        obs: 'ANIVERSARIO', pagamento: 'PIX',
+    };
+
+    beforeEach(() => {
+        db.getReservaPorId.mockResolvedValue(null);
+        db.buscarReservasPorBloco.mockResolvedValue([]);
+        db.criarReserva.mockResolvedValue('excluida-1');
+    });
+
+    it('recusa quando a reserva já existe e não grava nada', async () => {
+        db.getReservaPorId.mockResolvedValue({ id: 'excluida-1', nomes: 'ANA' });
+
+        await expect(recriarReservaDoLog(snapshot)).rejects.toThrow('já existe');
+        expect(db.criarReserva).not.toHaveBeenCalled();
+        expect(registrarLog).not.toHaveBeenCalled();
+    });
+
+    it('recusa snapshot de bloqueio ou sem nome', async () => {
+        await expect(recriarReservaDoLog({ ...snapshot, bloqueado: true })).rejects.toThrow('bloqueio');
+        await expect(recriarReservaDoLog({ ...snapshot, nomes: '' })).rejects.toThrow('bloqueio');
+        expect(db.criarReserva).not.toHaveBeenCalled();
+    });
+
+    it('cria com o MESMO id (idFixo) e registra RECRIAR', async () => {
+        const id = await recriarReservaDoLog(snapshot);
+
+        expect(id).toBe('excluida-1');
+        expect(db.criarReserva).toHaveBeenCalledWith(
+            expect.objectContaining({ nomes: 'ANA', posicao: 1, originalBase: '20:00', pagamento: 'PIX' }),
+            'excluida-1',
+        );
+        expect(registrarLog).toHaveBeenCalledWith('RECRIAR', null, expect.objectContaining({ id: 'excluida-1', nomes: 'ANA' }));
+    });
+
+    it('log antigo sem originalBase/posicao: usa horario e posição 0', async () => {
+        const antigo = { ...snapshot };
+        delete antigo.originalBase; delete antigo.posicao; delete antigo.pagamento;
+
+        await recriarReservaDoLog(antigo);
+
+        expect(db.criarReserva).toHaveBeenCalledWith(
+            expect.objectContaining({ originalBase: '20:00', posicao: 0, pagamento: '' }),
+            'excluida-1',
+        );
+    });
+
+    it('posição original ocupada → usa a primeira livre do bloco', async () => {
+        db.buscarReservasPorBloco.mockResolvedValue([{ id: 'x1', nomes: 'OUTRO', posicao: 1 }]);
+
+        await recriarReservaDoLog(snapshot);
+
+        expect(db.criarReserva.mock.calls[0][0].posicao).toBe(0);
+    });
+
+    it('23505 na corrida de posição: recalcula e tenta de novo', async () => {
+        db.criarReserva.mockRejectedValueOnce({ code: '23505' }).mockResolvedValueOnce('excluida-1');
+        db.buscarReservasPorBloco
+            .mockResolvedValueOnce([])
+            .mockResolvedValueOnce([{ id: 'x1', nomes: 'CONCORRENTE', posicao: 1 }]);
+
+        await recriarReservaDoLog(snapshot);
+
+        expect(db.criarReserva).toHaveBeenCalledTimes(2);
+        expect(db.criarReserva.mock.calls[1][0].posicao).toBe(0);
+        expect(registrarLog).toHaveBeenCalledWith('RECRIAR', null, expect.objectContaining({ posicao: 0 }));
+    });
+
+    it('erro do banco: propaga (rethrow) e não registra log', async () => {
+        db.criarReserva.mockRejectedValue(new Error('falhou'));
+
+        await expect(recriarReservaDoLog(snapshot)).rejects.toThrow('falhou');
+        expect(registrarLog).not.toHaveBeenCalled();
+    });
+});
+
+describe('adicionarObservacao / atualizarBloqueio — auditoria', () => {
+    it('adicionarObservacao registra OBSERVAR com obs antes e depois', async () => {
+        db.getReservaPorId.mockResolvedValue({ id: 'r1', nomes: 'ANA', obs: 'ALERGIA' });
+
+        await adicionarObservacao('r1', 'sem gluten');
+
+        expect(registrarLog).toHaveBeenCalledWith(
+            'OBSERVAR',
+            expect.objectContaining({ obs: 'ALERGIA' }),
+            expect.objectContaining({ obs: 'ALERGIA | SEM GLUTEN' }),
+        );
+    });
+
+    it('atualizarBloqueio registra EDITAR com o estado anterior', async () => {
+        db.getReservaPorId.mockResolvedValue({ id: 'b1', bloqueado: true, obs: 'MANUTENCAO' });
+
+        await atualizarBloqueio('b1', { obs: 'evento', bloqueado: false, somenteHospedes: true });
+
+        expect(registrarLog).toHaveBeenCalledWith(
+            'EDITAR',
+            expect.objectContaining({ bloqueado: true, obs: 'MANUTENCAO' }),
+            expect.objectContaining({ bloqueado: false, somenteHospedes: true, obs: 'EVENTO' }),
+        );
+    });
+});

@@ -79,8 +79,61 @@ assert.equal(await scalar('select count(*)::int from reservas where data=$1',[fu
 const room=await scalar("insert into hospedes(nome,tipo) values ('ROOM TESTE','roomservice') returning id");
 await db.query("insert into reservas(hospede_id,data,horario,original_base,posicao) values ($1,$2,'20:00','20:00',0),($1,$2,'20:00','20:00',0)",[room,future]);
 assert.equal(await scalar('select count(*)::int from reservas where data=$1 and fora_grade_roomservice',[future]),2);
+// ── Log de auditoria (20261103120000): imutável, retenção 2 anos, view plana ──
+await db.exec('reset role');
+await db.exec(readFileSync(new URL('20260712120000_desfazer_cancelamento.sql',dir),'utf8'));
+await db.exec(readFileSync(new URL('20261103120000_log_auditoria.sql',dir),'utf8'));
+await db.exec('set role authenticated');
+const logId=await scalar("insert into reservas_log(acao,usuario,dados_depois) values ('CRIAR','Fulano','{\"data\":\"2099-02-01\",\"nomes\":\"A\"}') returning id");
+assert.equal(await scalar('select usuario_id::text from reservas_log where id=$1',[logId]),'00000000-0000-0000-0000-000000000001');
+assert.equal(await scalar('select count(*)::int from reservas_log where id=$1',[logId]),1);
+// UPDATE/DELETE negados (privilégio revogado) — nada muda
+await assert.rejects(db.query("update reservas_log set usuario='X' where id=$1",[logId]),e=>e.code==='42501');
+await assert.rejects(db.query('delete from reservas_log where id=$1',[logId]),e=>e.code==='42501');
+assert.equal(await scalar('select usuario from reservas_log where id=$1',[logId]),'Fulano');
+// Ações novas passam; inválida falha
+for(const a of ['CRIAR','EDITAR','EXCLUIR','DESBLOQUEAR','CANCELAR','RESTAURAR','RECRIAR','OBSERVAR','NOSHOW','CONFIG','LOGIN','LOGOUT']){
+  await db.query('insert into reservas_log(acao,usuario) values ($1,$2)',[a,'T']);
+}
+await assert.rejects(db.query("insert into reservas_log(acao,usuario) values ('APAGAR','T')"),e=>e.code==='23514');
+// Retenção: só apaga > 24 meses; janela menor é ignorada
+// criado_em retroativo como authenticated é ignorado (fica now()); semeia datas antigas como papel privilegiado
+await db.query("insert into reservas_log(acao,usuario,criado_em) values ('CRIAR','FORJADO',now()-interval '30 months')");
+assert.ok(await scalar("select criado_em > now()-interval '1 minute' from reservas_log where usuario='FORJADO'"));
+await assert.rejects(db.query("insert into reservas_log(acao,usuario,usuario_id) values ('CRIAR','X','00000000-0000-0000-0000-000000000002')"),e=>e.code==='42501');
+await db.exec('reset role');
+await db.query("insert into reservas_log(acao,usuario,criado_em) values ('CRIAR','VELHO',now()-interval '25 months'),('CRIAR','MEIO',now()-interval '3 months'),('CRIAR','MEIO2',now()-interval '23 months')");
+await db.exec('set role authenticated');
+await assert.rejects(db.query('delete from vw_log_auditoria'),e=>e.code==='42501');
+await assert.rejects(db.query("update vw_log_auditoria set usuario='X'"),e=>e.code==='42501'||e.code==='55000');
+assert.equal(await scalar('select limpar_logs_antigos(1)'),1);
+assert.equal(await scalar("select count(*)::int from reservas_log where usuario='MEIO'"),1);
+assert.equal(await scalar("select count(*)::int from reservas_log where usuario='MEIO2'"),1);
+assert.equal(await scalar("select count(*)::int from reservas_log where usuario='VELHO'"),0);
+assert.equal(await scalar('select limpar_logs_antigos()'),0);
+// View plana
+const editId=await scalar(`insert into reservas_log(acao,usuario,dados_antes,dados_depois) values ('EDITAR','Ana',
+  '{"data":"2099-03-05","nomes":"MARIA","horario":"20:00","paxs":2,"chd":0,"obs":"","mesa":"1"}',
+  '{"data":"2099-03-05","nomes":"MARIA","horario":"20:30","paxs":4,"chd":0,"obs":"","mesa":"1"}') returning id`);
+const edit=(await db.query('select * from vw_log_auditoria where id=$1',[editId])).rows[0];
+assert.equal(edit.nomes,'MARIA'); assert.equal(new Date(edit.data_reserva).toISOString().slice(0,10),'2099-03-05');
+assert.deepEqual(edit.campos_alterados,['horario','paxs']); assert.equal(edit.paxs,4);
+assert.equal(edit.usuario_id,'00000000-0000-0000-0000-000000000001');
+const delId=await scalar(`insert into reservas_log(acao,usuario,dados_antes) values ('EXCLUIR','Ana','{"data":"2099-04-01","nomes":"JOSE","apto":"12"}') returning id`);
+const del=(await db.query('select * from vw_log_auditoria where id=$1',[delId])).rows[0];
+assert.equal(del.nomes,'JOSE'); assert.equal(del.apto,'12'); assert.equal(new Date(del.data_reserva).toISOString().slice(0,10),'2099-04-01'); assert.equal(del.campos_alterados,null);
+const cfgId=await scalar(`insert into reservas_log(acao,usuario,dados_depois) values ('CONFIG','Ana','{"capacidade":40,"mesas":[1,2]}') returning id`);
+const cfg=(await db.query('select * from vw_log_auditoria where id=$1',[cfgId])).rows[0];
+assert.equal(cfg.data_reserva,null); assert.equal(cfg.nomes,null); assert.equal(cfg.paxs,null);
+const nsId=await scalar(`insert into reservas_log(acao,usuario,dados_depois) values ('NOSHOW','Ana','{"quantidade":3,"data":"2099-05-02"}') returning id`);
+assert.equal(new Date((await db.query('select data_reserva from vw_log_auditoria where id=$1',[nsId])).rows[0].data_reserva).toISOString().slice(0,10),'2099-05-02');
+const loId=await scalar(`insert into reservas_log(acao,usuario,dados_depois) values ('LOGIN','Ana','{"paxs":"abc","data":"x"}') returning id`);
+assert.equal((await db.query('select paxs,data_reserva from vw_log_auditoria where id=$1',[loId])).rows[0].paxs,null);
+const emptyId=await scalar(`insert into reservas_log(acao,usuario,dados_depois) values ('CRIAR','Ana','{"data":""}') returning id`);
+assert.equal((await db.query('select data_reserva from vw_log_auditoria where id=$1',[emptyId])).rows[0].data_reserva,null);
 await db.exec('reset role; set role anon;');
+await assert.rejects(db.query('select limpar_logs_antigos()'),e=>e.code==='42501');
 await assert.rejects(db.query('select aplicar_bloqueios_semanais($1)',[future]),e=>e.code==='42501');
-console.log('SQL: 20 cenários passaram com RLS/role authenticated: preflight futuro, backfill legado preserva todos campos/hóspedes/avisos/leituras, 5 exceções históricas, chave canônica única, flags forjadas negadas, atualização histórica, realocação/restauração perde exceção, dedup legado e novo, conflito, notificação única, edição, redução, cancelamento, leitura idempotente, semeadura idempotente, ROOM fora grade e RPC negada a anon.');
+console.log('SQL: log de auditoria (autor, imutável, ações, retenção 24m, view) + 20 cenários passaram com RLS/role authenticated: preflight futuro, backfill legado preserva todos campos/hóspedes/avisos/leituras, 5 exceções históricas, chave canônica única, flags forjadas negadas, atualização histórica, realocação/restauração perde exceção, dedup legado e novo, conflito, notificação única, edição, redução, cancelamento, leitura idempotente, semeadura idempotente, ROOM fora grade e RPC negada a anon.');
 await db.close();
 

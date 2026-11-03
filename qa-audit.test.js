@@ -15,7 +15,6 @@ import { db } from './js/core/database.js';
 import { registrarLog } from './js/features/reservas/log.js';
 import * as s from './js/features/reservas/service.js';
 import { setConfigSistema, setLinhasExtras } from './js/core/state.js';
-import { carregarRoomServices } from './js/features/roomservice.js';
 const base = {id:'r1', nomes:'ANA', data:'2027-07-15', horario:'20:00',originalBase:'20:00',posicao:0,paxs:6,chd:0,tipo:'hospede',apto:'101'};
 let updates;
 beforeEach(() => {
@@ -44,11 +43,6 @@ it('QA04: reduzir de 6 para 4 adultos remove o segundo bloqueio',async()=>{
  db.buscarReservasPorBloco.mockResolvedValue([base,...blocks]);db.buscarBloqueiosAutomaticos.mockResolvedValue(blocks);
  await s.salvarReserva({...base,paxs:4});await new Promise(r=>setTimeout(r,0));
  expect(db.excluirReserva).toHaveBeenCalledWith('b2');expect(db.excluirReserva).not.toHaveBeenCalledWith('b1');
-});
-it('QA05: room service cancelado não aparece como ativo',async()=>{
- document.body.innerHTML='<input id="dataRoomService" value="2027-07-15"><div id="listaRoomServices"></div>';
- db.getReservasPorData.mockResolvedValue([{...base,tipo:'roomservice',canceladoEm:'2027-07-14T12:00:00Z'}]);
- await carregarRoomServices();expect(document.querySelector('#listaRoomServices').textContent).not.toContain('ANA');expect(document.querySelector('#listaRoomServices').textContent).toContain('Nenhum Room Service');
 });
 it('QA06: criação recarrega bloco após conflito de índice SQL',async()=>{
  setConfigSistema({bloqueioAutomatico:false});

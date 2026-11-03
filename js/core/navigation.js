@@ -126,14 +126,6 @@ function navegar(tela) {
         window.carregarDadosDashboard();
     }
 
-    if (tela === 'roomservice') {
-        const dataInput = document.getElementById('dataRoomService');
-        if (dataInput && !dataInput.value) {
-            dataInput.value = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
-        }
-        if (typeof window.carregarRoomServices === 'function') window.carregarRoomServices();
-    }
-
     if (tela === 'configuracoes' && typeof window.carregarConfiguracoes === 'function') {
         window.carregarConfiguracoes();
     }

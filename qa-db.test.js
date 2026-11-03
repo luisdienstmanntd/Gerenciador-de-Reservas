@@ -50,3 +50,23 @@ it('no-show automático preserva chegadas, atendimento, canceladas, vazios e o d
  try{expect(await db.marcarNoShowsAnteriores('2026-10-20')).toBe(1);}finally{db.client=old;}
  expect(rows.filter(r=>r.status_recepcao==='no_show').map(r=>r.id)).toEqual(['pendente']);
 });
+
+it('criarReserva com idFixo grava o id; sem idFixo o banco gera',async()=>{
+ const {fake,inserts}=fakeClient();const old=db.client;db.client=fake;
+ try{
+  await db.criarReserva({nomes:'',horario:'20:00',data:'2027-07-15'},'id-antigo');
+  await db.criarReserva({nomes:'',horario:'20:00',data:'2027-07-15'});
+ }finally{db.client=old;}
+ const reservas=inserts.filter(x=>x.table==='reservas');
+ expect(reservas[0].cols.id).toBe('id-antigo');
+ expect('id' in reservas[1].cols).toBe(false);
+});
+it('limparLogsAntigos chama a RPC com 24 meses e devolve 0 em erro',async()=>{
+ const old=db.client;let args;
+ db.client={rpc:async(n,a)=>{args=[n,a];return {data:7,error:null};}};
+ try{expect(await db.limparLogsAntigos()).toBe(7);}finally{db.client=old;}
+ expect(args).toEqual(['limpar_logs_antigos',{p_meses:24}]);
+ vi.spyOn(console,'error').mockImplementation(()=>{});
+ db.client={rpc:async()=>({data:null,error:{message:'x'}})};
+ try{expect(await db.limparLogsAntigos()).toBe(0);}finally{db.client=old;}
+});
