@@ -65,7 +65,7 @@ export function suspenderHome() {
 
 function statusHome(mensagem, estado) {
     const el = document.getElementById('home-analise-status');
-    if (el) { el.textContent = mensagem; el.dataset.estado = estado; }
+    if (el) { el.textContent = estado === 'erro' ? mensagem : ''; el.dataset.estado = estado; }
 }
 
 export async function carregarHome() {
@@ -94,11 +94,11 @@ export async function carregarHome() {
             if (geracao !== geracaoHome) return;
             _destruirGraficos(); ultimosDadosGraficos = null;
             _mostrarErro();
-            statusHome('Dados indisponíveis. Use ATUALIZAR para consultar novamente.', 'erro');
+            statusHome('Dados indisponíveis. Recarregue a página para consultar novamente.', 'erro');
         });
     } catch (error) {
         if (geracao !== geracaoHome) return;
-        _mostrarErro(); statusHome('Não foi possível carregar as reservas. Use ATUALIZAR para tentar novamente.', 'erro');
+        _mostrarErro(); statusHome('Não foi possível carregar as reservas. Recarregue a página para tentar novamente.', 'erro');
     }
 }
 
