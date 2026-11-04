@@ -369,3 +369,44 @@ O código público de main corresponde ao snapshot do site publicado. O históri
 
 ### Riscos, limitações e pendências
 A URL pública não permite recuperar código de testes, configuração privada, fontes de backend ou estado do banco. Esses arquivos permanecem no repositório. Testes específicos do Log v4 podem não corresponder ao frontend v3 retomado e precisam ser reconciliados quando essa evolução for reintegrada; a suíte completa não foi executada nesta sincronização. O estado remoto da migration do Log não foi verificado. A correspondência vale para o snapshot capturado; um deploy externo posterior exige nova conferência.
+
+## PL-2026-11-04-003 — Contatos e qualidade dos indicadores do BI
+
+- **Data:** 2026-11-04
+- **Status:** Parcial (código em branch; integração e publicação pendentes)
+- **Tipo:** Correção, Documentação, Teste
+- **Solicitado por:** proprietário
+- **Responsável:** Codex
+- **Arquivos afetados:** index.html, js/features/reservas/modal.js, js/features/reservas/validators.js, js/core/database.js, js/core/bi.js, js/features/dashboard-bi.js, scripts/teste-qualidade-bi.mjs
+- **Relacionados:** PL-2026-11-04-001, PL-2026-11-04-002
+- **Substitui:** não se aplica
+
+### Pedido
+Disponibilizar WhatsApp a hóspedes, externos e passantes e melhorar a qualidade dos dados analisados no dashboard.
+
+### Por que foi pedido
+A análise de DDD depende do cadastro correto do telefone e indicadores precisam de escopo claro.
+
+### Problema observado
+Campo só aparecia para externos; DDD incluía Room Service; telefone com +55 era truncado; telefone de cadastro reutilizado não era atualizado; capacidade podia ser confundida com ocupação observada.
+
+### Causa
+O campo estava agrupado com Avulsa; indicador usava todos os perfis; máscara truncava dígitos; busca por cadastro existente retornava antes da atualização.
+
+### Decisão
+WhatsApp opcional para hóspedes, externos e passantes; Room Service excluído do DDD. DDD é estimativa de origem e não de residência. Demanda/capacidade inclui no-show e não representa ocupação física histórica. Cadastro existente reutilizado recebe telefone informado e campo vazio não apaga telefone no fluxo de criação.
+
+### O que foi feito
+Campo separado de Avulsa; validação de DDD e máscara sem truncamento; contagem e cobertura restritas a restaurante; atualização do telefone preenchido no cadastro reutilizado; notas do painel revisadas.
+
+### Erros e tentativas que não funcionaram
+Python do sistema indisponível; usada versão do runtime de trabalho. Nenhum dado real alterado durante testes.
+
+### Validação
+Teste local de telefone, DDD, perfis e atualização simulada do cadastro reutilizado; não foram feitos teste autenticado de interface ou consulta ao Supabase real. Verificações de sintaxe e imports locais.
+
+### Resultado
+Correções preparadas; não publicadas.
+
+### Riscos, limitações e pendências
+Telefone pertence ao cadastro compartilhado: atualizá-lo altera o contato visto nas reservas relacionadas, inclusive históricas. Executar teste autenticado de criação/edição e troca de tipo e verificar permissões RLS antes da publicação; fluxo de atendimento, banco e deploy não foram testados. Números sem DDD continuam opcionais; números internacionais não são aceitos pelo formulário atual e sua análise requer regra específica.

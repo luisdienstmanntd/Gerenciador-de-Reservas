@@ -116,6 +116,7 @@ export class ReservaModal {
       checkMenuDegustacao: document.getElementById("checkMenuDegustacao"),
       containerApto: document.getElementById("containerApto"),
       containerExterno: document.getElementById("containerExterno"),
+      containerWhatsapp: document.getElementById("containerWhatsapp"),
       containerNovoHorario: document.getElementById("containerNovoHorario"),
       camposReserva: document.getElementById("camposReserva"),
       btnSalvar: document.getElementById("btnSalvar"),
@@ -181,7 +182,7 @@ export class ReservaModal {
     }
 
     if (this.elementos.whatsapp) {
-      this.elementos.whatsapp.addEventListener("input", (e) => {
+      this.elementos.whatsapp.addEventListener("blur", (e) => {
         e.target.value = this._formatarTelefone(e.target.value);
       });
     }
@@ -876,6 +877,9 @@ export class ReservaModal {
         tipo === "hospede" || tipo === "roomservice" ? "block" : "none";
     }
 
+    if (this.elementos.containerWhatsapp) {
+      this.elementos.containerWhatsapp.style.display = tipo === "roomservice" ? "none" : "block";
+    }
     if (this.elementos.containerExterno) {
       this.elementos.containerExterno.style.display =
         tipo === "externo" ? "block" : "none";

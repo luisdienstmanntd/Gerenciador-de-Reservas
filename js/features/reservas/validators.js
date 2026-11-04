@@ -11,6 +11,8 @@
  * @param {string} valor - Valor a validar
  * @returns {boolean}
  */
+import { identificarDDD } from '../../core/bi.js';
+
 export function validarNaoVazio(valor) {
     return valor && valor.trim().length > 0;
 }
@@ -22,8 +24,7 @@ export function validarNaoVazio(valor) {
  */
 export function validarTelefone(telefone) {
     if (!telefone) return true; // Telefone é opcional
-    const regex = /^\(\d{2}\) \d{5}-\d{4}$/;
-    return regex.test(telefone);
+    return identificarDDD(telefone).situacao === 'valido';
 }
 
 /**
@@ -108,7 +109,7 @@ export function validarReserva(dados) {
         }
     }
 
-    if (dados.whatsapp && !validarTelefone(dados.whatsapp)) {
+    if (dados.tipo !== 'roomservice' && !dados.bloqueado && !dados.somenteHospedes && dados.whatsapp && !validarTelefone(dados.whatsapp)) {
         erros.push("Telefone em formato inválido. Use: (XX) XXXXX-XXXX");
     }
 
@@ -125,10 +126,9 @@ export function validarReserva(dados) {
  */
 export function formatarTelefone(valor) {
     let numeros = valor.replace(/\D/g, "");
-    
-    if (numeros.length > 11) {
-        numeros = numeros.slice(0, 11);
-    }
+    // Não truncar: excesso de dígitos deve ser identificado pela validação.
+    if ((valor.trim().startsWith('+55') || numeros.length >= 12) && numeros.startsWith('55')) numeros = numeros.slice(2);
+    if (numeros.length > 11) return valor;
     
     if (numeros.length > 6) {
         return `(${numeros.slice(0, 2)}) ${numeros.slice(2, 7)}-${numeros.slice(7)}`;

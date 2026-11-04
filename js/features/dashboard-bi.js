@@ -72,8 +72,8 @@ function renderizarBI() {
     escrever('biDegustacao', fmt(m.degustacao.reservas));
     escrever('biDegustacaoPax', fmt(m.degustacao.pax));
     escrever('biDegustacaoTaxa', fmt(m.taxaDegustacao) + (m.taxaDegustacao == null ? '' : '%'));
-    escrever('biDDDValidos', fmt(m.origem.valido)); escrever('biDDDTotal', fmt(m.total.reservas));
-    escrever('biDDDCobertura', m.total.reservas ? fmt(m.origem.valido / m.total.reservas * 100) + '%' : '—');
+    escrever('biDDDValidos', fmt(m.origem.valido)); escrever('biDDDTotal', fmt(m.restaurante.reservas));
+    escrever('biDDDCobertura', m.restaurante.reservas ? fmt(m.origem.valido / m.restaurante.reservas * 100) + '%' : '—');
     escrever('biDDDFaltantes', `${m.origem.ausente} sem telefone · ${m.origem.invalido} inválidos · ${m.origem.internacional} internacionais`);
     escrever('biRecebidos', fmt(m.pagamentos.pago)); escrever('biPendentes', fmt(m.pagamentos.pendente)); escrever('biDireto', fmt(m.pagamentos.direto));
     escrever('biPagamentosEscopo', `${m.pagamentoTotal} reservas não canceladas de restaurante · ${m.pagamentos.desconhecido} sem informação/não aplicável · ${m.pagamentos.outro} com outro valor`);

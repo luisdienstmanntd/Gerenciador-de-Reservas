@@ -92,11 +92,13 @@ export function calcularBI(reservas, datas = []) {
             if (m.diario[r.data][tipo]) somar(m.diario[r.data][tipo], pax);
         }
         if (!PERFIS_BI.includes(tipo) || !dataBIValida(r.data) || [r.paxs, r.chd].some(v => v != null && v !== '' && (!Number.isInteger(Number(v)) || Number(v) < 0))) m.dadosInvalidos++;
+        if (tipo !== 'roomservice') {
         const origem = identificarDDD(r.whatsapp);
         m.origem[origem.situacao]++;
         if (origem.situacao === 'valido') {
             m.origem.ufs[origem.uf] = (m.origem.ufs[origem.uf] || 0) + 1;
             m.origem.ddds[origem.ddd] = (m.origem.ddds[origem.ddd] || 0) + 1;
+        }
         }
         // Degustação refere-se à marca da reserva, não ao consumo individual.
         if (r.menuDegustacao) {

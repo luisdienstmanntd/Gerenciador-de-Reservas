@@ -178,7 +178,15 @@ class DatabaseService {
 
         const { data: existentes, error: erroConsulta } = await query.limit(1);
         if (erroConsulta) throw erroConsulta;
-        if (existentes && existentes.length > 0) return existentes[0].id;
+        if (existentes && existentes.length > 0) {
+            if (dados.whatsapp && tipo !== 'roomservice') {
+                const { data: atualizados, error: erroUpdate } = await this.client.from('hospedes')
+                    .update({ telefone: dados.whatsapp }).eq('id', existentes[0].id).select('id');
+                if (erroUpdate) throw erroUpdate;
+                if (!atualizados?.length) throw new Error('Cadastro não encontrado ou sem permissão para alterar.');
+            }
+            return existentes[0].id;
+        }
 
         const { data: novo, error: erroCriar } = await this.client
             .from('hospedes')
