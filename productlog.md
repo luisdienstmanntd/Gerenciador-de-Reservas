@@ -410,3 +410,8 @@ Correções preparadas; não publicadas.
 
 ### Riscos, limitações e pendências
 Telefone pertence ao cadastro compartilhado: atualizá-lo altera o contato visto nas reservas relacionadas, inclusive históricas. Executar teste autenticado de criação/edição e troca de tipo e verificar permissões RLS antes da publicação; fluxo de atendimento, banco e deploy não foram testados. Números sem DDD continuam opcionais; números internacionais não são aceitos pelo formulário atual e sua análise requer regra específica.
+
+
+### Validação integrada posterior — 2026-11-04
+
+Em uma cópia local da branch, com sessão autenticada de recepção e o Supabase real, foi criada reserva fictícia de hóspede em 2027-11-04, informando número com +55. O telefone foi conferido no banco com DDD 51, editado pela interface para DDD 54 e novamente conferido. A reserva e o cadastro fictícios foram removidos por IDs e a ausência dos dois foi verificada. Os eventos de auditoria gerados pela aplicação podem permanecer. Testes de outros perfis, reuso de cadastro e visibilidade do DDD no dashboard não foram integrados nesta sessão; esses cenários foram testados localmente com dados simulados. Não houve deploy.
