@@ -1,0 +1,6 @@
+---
+description: Sincronização obrigatória entre computadores, GitHub e produção
+alwaysApply: true
+---
+
+Leia e cumpra integralmente o AGENTS.md da raiz do repositório e o productlog.md antes de trabalhar. GitHub é a fonte oficial; preserve alterações locais, sincronize a base, envie o trabalho ao repositório e publique somente artefatos do commit identificado e validado de main. Se produção e GitHub divergirem, reconcilie ambas as versões antes de publicar. Nunca faça deploy de cópia antiga.
