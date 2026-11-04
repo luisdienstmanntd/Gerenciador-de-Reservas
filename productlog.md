@@ -145,6 +145,7 @@ Esta seção deve permanecer curta. Adicione apenas decisões com grande chance 
 
 | Tema | Decisão vigente | Entrada |
 |---|---|---|
+| Continuidade entre computadores | Sincronizar GitHub antes de editar e publicar somente o commit validado de main; reconciliar divergências sem perder funcionalidades. | PL-2026-11-04-001 |
 | Histórico do produto | Toda mudança material deve ser registrada neste arquivo e conflitos devem ser explicitados antes de substituir decisões anteriores. | PL-2026-08-06-001 |
 | Log de auditoria | `reservas_log` é imutável para o app (só SELECT/INSERT), retenção mínima de 24 meses, todo texto exibido é escapado e a aba usa só tokens da paleta. | PL-2026-11-03-001 |
 
@@ -286,3 +287,44 @@ A aba Log passa a responder "quem mexeu, quando, em qual noite e o que mudou", p
 - `destacarLogPorReservaId` (sino) continua sem chamador no repositório (código morto já existente).
 - Em 2026-11-03 o `git status` já mostrava `.gitignore` sem as linhas `.env`, `.env.local`, `node_modules/`, `.firebase/` e `.env.example` com texto solto: alterações do proprietário anteriores a este trabalho, NÃO tocadas aqui. Não commitar sem revisá-las.
 
+
+## PL-2026-11-04-001 — GitHub e produção sincronizados entre computadores
+
+- **Data:** 2026-11-04
+- **Status:** Vigente (regra documental; reconciliação atual pendente)
+- **Tipo:** Pedido, Decisão, Documentação
+- **Solicitado por:** proprietário, que trabalha em três computadores
+- **Responsável:** Codex
+- **Arquivos afetados:** `AGENTS.md`, `.cursor/rules/sincronizacao.mdc`, `productlog.md`
+- **Relacionados:** PL-2026-08-06-001; comparação de produção com main 345600037b837173184789ce1bce313056c190ba em 2026-11-04
+- **Substitui:** não se aplica
+
+### Pedido
+Manter o código atualizado no GitHub e o site correspondente ao código versionado, permitindo continuar o trabalho em qualquer computador sem regressões.
+
+### Por que foi pedido
+Trabalho iniciado em computadores diferentes ocasionalmente resulta em publicação de uma versão antiga.
+
+### Problema observado
+A comparação em 2026-11-04 encontrou diferenças nos dois sentidos: main contém Log v4 e css/log.css ausentes na produção; produção contém js/core/bi.js, js/features/dashboard-bi.js e ajustes de BI/no-show ausentes em main.
+
+### Causa
+A origem de cada publicação não foi confirmada. A divergência entre os arquivos servidos e main foi confirmada; alternância entre computadores foi relatada pelo proprietário.
+
+### Decisão
+Aplicar integralmente AGENTS.md: sincronizar a base antes de editar, preservar trabalho local, enviar commits ao GitHub antes de trocar de computador, integrar e validar antes de publicar, e conferir a produção contra o commit publicado. Trabalho incompleto fica em branch compartilhada, sem deploy. Nenhuma cópia local antiga pode sobrescrever trabalho novo. Rollbacks precisam ser explícitos e reconciliados no repositório.
+
+### O que foi feito
+Criadas instruções na raiz para agentes e regra sempre aplicável em .cursor/rules. Registrada a divergência atual como pendência: preservar e conciliar BI publicado e Log do GitHub antes de qualquer publicação do aplicativo.
+
+### Erros e tentativas que não funcionaram
+Nenhum nesta alteração. Publicar main sem a conciliação pode remover funcionalidades do BI já em produção.
+
+### Validação
+Releitura dos arquivos documentais no GitHub após gravação. Alteração exclusivamente documental, sem testes de runtime ou deploy do aplicativo.
+
+### Resultado
+O protocolo de continuidade entre computadores está versionado e disponível a futuras sessões do projeto.
+
+### Riscos, limitações e pendências
+A regra não configura CI/CD nem garante execução automática. A divergência atual do aplicativo permanece pendente; esta alteração não publica nem modifica funcionalidades. Verificar o estado remoto das migrations necessárias antes de publicar o novo Log.
