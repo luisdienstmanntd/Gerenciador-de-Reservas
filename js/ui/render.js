@@ -37,6 +37,7 @@
 import { getHorariosPadrao, getLinhasExtras, getFiltroAtivo } from '../core/state.js';
 import { escapeHtml } from '../features/reservas/validators.js';
 import { OBS_BLOQUEIO_AUTOMATICO, OBS_BLOQUEIO_SEMANAL } from '../features/reservas/service.js';
+import { reservaOperacional } from '../core/analytics.js';
 
 const ICONES_CHEGADA = {
     aguardando: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 7v5l3 2"></path></svg>',
@@ -69,7 +70,7 @@ export function atualizarMiniCards(reservas) {
 
     reservas.forEach(r => {
         if (r.canceladoEm) { totais.cancelamentos++; return; }
-        if (r.bloqueado || r.somenteHospedes || !r.nomes) return;
+        if (!reservaOperacional(r)) return;
 
         let qtdAdultos = parseInt(r.paxs) || 0;
         let qtdCriancas = parseInt(r.chd) || 0;

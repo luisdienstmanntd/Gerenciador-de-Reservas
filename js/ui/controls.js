@@ -29,7 +29,6 @@ import { adicionarLinhaExtra, getLinhasExtras, getTodasReservas, getDataAtual, g
 import { renderizarGrid } from './render.js';
 import { removerLinhaDoBloco } from '../features/reservas/service.js';
 import { db } from '../core/database.js';
-import { registrarLogEvento } from '../features/reservas/log.js';
 import { notificarAviso, notificarErro } from '../core/notificacao.js';
 
 let horarioGerenciamento = "";
@@ -404,9 +403,6 @@ export async function salvarConfiguracoes() {
     const bloqueiosSemanais = _serializarRegrasBloqueioSemanal();
 
     const config = { capacidade, mesas, bloqueioAutomatico, bloqueiosSemanais };
-    // Lida ANTES de salvar: setConfigSistema() abaixo sobrescreve o cache, e o log
-    // precisa do estado anterior para mostrar o que mudou.
-    const configAnterior = { ...getConfig() };
 
     try {
         await db.salvarConfigSistema(config);
@@ -414,8 +410,6 @@ export async function salvarConfiguracoes() {
         // refletir a própria escrita (outros usuários recebem via listener normal).
         setConfigSistema(config);
         console.log('✅ Configurações salvas (config_sistema):', config);
-        // Auditoria fora do caminho crítico: falha de log nunca desfaz o salvamento.
-        try { await registrarLogEvento('CONFIG', configAnterior, config); } catch (e) { console.error('Log de CONFIG falhou:', e); }
     } catch (error) {
         console.error('❌ Erro ao salvar configurações:', error);
         notificarErro('Erro ao salvar configurações. Tente novamente.');

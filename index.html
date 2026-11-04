@@ -31,7 +31,6 @@
     <link rel="stylesheet" href="css/osteria-redesign.css">
     <link rel="stylesheet" href="css/responsive-fixes.css">
     <link rel="stylesheet" href="css/analytics.css">
-    <link rel="stylesheet" href="css/log.css">
 </head>
 <body>
 
@@ -284,10 +283,6 @@
                 if (error) throw error;
                 erroEl.style.display = 'none';
                 localStorage.setItem('usuario_nome', usuario);
-                // window.registrarLogEvento é definido por log.js (módulo carregado depois
-                // deste script) — lido só aqui, em tempo de execução, nunca na carga.
-                // Passa o usuário explicitamente: o localStorage acabou de ser gravado.
-                try { window.registrarLogEvento?.('LOGIN', null, null, { usuario }); } catch (_) { /* log nunca bloqueia o login */ }
                 // esconderTelaLogin() e recarregarReservas() disparam via onAuthStateChange acima
             } catch (e) {
                 // Mensagem genérica de propósito — não revela se o usuário existe ou não
@@ -299,14 +294,6 @@
 
         // ✅ Expõe função global para trocar usuário (útil nas configurações)
         async function trocarUsuario() {
-            // O LOGOUT precisa ser gravado ANTES do signOut (depois não há sessão para o
-            // RLS). O timeout garante que um log lento/offline nunca trave a saída.
-            try {
-                await Promise.race([
-                    window.registrarLogEvento?.('LOGOUT', null, null),
-                    new Promise(r => setTimeout(r, 1500)),
-                ]);
-            } catch (_) { /* log nunca bloqueia a saída */ }
             await supabase.auth.signOut();
             localStorage.removeItem('usuario_nome');
             location.reload();
@@ -457,7 +444,7 @@
             </div>
 
             <!-- KPI Cards -->
-            <p id="home-analise-status" class="analise-status" role="status" aria-live="polite"></p>
+            <p id="home-analise-status" class="analise-status" role="status" aria-live="polite" hidden></p>
             <div class="home-kpis" id="home-kpis-grid">
                 <div class="home-kpi-card" style="--kpi-color: #4a90e2;">
                     <div class="home-kpi-icon">
@@ -669,10 +656,11 @@
         </div>
 
         <!-- TELA DE DASHBOARD -->
-        <div id="tela-dashboard" class="view hidden" style="padding: 20px;">
-            <div style="background: var(--card-bg); padding: 15px; border-radius: 10px; margin-bottom: 10px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; box-shadow: 0 4px 6px var(--shadow);">
+        <div id="tela-dashboard" class="view hidden bi-dashboard">
+            <header class="bi-heading"><h1>Dashboard</h1></header>
+            <div class="bi-filters">
                 <div>
-                    <label style="font-size: 0.8rem;">Modo:</label>
+                    <label for="dashModo">Consulta</label>
                     <select id="dashModo" class="filtro-data" style="margin: 0;" onchange="alternarModoDashboard()">
                         <option value="periodo">Período contínuo</option>
                         <option value="especificas">Datas específicas</option>
@@ -680,65 +668,66 @@
                 </div>
                 <div id="dashGrupoPeriodo" style="display: flex; gap: 10px; align-items: center;">
                     <div>
-                        <label style="font-size: 0.8rem;">De:</label>
+                        <label for="dashInicio">De</label>
                         <input type="date" id="dashInicio" class="filtro-data" style="margin: 0;">
                     </div>
                     <div>
-                        <label style="font-size: 0.8rem;">Até:</label>
+                        <label for="dashFim">Até</label>
                         <input type="date" id="dashFim" class="filtro-data" style="margin: 0;">
                     </div>
                 </div>
-                <button class="btn-main" onclick="carregarDadosDashboard()" style="padding: 5px 15px; height: 38px;">ANALISAR</button>
+                <div><label for="dashPerfil">Tipo de cliente</label><select id="dashPerfil" class="filtro-data"><option value="todos">Todos os perfis</option><option value="hospede">Hóspedes</option><option value="externo">Externos</option><option value="passante">Passantes</option><option value="roomservice">Room Service</option></select></div>
+                <button class="btn-main" type="button" onclick="carregarDadosDashboard()">ANALISAR</button>
             </div>
 
-            <div style="background: var(--card-bg); padding: 15px; border-radius: 10px; margin-bottom: 20px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; box-shadow: 0 4px 6px var(--shadow);">
+            <details class="bi-date-options"><summary>Excluir dias ou selecionar datas específicas</summary><div class="bi-dates">
                 <div id="dashGrupoExclusao" style="display: flex; gap: 8px; align-items: center;">
-                    <label style="font-size: 0.8rem;">Excluir data (evento fechado, etc.):</label>
+                    <label for="dashDataExcluir">Excluir data (evento fechado, etc.)</label>
                     <input type="date" id="dashDataExcluir" class="filtro-data" style="margin: 0;">
                     <button class="btn-main" onclick="adicionarDataExcluida()" style="padding: 5px 12px; height: 34px;">+ EXCLUIR</button>
                 </div>
                 <div id="dashGrupoEspecificas" style="display: none; gap: 8px; align-items: center;">
-                    <input type="date" id="dashDataEspecifica" class="filtro-data" style="margin: 0;">
+                    <label for="dashDataEspecifica">Data específica</label><input type="date" id="dashDataEspecifica" class="filtro-data" style="margin: 0;">
                     <button class="btn-main" onclick="adicionarDataEspecifica()" style="padding: 5px 12px; height: 34px;">+ ADICIONAR</button>
                 </div>
                 <div id="dashChipsDatas" style="display: flex; gap: 6px; flex-wrap: wrap;"></div>
-            </div>
+            </div></details>
 
             <p id="dashStatus" class="analise-status" role="status" aria-live="polite">Escolha as datas e clique em ANALISAR.</p>
-            <p class="analise-nota">Totais em PAX de reservas, incluindo Room Service e no-show; não representam comparecimento. Ocupação considera apenas o restaurante. Cancelamentos são contados à parte.</p>
-            <div class="dashboard-kpis">
-                <div class="kpi-card">
-                    <h4>OCUPAÇÃO DO RESTAURANTE</h4>
-                    <p class="value" id="kpiOcupacao">0%</p>
-                </div>
-                <div class="kpi-card">
-                    <h4>TOTAL PAX</h4>
-                    <p class="value" id="kpiTotalPax">0</p>
-                </div>
-                <div class="kpi-card">
-                    <h4>TEMPO MÉDIO</h4>
-                    <p class="value" id="kpiTempoMedio">-- min</p>
-                </div>
-                <div class="kpi-card">
-                    <h4>MESA TOP</h4>
-                    <p class="value" id="kpiMesaTop">--</p>
-                </div>
-                <div class="kpi-card">
-                    <h4>CRIANÇAS</h4>
-                    <p class="value" id="kpiCriancas">0</p>
-                </div>
-                <div class="kpi-card">
-                    <h4>CANCELAMENTOS</h4>
-                    <p class="value" id="kpiCancelamentos">0</p>
-                </div>
+            <div class="bi-tabs" role="tablist" aria-label="Análises do dashboard">
+                <button id="biTabMovimento" type="button" role="tab" data-bi-tab aria-controls="biMovimento" aria-selected="true">Movimento</button>
+                <button id="biTabClientes" type="button" role="tab" data-bi-tab aria-controls="biClientes" aria-selected="false">Clientes e degustação</button>
+                <button id="biTabPagamentos" type="button" role="tab" data-bi-tab aria-controls="biPagamentos" aria-selected="false">Depósitos e cancelamentos</button>
             </div>
-
-            <div class="charts-grid">
-                <div class="chart-card"><h3>Curva de Horário</h3><div class="chart-container"><canvas id="chartHorario"></canvas></div></div>
-                <div class="chart-card"><h3>Uso de Mesas</h3><div class="chart-container"><canvas id="chartMesas"></canvas></div></div>
-                <div class="chart-card"><h3>Perfil de Cliente (PAX)</h3><div class="chart-container"><canvas id="chartTipo"></canvas></div></div>
-                <div class="chart-card"><h3>Movimento por Dia da Semana</h3><div class="chart-container"><canvas id="chartDiaSemana"></canvas></div></div>
-            </div>
+            <section id="biMovimento" role="tabpanel" aria-labelledby="biTabMovimento">
+                <div class="bi-stats">
+                    <article class="bi-stat"><h2>Pessoas reservadas</h2><div class="bi-demografia"><div><span>Adultos</span><strong data-bi-value id="biAdultos">—</strong></div><div><span>Crianças</span><strong data-bi-value id="biCriancas">—</strong></div></div><small>Total: <span data-bi-value id="biPaxRestaurante">—</span> pessoas · restaurante</small></article>
+                    <article class="bi-stat"><h2>Reservas</h2><p data-bi-value id="biReservas">—</p><small>Restaurante · não canceladas</small></article>
+                    <article class="bi-stat"><h2>Média por dia</h2><p data-bi-value id="biMediaDia">—</p><small>Pessoas / dias selecionados</small></article>
+                    <article class="bi-stat"><h2>Menu degustação</h2><p data-bi-value id="biDegustacao">—</p><small>Reservas marcadas · todos os perfis selecionados</small></article>
+                </div>
+                <div class="bi-local-controls"><label for="dashUnidadeBI">Unidade da evolução e da comparação semanal</label><select id="dashUnidadeBI"><option value="pax">Pessoas</option><option value="reservas">Reservas</option></select></div>
+                <div class="bi-grid">
+                    <article id="biEvolucaoPainel" class="bi-panel bi-wide" hidden><h2>Evolução do movimento</h2><p class="bi-subtitle">Hóspedes, externos e passantes · datas selecionadas</p><div class="chart-container"><canvas data-bi-chart id="chartEvolucaoBI" role="img" aria-label="Aplique uma análise para ver a evolução"></canvas></div></article>
+                    <article class="bi-panel"><h2>Tipo de cliente</h2><div id="biPerfis" data-bi-content></div><p class="bi-note">Participação no total de pessoas, incluindo Room Service.</p></article>
+                    <article class="bi-panel"><div class="bi-panel-top"><h2>Movimento por dia da semana</h2><label for="dashSemanaModo" class="bi-sr-only">Cálculo por dia da semana</label><select id="dashSemanaModo"><option value="media">Média por ocorrência</option><option value="total">Total no período</option></select></div><div class="chart-container"><canvas data-bi-chart id="chartSemanaBI" role="img" aria-label="Aplique uma análise para comparar os dias"></canvas></div><p class="bi-note" id="biSemanaBase" data-bi-value>—</p></article>
+                    <article class="bi-panel"><div class="bi-panel-top"><h2>Dias e horários de maior procura</h2><label for="dashMapaPerfil" class="bi-sr-only">Perfil do mapa de calor</label><select id="dashMapaPerfil"><option value="todos">Todos do restaurante</option><option value="hospede">Hóspedes</option><option value="externo">Externos</option><option value="passante">Passantes</option></select></div><div id="biMapa" data-bi-content></div><p class="bi-note">Intensidade indica total de pessoas reservadas; horário escolhido pelo cliente.</p></article>
+                    <article class="bi-panel"><h2>Tamanho dos grupos</h2><p class="bi-subtitle">Reservas de restaurante por faixa de pessoas</p><div class="chart-container"><canvas data-bi-chart id="chartGruposBI" role="img" aria-label="Reservas por tamanho de grupo"></canvas></div></article>
+                </div>
+                <details class="bi-details"><summary>Horários, Room Service e qualidade do registro</summary><p id="biRoom" data-bi-value>—</p><p id="biFamilias" data-bi-value>—</p><p id="biQualidade" data-bi-value>—</p>
+                    <div class="dashboard-kpis"><div class="kpi-card"><h4>Demanda / capacidade de referência</h4><p class="value" id="kpiOcupacao">—</p></div><div class="kpi-card"><h4>PAX geral, incluindo Room Service</h4><p class="value" id="kpiTotalPax">—</p></div><div class="kpi-card"><h4>Tempo médio registrado · restaurante</h4><p class="value" id="kpiTempoMedio">—</p></div><div class="kpi-card"><h4>Mesa mais atribuída</h4><p class="value" id="kpiMesaTop">—</p></div><div class="kpi-card"><h4>Crianças · todos os perfis</h4><p class="value" id="kpiCriancas">—</p></div><div class="kpi-card"><h4>Cancelamentos · todos os perfis</h4><p class="value" id="kpiCancelamentos">—</p></div></div>
+                    <p class="bi-note">Capacidade atual × dias selecionados; não é ocupação física histórica. Cronômetros têm preenchimento irregular. Atribuição de mesa não comprova atendimento.</p><p id="biAmostraTempo" class="bi-note" data-bi-value>—</p>
+                    <div class="charts-grid"><article class="chart-card"><h3>Pessoas por horário · restaurante</h3><div class="chart-container"><canvas id="chartHorario" role="img" aria-label="Pessoas por horário e perfil"></canvas></div></article><article class="chart-card"><h3>Atribuições de mesas</h3><div class="chart-container"><canvas id="chartMesas" role="img" aria-label="Quantidade de reservas atribuídas por mesa"></canvas></div></article><article class="chart-card"><h3>Composição de PAX · inclui Room Service</h3><div class="chart-container"><canvas id="chartTipo" role="img" aria-label="Pessoas reservadas por tipo de cliente"></canvas></div></article><article class="chart-card"><h3>Total de pessoas por dia da semana</h3><div class="chart-container"><canvas id="chartDiaSemana" role="img" aria-label="Total de pessoas por dia da semana e perfil"></canvas></div></article></div>
+                </details>
+            </section>
+            <section id="biClientes" role="tabpanel" aria-labelledby="biTabClientes" hidden>
+                <div class="bi-stats"><article class="bi-stat"><h2>Pessoas vinculadas à degustação</h2><p id="biDegustacaoPax" data-bi-value>—</p><small>Não representa menus vendidos</small></article><article class="bi-stat"><h2>Reservas com degustação</h2><p id="biDegustacaoTaxa" data-bi-value>—</p><small>Participação nas reservas não canceladas</small></article><article class="bi-stat"><h2>Contatos com DDD válido</h2><p id="biDDDValidos" data-bi-value>—</p><small>Uma contagem por reserva</small></article><article class="bi-stat"><h2>Cobertura de DDD</h2><p id="biDDDCobertura" data-bi-value>—</p><small>Sobre <span id="biDDDTotal" data-bi-value>—</span> reservas não canceladas</small></article></div>
+                <div class="bi-grid"><article class="bi-panel"><h2>Origem estimada pelo DDD do contato</h2><p class="bi-subtitle">Reservas por UF associada · todos os perfis selecionados</p><div class="chart-container bi-chart-tall"><canvas data-bi-chart id="chartUFBI" role="img" aria-label="Reservas por UF estimada"></canvas></div><p class="bi-note" id="biDDDFaltantes" data-bi-value>—</p></article><article class="bi-panel"><h2>Menu degustação por tipo de cliente</h2><p class="bi-subtitle">Reservas marcadas, sem canceladas</p><div class="chart-container"><canvas data-bi-chart id="chartDegustacaoBI" role="img" aria-label="Reservas marcadas com degustação por perfil"></canvas></div><p class="bi-note">Marca da reserva; não indica quantos integrantes consumiram o menu.</p></article></div>
+            </section>
+            <section id="biPagamentos" role="tabpanel" aria-labelledby="biTabPagamentos" hidden>
+                <div class="bi-stats"><article class="bi-stat"><h2>Depósitos recebidos</h2><p id="biRecebidos" data-bi-value>—</p><small>Reservas de restaurante</small></article><article class="bi-stat"><h2>Depósitos pendentes</h2><p id="biPendentes" data-bi-value>—</p><small>Reservas de restaurante</small></article><article class="bi-stat"><h2>Pagamento direto</h2><p id="biDireto" data-bi-value>—</p><small>Categoria própria de pagamento</small></article><article class="bi-stat"><h2>Cancelamentos</h2><p id="biCancelamentos" data-bi-value>—</p><small>Todos os perfis selecionados</small></article></div>
+                <div class="bi-grid"><article class="bi-panel"><h2>Situação dos sinais e pagamentos</h2><p class="bi-subtitle" id="biPagamentosEscopo" data-bi-value>—</p><div class="chart-container"><canvas data-bi-chart id="chartPagamentosBI" role="img" aria-label="Reservas por situação do pagamento"></canvas></div><p class="bi-note">Contagem de reservas, não de transações. Data do jantar; sem data de depósito. Sinal atual de R$ 200 descontado no Silback.</p><p class="bi-note" id="biAvulsaAusente" data-bi-value>—</p></article><article class="bi-panel"><h2>Cancelamentos e estornos</h2><dl class="bi-outcomes"><div><dt>Estornado</dt><dd id="biEstornados" data-bi-value>—</dd></div><div><dt>Sem estorno · depósito retido</dt><dd id="biRetidos" data-bi-value>—</dd></div><div><dt>Sem depósito / não informado</dt><dd id="biSemDeposito" data-bi-value>—</dd></div></dl><p class="bi-note" id="biEstornoTaxa" data-bi-value>—</p><p class="bi-note">Desfecho registrado, sem comprovação bancária. Avulsa é referência no Silback, não valor de consumo.</p><div class="bi-cancel-rate"><strong id="biCancelTaxa" data-bi-value>—</strong><span>taxa de cancelamento</span></div><p class="bi-note" id="biCancelBase" data-bi-value>—</p><p class="bi-note">Pessoas vinculadas às canceladas: <span id="biCancelamentosPax" data-bi-value>—</span></p></article><article class="bi-panel"><h2>Cancelamentos por tipo de cliente</h2><div class="chart-container"><canvas data-bi-chart id="chartCancelamentosBI" role="img" aria-label="Reservas canceladas por perfil"></canvas></div><p class="bi-note">Cancelamentos vigentes; restaurados deixam de contar. Exclusões definitivas não integram a taxa.</p></article><article class="bi-panel"><h2>Cancelamentos e no-show</h2><p class="bi-subtitle">Reservas por situação · período e perfil selecionados</p><div class="chart-container"><canvas data-bi-chart id="chartCancelamentosNoShowBI" role="img" aria-label="Reservas canceladas e com no-show registrado"></canvas></div><p class="bi-note">Contagem de reservas; canceladas não entram novamente como no-show.</p></article></div>
+            </section>
         </div>
 
         <!-- TELA DE CONFIGURAÇÕES -->
@@ -816,41 +805,18 @@
             </div>
         </div>
         <div style="background: var(--card-bg); padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px var(--shadow);">
-            <div id="logFiltros" class="log-barra">
-                <div class="log-campo">
-                    <label for="dataFiltroLog">De</label>
-                    <input type="date" id="dataFiltroLog" class="filtro-data">
+            <div class="relatorio-filtros">
+                <div>
+                    <label style="font-size: 0.8rem;">Data:</label>
+                    <input type="date" id="dataFiltroLog" class="filtro-data" style="margin: 0;">
                 </div>
-                <div class="log-campo">
-                    <label for="dataFiltroLogAte">Até</label>
-                    <input type="date" id="dataFiltroLogAte" class="filtro-data">
+                <button class="btn-main" onclick="document.getElementById('filtroNomeLog').value=''; carregarLogs()" style="padding: 5px 15px; height: 38px; background: var(--acao-bg); color: var(--acao-texto);">BUSCAR</button>
+                <div class="relatorio-filtro-nome">
+                    <label style="font-size: 0.8rem;">Nome:</label>
+                    <input type="text" id="filtroNomeLog" class="filtro-data" placeholder="Buscar por nome (todas as datas)..." style="margin: 0; width: 100%;" oninput="buscarLogsPorNomeDebounced(this.value)">
                 </div>
-                <div class="log-campo">
-                    <label for="logModo">Período refere-se a</label>
-                    <select id="logModo" class="filtro-data">
-                        <option value="alteracao">Dia da alteração</option>
-                        <option value="noite">Noite da reserva</option>
-                    </select>
-                </div>
-                <div class="log-campo">
-                    <label for="logUsuario">Usuário</label>
-                    <select id="logUsuario" class="filtro-data"><option value="">Todos</option></select>
-                </div>
-                <div class="log-campo log-campo-busca">
-                    <label for="filtroNomeLog">Buscar</label>
-                    <input type="search" id="filtroNomeLog" class="filtro-data" placeholder="Nome, apto, código ou mesa..." autocomplete="off">
-                </div>
-                <button type="button" id="logBtnAplicar" class="btn-main">Aplicar</button>
-                <button type="button" id="logBtnLimpar" class="btn-main cancel-btn">Limpar</button>
             </div>
-            <div id="logChips" class="log-chips" role="group" aria-label="Filtrar por tipo de ação"></div>
-            <div id="logPainelHistorico" class="log-historico" hidden></div>
-            <div id="logResumo" class="log-resumo" aria-live="polite"></div>
             <div id="listaLogs" style="min-height: 300px;"></div>
-            <div id="logRodape" class="log-rodape" hidden>
-                <span id="logContador" class="log-contador"></span>
-                <button type="button" id="logCarregarMais" class="btn-main cancel-btn" hidden>Carregar mais</button>
-            </div>
         </div>
     </div>
     </div><!-- fim .main-content: todas as telas -->

@@ -1,9 +1,91 @@
 .analise-status, .analise-nota { color: var(--texto-suave); padding: 8px 12px; font-size: .85rem; overflow-wrap: anywhere; }
 .analise-status { min-height: 36px; }
-#home-analise-status:empty { display: none; }
 .analise-status[data-estado="erro"] { color: var(--cor-erro); background: var(--erro-bg); }
 .analise-status[data-estado="carregando"], .analise-status[data-estado="pendente"] { color: var(--cor-aviso); background: var(--aviso-bg); }
 .dashboard-kpis .kpi-card { min-width: 0; overflow-wrap: anywhere; }
+
+/* BI: escopo local, carregado após as regras legadas de layout e responsividade. */
+#tela-dashboard.bi-dashboard { padding: 26px; gap: 14px; }
+#tela-dashboard .bi-heading { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
+#tela-dashboard .bi-heading h1 { margin: 4px 0; color: var(--texto); font-size: 1.8rem; font-weight: 600; letter-spacing: -.04em; }
+#tela-dashboard .bi-filters, #tela-dashboard .bi-dates { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
+#tela-dashboard .bi-filters { padding: 18px; background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; }
+#tela-dashboard .bi-filters > div, #tela-dashboard #dashGrupoPeriodo > div { min-width: 0; }
+#tela-dashboard .bi-filters label { display: block; margin-bottom: 5px; font-size: .74rem; color: var(--texto-suave); }
+#tela-dashboard select, #tela-dashboard input[type="date"] { max-width: 100%; min-width: 0; padding: 9px 10px; border: 1px solid var(--input-border); border-radius: 5px; background: var(--input-bg); color: var(--texto); font: inherit; font-size: .8rem; margin: 0; }
+#tela-dashboard .bi-date-options summary, #tela-dashboard .bi-details summary { color: var(--primaria); cursor: pointer; padding: 8px 0; font-size: .8rem; }
+#tela-dashboard .bi-dates { margin-top: 10px; font-size: .78rem; }
+#tela-dashboard #dashGrupoEspecificas { flex-wrap: wrap; }
+#tela-dashboard .analise-status { padding: 9px 12px; margin: 0; border-radius: 5px; }
+#tela-dashboard .analise-status[hidden] { display: none; }
+#tela-dashboard .analise-nota { margin: 0; padding: 0; font-size: .74rem; }
+#tela-dashboard .bi-tabs { display: flex; flex-wrap: wrap; gap: 23px; border-bottom: 1px solid var(--border); }
+#tela-dashboard .bi-tabs button { padding: 12px 0; background: none; border: 0; border-bottom: 2px solid transparent; color: var(--texto-suave); font: inherit; font-size: .82rem; cursor: pointer; }
+#tela-dashboard .bi-tabs button[aria-selected="true"] { color: var(--primaria); border-bottom-color: var(--primaria); font-weight: 600; }
+#tela-dashboard [role="tabpanel"][hidden] { display: none !important; }
+#tela-dashboard .bi-stats { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 14px; margin: 8px 0 22px; }
+#tela-dashboard .bi-stat { background: var(--card-bg); border: 1px solid var(--border); padding: 18px; border-radius: 9px; min-width: 0; }
+#tela-dashboard .bi-stat h2 { margin: 0; font-size: .73rem; font-weight: 500; color: var(--texto-suave); }
+#tela-dashboard .bi-stat > p { margin: 8px 0 3px; font-size: 2rem; font-weight: 600; letter-spacing: -.04em; line-height: 1.3; color: var(--texto); font-variant-numeric: tabular-nums; }
+#tela-dashboard .bi-stat small { color: var(--texto-suave); font-size: .68rem; display: block; }
+#tela-dashboard .bi-demografia { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; margin: 10px 0 7px; }
+#tela-dashboard .bi-demografia > div { min-width: 0; }
+#tela-dashboard .bi-demografia > div + div { border-left: 1px solid var(--border); padding-left: 10px; }
+#tela-dashboard .bi-demografia span { display: block; font-size: .73rem; color: var(--texto-suave); }
+#tela-dashboard .bi-demografia strong { display: block; font-size: 1.8rem; font-weight: 600; color: var(--texto); line-height: 1.3; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+#tela-dashboard .bi-date-options:not([open]) .bi-dates { display: none; }
+#tela-dashboard .bi-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 18px; }
+#tela-dashboard .bi-panel { min-width: 0; background: var(--card-bg); border: 1px solid var(--border); padding: 20px; border-radius: 9px; }
+#tela-dashboard .bi-wide { grid-column: 1 / -1; }
+#tela-dashboard .bi-panel h2 { color: var(--texto); font-size: .94rem; font-weight: 600; margin: 0 0 7px; }
+#tela-dashboard .bi-subtitle, #tela-dashboard .bi-note { font-size: .73rem; color: var(--texto-suave); margin: 6px 0 12px; overflow-wrap: anywhere; }
+#tela-dashboard .bi-note { margin: 12px 0 0; }
+#tela-dashboard .bi-panel-top { display: flex; align-items: start; justify-content: space-between; flex-wrap: wrap; gap: 9px; margin-bottom: 10px; }
+#tela-dashboard .bi-local-controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; font-size: .76rem; color: var(--texto-suave); }
+#tela-dashboard .chart-container { height: 270px; }
+#tela-dashboard .bi-chart-tall { height: 560px; }
+#tela-dashboard .bi-wide .chart-container { height: 300px; }
+#tela-dashboard .bi-table, #tela-dashboard .bi-heatmap { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: .75rem; color: var(--texto); }
+#tela-dashboard .bi-table caption, #tela-dashboard .bi-heatmap caption { text-align: left; padding: 9px 0 14px; color: var(--texto-suave); font-size: .7rem; }
+#tela-dashboard .bi-table th, #tela-dashboard .bi-table td { padding: 12px 5px; border-bottom: 1px solid var(--border); text-align: right; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+#tela-dashboard .bi-table th:first-child { text-align: left; width: 31%; }
+#tela-dashboard .bi-table th { font-weight: 500; }
+#tela-dashboard .bi-heatmap th { padding: 6px 2px; font-size: .66rem; font-weight: 500; }
+#tela-dashboard .bi-heatmap th:first-child { width: 50px; }
+#tela-dashboard .bi-heatmap td { padding: 3px; text-align: center; font-variant-numeric: tabular-nums; }
+#tela-dashboard .bi-heatmap td span { display: block; padding: 8px 1px; border-radius: 3px; background: color-mix(in srgb,var(--cor-hospede) var(--bi-intensidade),var(--card-bg)); }
+#tela-dashboard .bi-details { margin-top: 18px; }
+#tela-dashboard .bi-details > p { color: var(--texto-suave); font-size: .78rem; margin: 8px 0; }
+#tela-dashboard .dashboard-kpis { padding: 12px 0; margin: 0; }
+#tela-dashboard .charts-grid { padding: 12px 0; }
+#tela-dashboard .bi-outcomes { margin: 14px 0; }
+#tela-dashboard .bi-outcomes > div { display: flex; justify-content: space-between; gap: 15px; border-bottom: 1px solid var(--border); padding: 12px 0; font-size: .8rem; }
+#tela-dashboard .bi-outcomes dd { margin: 0; font-weight: 600; }
+#tela-dashboard .bi-cancel-rate { display: flex; align-items: baseline; gap: 12px; margin-top: 24px; color: var(--texto-suave); font-size: .8rem; }
+#tela-dashboard .bi-cancel-rate strong { font-size: 2rem; color: var(--texto); }
+#tela-dashboard .bi-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+@media (max-width: 1050px) {
+  #tela-dashboard .bi-grid { grid-template-columns: minmax(0,1fr); }
+  #tela-dashboard .bi-stats { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
+@media (max-width: 767px) {
+  #tela-dashboard.bi-dashboard { padding: 16px 12px; }
+  #tela-dashboard .bi-filters { padding: 12px; }
+  #tela-dashboard .bi-filters > div { flex: 1 1 180px; }
+  #tela-dashboard #dashGrupoPeriodo { flex-wrap: wrap; width: 100%; }
+  #tela-dashboard #dashGrupoPeriodo > div { flex: 1 1 110px; }
+  #tela-dashboard input[type="date"], #tela-dashboard select { font-size: 16px; min-height: 44px; }
+  #tela-dashboard .bi-filters input, #tela-dashboard .bi-filters select { width: 100%; }
+  #tela-dashboard .bi-stats { gap: 9px; }
+  #tela-dashboard .bi-stat, #tela-dashboard .bi-panel { padding: 13px; }
+  #tela-dashboard .bi-stat > p { font-size: 1.7rem; }
+  #tela-dashboard .bi-tabs { gap: 15px; }
+  #tela-dashboard .bi-tabs button { min-height: 44px; font-size: .76rem; }
+  #tela-dashboard .bi-heatmap td { padding: 2px; }
+  #tela-dashboard .bi-heatmap th:first-child { width: 43px; }
+  #tela-dashboard .bi-heatmap { font-size: .7rem; }
+  #tela-dashboard .bi-filters button, #tela-dashboard .bi-dates button { min-height: 44px; }
+}
 @media (max-width: 767px) {
   .dashboard-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
   .home-refresh-btn { min-height: 44px; }

@@ -1,53 +1,32 @@
 /* =========================================================================================
-   OSTERIA DI LUCCA - LOG.JS v4.0
+   OSTERIA DI LUCCA - LOG.JS v3.1
    ✅ v1.4: Padroniza error handling — usa notificacao.js
-   ✅ v2.0: Timeline profissional (linha vertical, agrupamento, diff ANTES/DEPOIS inline)
+   ✅ v2.0: Timeline profissional — layout otimizado para tablet e PC de recepção
+            Linha vertical conectando eventos, agrupamento por hora, ícones SVG por ação,
+            diff expandido inline com tabela ANTES/DEPOIS, responsivo sem scroll horizontal
    ✅ v3.0: Fase 5 da migração Firestore → Supabase. Coleção 'logs' vira tabela
             'reservas_log'. FK de reserva_id foi removida (ver migration
-            20260709161500) — um log precisa sobreviver à exclusão da reserva que o originou.
-   ✅ v3.1: Ação CANCELAR (soft-delete, bug #57).
-   ✅ v3.2: Diff mostra SOMENTE os campos alterados; datas do filtro usam o dia LOCAL.
-   ✅ v4.0: Auditoria completa (PL-2026-11-03-001):
-            - SEGURANÇA: tudo que vai pro innerHTML passa por escapeHtml (nome, obs e
-              usuário eram interpolados crus → XSS armazenado). Falha ao gravar log agora
-              avisa a recepção (antes era só console.error — auditoria falhava calada).
-            - Filtros: período (de/até), "dia da alteração" × "noite da reserva", ação,
-              usuário e busca única (nome, apto, código, mesa). Paginação com contagem real.
-            - Resumo do período, histórico completo de uma reserva e recriação de reserva
-              excluída a partir do snapshot do log.
-            - Novos eventos: OBSERVAR, RECRIAR, NOSHOW, CONFIG, LOGIN, LOGOUT
-              (registrarLogEvento grava payload livre, sem o formato de reserva).
-            - Visual neutro: o cartão não usa mais faixa colorida; a cor semântica aparece
-              só no ponto do selo e no ícone, sempre via tokens da paleta (css/log.css).
+            20260709161500) — um log precisa sobreviver à exclusão da reserva que
+            o originou.
+   ✅ v3.1: Ação CANCELAR (soft-delete, bug #57) — badge roxo próprio, campos
+            canceladoEm/depositoRetido aparecem no diff expandido.
+   ✅ v3.2: Diff mostra SOMENTE os campos alterados (antes listava todos, com os iguais
+            esmaecidos); a dica do card adianta quais campos mudaram. Datas do filtro
+            passam a usar o dia LOCAL — new Date().toISOString() é UTC, então depois das
+            21h (Gramado, UTC-3) "hoje" virava amanhã e o dia aparecia vazio; os limites
+            da consulta (00:00–23:59 locais) são convertidos pra UTC na query.
    ========================================================================================= */
 
 import { db } from '../../core/database.js';
-import { notificarErro, notificarAviso, notificarSucesso } from '../../core/notificacao.js';
+import { notificarErro } from '../../core/notificacao.js';
 import { escapeHtml } from './validators.js';
 
 // ✅ v1.3: Lê usuário do localStorage (definido na tela de login)
 const usuarioAtual = () => localStorage.getItem('usuario_nome') || 'sistema';
 
-const esc = escapeHtml;
-const TAMANHO_PAGINA = 100;
-
-// Aviso de falha de gravação: no máximo 1 por minuto, senão uma queda de rede durante
-// o serviço empilharia um toast por reserva editada.
-let _ultimoAvisoFalhaLog = 0;
-function _avisarFalhaLog() {
-    const agora = Date.now();
-    if (agora - _ultimoAvisoFalhaLog < 60000) return;
-    _ultimoAvisoFalhaLog = agora;
-    notificarAviso('Não foi possível registrar o histórico desta alteração. Avise a gerência.');
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// GRAVAÇÃO
-// ─────────────────────────────────────────────────────────────────────────────
-
 /**
- * Registra uma ação de reserva no log (o snapshot passa por _resumir).
- * @param {string} acao - 'CRIAR' | 'EDITAR' | 'EXCLUIR' | 'DESBLOQUEAR' | 'CANCELAR' | 'RESTAURAR' | 'RECRIAR' | 'OBSERVAR'
+ * Registra uma ação no log
+ * @param {string} acao - 'CRIAR' | 'EDITAR' | 'EXCLUIR' | 'DESBLOQUEAR'
  * @param {Object} dadosAntes - Dados antes da alteração (null para criar)
  * @param {Object} dadosDepois - Dados depois da alteração (null para excluir)
  */
@@ -66,36 +45,8 @@ export async function registrarLog(acao, dadosAntes = null, dadosDepois = null) 
         if (error) throw error;
         console.log(`📝 Log registrado: ${acao}`);
     } catch (e) {
-        // Log de auditoria não deve interromper o fluxo principal — mas também não pode
-        // falhar calado (REVISAO_TECNICA B6): a recepção precisa saber pra reportar.
+        // Log de auditoria não deve interromper o fluxo principal
         console.error('❌ Erro ao registrar log:', e);
-        _avisarFalhaLog();
-    }
-}
-
-/**
- * Registra um evento que NÃO é uma reserva (CONFIG, NOSHOW, LOGIN, LOGOUT). Os dados
- * são gravados como vieram, sem _resumir, e reserva_id fica nulo. Nunca lança.
- * @param {string} acao
- * @param {Object|null} dadosAntes
- * @param {Object|null} dadosDepois
- * @param {{usuario?: string}} [opcoes] - LOGIN grava antes do localStorage estar pronto
- */
-export async function registrarLogEvento(acao, dadosAntes = null, dadosDepois = null, opcoes = {}) {
-    try {
-        await db.aguardarInicializacao();
-        const { error } = await db.getClient().from('reservas_log').insert({
-            reserva_id: null,
-            acao,
-            usuario: opcoes.usuario || usuarioAtual(),
-            dados_antes: dadosAntes,
-            dados_depois: dadosDepois,
-        });
-        if (error) throw error;
-    } catch (e) {
-        console.error(`❌ Erro ao registrar evento ${acao}:`, e);
-        // Sessão (LOGIN/LOGOUT) é ruído operacional: não vale incomodar a recepção.
-        if (acao !== 'LOGIN' && acao !== 'LOGOUT') _avisarFalhaLog();
     }
 }
 
@@ -128,10 +79,6 @@ export function _resumir(dados) {
         apto:            dados.apto            || '',
         codigoReserva:   dados.codigoReserva   || '',
         horario:         dados.horario         || '',
-        // originalBase/posicao: sem eles, recriar uma reserva excluída não sabe em que
-        // bloco/linha ela estava (logs antigos não têm — o service usa fallback).
-        originalBase:    dados.originalBase    || '',
-        posicao:         Number.isInteger(dados.posicao) ? dados.posicao : 0,
         tipo:            dados.tipo            || '',
         paxs:            dados.paxs            || 0,
         chd:             dados.chd             || 0,
@@ -143,7 +90,6 @@ export function _resumir(dados) {
         depositoRetido:  dados.depositoRetido,
         whatsapp:        dados.whatsapp        || '',
         avulsa:          dados.avulsa          || '',
-        pagamento:       dados.pagamento       || '',
         menuDegustacao:  dados.menuDegustacao  || false,
     };
 }
@@ -152,64 +98,125 @@ export function _resumir(dados) {
 // CONFIGURAÇÃO VISUAL
 // ─────────────────────────────────────────────────────────────────────────────
 
-// `tom` escolhe o token semântico (css/log.css) usado no ponto do selo e no ícone;
-// o cartão em si é neutro. `curto` é o texto do chip de filtro.
 const CONFIG_ACAO = {
-    CRIAR:       { tom: 'sucesso', label: 'CRIADO',       curto: 'Criados',       icone: _iconeCheck()   },
-    EDITAR:      { tom: 'aviso',   label: 'EDITADO',      curto: 'Editados',      icone: _iconeLapis()   },
-    EXCLUIR:     { tom: 'erro',    label: 'EXCLUÍDO',     curto: 'Excluídos',     icone: _iconeLixeira() },
-    DESBLOQUEAR: { tom: 'info',    label: 'DESBLOQUEADO', curto: 'Desbloqueios',  icone: _iconeCadeado() },
-    CANCELAR:    { tom: 'erro',    label: 'CANCELADO',    curto: 'Cancelados',    icone: _iconeLixeira() },
-    RESTAURAR:   { tom: 'sucesso', label: 'RESTAURADO',   curto: 'Restaurados',   icone: _iconeCheck()   },
-    RECRIAR:     { tom: 'sucesso', label: 'RECRIADO',     curto: 'Recriados',     icone: _iconeRecriar() },
-    OBSERVAR:    { tom: 'aviso',   label: 'OBSERVAÇÃO',   curto: 'Observações',   icone: _iconeLapis()   },
-    NOSHOW:      { tom: 'info',    label: 'NO-SHOW',      curto: 'No-show',       icone: _iconeRelogio(16) },
-    CONFIG:      { tom: 'info',    label: 'CONFIGURAÇÃO', curto: 'Configurações', icone: _iconeEngrenagem() },
-    LOGIN:       { tom: 'info',    label: 'ENTROU',       curto: 'Acessos',       icone: _iconeUsuario(16) },
-    LOGOUT:      { tom: 'info',    label: 'SAIU',         curto: 'Acessos',       icone: _iconeUsuario(16) },
+    CRIAR:       { cor: 'var(--cor-sucesso)', label: 'CRIADO',       icone: _iconeCheck()   },
+    EDITAR:      { cor: 'var(--cor-aviso)', label: 'EDITADO',      icone: _iconeLapis()   },
+    EXCLUIR:     { cor: 'var(--cor-erro)', label: 'EXCLUÍDO',     icone: _iconeLixeira() },
+    DESBLOQUEAR: { cor: 'var(--cor-info)', label: 'DESBLOQUEADO', icone: _iconeCadeado() },
+    CANCELAR:    { cor: 'var(--roomservice)', label: 'CANCELADO',    icone: _iconeLixeira() },
+    RESTAURAR:   { cor: 'var(--cor-sucesso)', label: 'RESTAURADO',   icone: _iconeCheck()   },
 };
-
-// Chips do filtro: LOGIN e LOGOUT compartilham o chip "Acessos".
-const CHIPS_ACAO = [
-    { id: 'CRIAR',       acoes: ['CRIAR'],               texto: 'Criados' },
-    { id: 'EDITAR',      acoes: ['EDITAR', 'OBSERVAR'],  texto: 'Editados' },
-    { id: 'EXCLUIR',     acoes: ['EXCLUIR'],             texto: 'Excluídos' },
-    { id: 'CANCELAR',    acoes: ['CANCELAR', 'RESTAURAR'], texto: 'Cancelamentos' },
-    { id: 'RECRIAR',     acoes: ['RECRIAR'],             texto: 'Recriados' },
-    { id: 'BLOQUEIO',    acoes: ['DESBLOQUEAR'],         texto: 'Bloqueios' },
-    { id: 'SISTEMA',     acoes: ['NOSHOW', 'CONFIG', 'LOGIN', 'LOGOUT'], texto: 'Sistema' },
-];
 
 const LABELS_CAMPOS = {
     data: 'Data', nomes: 'Nome', apto: 'Apto', codigoReserva: 'Reserva', horario: 'Horário', tipo: 'Tipo',
     canceladoEm: 'Cancelado em', depositoRetido: 'Depósito retido',
     paxs: 'Adultos', chd: 'Crianças', obs: 'Obs', mesa: 'Mesa',
     bloqueado: 'Bloqueado', somenteHospedes: 'Só Hósp.',
-    whatsapp: 'WhatsApp', avulsa: 'Avulsa', pagamento: 'Pagamento', menuDegustacao: 'Menu Deg.',
-};
-
-const LABELS_CONFIG = {
-    capacidade: 'Capacidade', mesas: 'Mesas',
-    bloqueioAutomatico: 'Bloqueio automático', bloqueiosSemanais: 'Bloqueios semanais',
+    whatsapp: 'WhatsApp', avulsa: 'Avulsa', menuDegustacao: 'Menu Deg.',
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ÍCONES SVG INLINE (estáticos — nenhum dado do usuário entra aqui)
+// ÍCONES SVG INLINE
 // ─────────────────────────────────────────────────────────────────────────────
 
-function _svg(tam, miolo) { return '<svg width="' + tam + '" height="' + tam + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + miolo + '</svg>'; }
-
-function _iconeCheck()   { return _svg(16, '<polyline points="20 6 9 17 4 12"/>'); }
-function _iconeLapis()   { return _svg(16, '<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>'); }
-function _iconeLixeira() { return _svg(16, '<polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/>'); }
-function _iconeCadeado() { return _svg(16, '<rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>'); }
-function _iconeRelogio(t = 13) { return _svg(t, '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>'); }
-function _iconeUsuario(t = 13) { return _svg(t, '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>'); }
-function _iconeRecriar() { return _svg(16, '<polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>'); }
-function _iconeEngrenagem() { return _svg(16, '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/>'); }
+function _iconeCheck()   { return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'; }
+function _iconeLapis()   { return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>'; }
+function _iconeLixeira() { return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>'; }
+function _iconeCadeado() { return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>'; }
+function _iconeRelogio() { return '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>'; }
+function _iconeUsuario() { return '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>'; }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// FILTROS E CONSULTA
+// CSS DA TIMELINE — injetado uma única vez no <head>
+// ─────────────────────────────────────────────────────────────────────────────
+
+function _injetarCSS() {
+    if (document.getElementById('log-timeline-css')) return;
+    const style = document.createElement('style');
+    style.id = 'log-timeline-css';
+    style.textContent = [
+        '.tl-wrapper{position:relative;padding:4px 0 24px}',
+        '.tl-wrapper::before{content:"";position:absolute;left:27px;top:0;bottom:0;width:2px;background:linear-gradient(to bottom,transparent,rgba(0,0,0,.1) 5%,rgba(0,0,0,.1) 95%,transparent)}',
+        'body.dark-theme .tl-wrapper::before{background:linear-gradient(to bottom,transparent,rgba(255,255,255,.1) 5%,rgba(255,255,255,.1) 95%,transparent)}',
+
+        '.tl-hora-sep{display:flex;align-items:center;gap:10px;margin:20px 0 10px;padding-left:56px;position:relative;z-index:1}',
+        '.tl-hora-sep::before{content:"";position:absolute;left:22px;top:50%;transform:translateY(-50%);width:10px;height:10px;border-radius:50%;background:var(--fundo,#e8ebef);border:2px solid rgba(0,0,0,.18)}',
+        '.tl-hora-sep::after{content:"";flex:1;height:1px;background:rgba(0,0,0,.07)}',
+        'body.dark-theme .tl-hora-sep::before{background:var(--card-bg);border-color:rgba(255,255,255,.22)}',
+        'body.dark-theme .tl-hora-sep::after{background:rgba(255,255,255,.07)}',
+        '.tl-hora-sep span{font-size:.7rem;font-weight:800;letter-spacing:2px;color:var(--texto-suave);opacity:1;text-transform:uppercase;white-space:nowrap}',
+
+        '.tl-item{display:flex;align-items:flex-start;gap:13px;margin-bottom:10px;position:relative}',
+
+        '.tl-icon{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;position:relative;z-index:1;box-shadow:0 2px 8px rgba(0,0,0,.22);color:var(--card-bg);margin-top:2px}',
+        '.tl-icon.tl-clicavel{cursor:pointer;transition:transform .12s ease,box-shadow .15s ease}',
+        '.tl-icon.tl-clicavel:hover{transform:scale(1.08);box-shadow:0 4px 14px rgba(0,0,0,.32)}',
+        '.tl-icon.tl-clicavel:active{transform:scale(0.96)}',
+
+        '.tl-card{flex:1;min-width:0;background:var(--card-bg,#fff);border-radius:10px;border:1px solid rgba(0,0,0,.07);overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.07);transition:box-shadow .15s,transform .1s}',
+        'body.dark-theme .tl-card{border-color:rgba(255,255,255,.06)}',
+        '.tl-card.tl-clicavel{cursor:pointer}',
+        '.tl-card.tl-clicavel:hover{box-shadow:0 4px 16px rgba(0,0,0,.14);transform:translateY(-1px)}',
+        '.tl-card.tl-clicavel:active{transform:translateY(0)}',
+
+        '.tl-card-topo{height:3px}',
+        '.tl-card-corpo{padding:11px 14px 10px}',
+
+        '.tl-card-principal{display:flex;align-items:center;gap:9px;flex-wrap:nowrap}',
+        '.tl-badge{font-size:.58rem;font-weight:900;letter-spacing:1.2px;padding:2px 9px;border-radius:20px;color:var(--card-bg);white-space:nowrap;flex-shrink:0}',
+        '.tl-nome{font-size:.95rem;font-weight:800;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+        '.tl-meta{display:flex;align-items:center;gap:10px;flex-shrink:0;color:var(--texto-suave);opacity:1;font-size:.71rem}',
+        '.tl-meta-item{display:flex;align-items:center;gap:3px;white-space:nowrap}',
+
+        '.tl-detalhes{display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px;margin-top:5px;font-size:.76rem;color:var(--texto-suave);opacity:1}',
+        '.tl-sep{opacity:.3;font-size:.6rem}',
+
+        '.tl-dica{margin-top:6px;font-size:.68rem;color:var(--texto-suave);opacity:1;display:flex;align-items:center;gap:4px}',
+
+        '.tl-diff{display:none;border-top:1px solid rgba(0,0,0,.07);padding:14px}',
+        'body.dark-theme .tl-diff{border-color:rgba(255,255,255,.07)}',
+        '.tl-diff.aberto{display:block}',
+
+        '.tl-diff-cabecalho{font-size:.67rem;font-weight:900;letter-spacing:1.5px;color:var(--texto-suave);opacity:1;text-transform:uppercase;margin-bottom:10px}',
+
+        '.tl-diff-tabela{width:100%;border-collapse:collapse;font-size:.8rem}',
+        '.tl-diff-tabela th{font-size:.63rem;font-weight:900;letter-spacing:1px;text-transform:uppercase;padding:4px 8px 7px;text-align:left;border-bottom:2px solid rgba(0,0,0,.08);opacity:1}',
+        'body.dark-theme .tl-diff-tabela th{border-color:rgba(255,255,255,.08)}',
+        '.tl-diff-tabela td{padding:5px 8px;border-bottom:1px solid rgba(0,0,0,.04);vertical-align:middle}',
+        'body.dark-theme .tl-diff-tabela td{border-color:rgba(255,255,255,.04)}',
+        '.tl-diff-tabela tr:last-child td{border-bottom:none}',
+        '.tl-diff-tabela .col-campo{opacity:1;font-size:.74rem;width:80px;white-space:nowrap}',
+        '.tl-diff-tabela .col-antes{color:var(--cor-erro);text-decoration:line-through;opacity:1}',
+        '.tl-diff-tabela .col-depois{color:var(--cor-sucesso);font-weight:700}',
+        '.tl-diff-tabela tr.linha-alterada{background:var(--aviso-bg)}',
+        '.tl-diff-tabela tr.linha-igual td{color:var(--texto-suave);opacity:1}',
+
+        '.tl-btn-fechar{margin-top:12px;background:var(--card-bg);border:1px solid var(--border);border-radius:6px;padding:5px 13px;font-size:.72rem;cursor:pointer;opacity:1;color:var(--texto);display:inline-flex;align-items:center;gap:5px;transition:opacity .1s}',
+        'body.dark-theme .tl-btn-fechar{border-color:rgba(255,255,255,.15);color:inherit}',
+        '.tl-btn-fechar:hover{opacity:1}',
+
+        '.tl-vazio{text-align:center;padding:60px 20px;color:var(--texto-suave);opacity:1}',
+        '.tl-vazio-icone{font-size:2.8rem;margin-bottom:12px}',
+        '.tl-vazio-texto{font-size:.9rem;font-weight:600}',
+
+        '@media(max-width:768px){',
+        '.tl-wrapper::before{left:21px}',
+        '.tl-hora-sep{padding-left:46px}',
+        '.tl-hora-sep::before{left:16px}',
+        '.tl-icon{width:30px;height:30px}',
+        '.tl-icon svg{width:13px;height:13px}',
+        '.tl-nome{font-size:.88rem}',
+        '.tl-meta{display:none}',
+        '.tl-detalhes{font-size:.72rem}',
+        '.tl-diff-tabela{font-size:.75rem}',
+        '.tl-diff-tabela .col-campo{width:64px}',
+        '}',
+    ].join('\n');
+    document.head.appendChild(style);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CARREGAMENTO
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Data de hoje no fuso LOCAL (YYYY-MM-DD) — toISOString() é UTC e vira "amanhã" após as 21h. */
@@ -218,324 +225,102 @@ function _hojeLocal() {
     return `${h.getFullYear()}-${String(h.getMonth() + 1).padStart(2, '0')}-${String(h.getDate()).padStart(2, '0')}`;
 }
 
-/** 'YYYY-MM-DD' → 'DD/MM/AAAA' (sem passar por Date: evita virar o dia por fuso). */
-function _formatarData(iso) {
-    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || '');
-    return m ? `${m[3]}/${m[2]}/${m[1]}` : '';
-}
-
-const _el = (id) => document.getElementById(id);
-
-/** Lê os controles da tela. Datas invertidas (de > até) são trocadas em vez de dar erro. */
-export function _lerFiltros() {
-    const hoje = _hojeLocal();
-    let de  = _el('dataFiltroLog')?.value    || hoje;
-    let ate = _el('dataFiltroLogAte')?.value || de;
-    if (de > ate) [de, ate] = [ate, de];
-    return {
-        de, ate,
-        modo:    _el('logModo')?.value === 'noite' ? 'noite' : 'alteracao',
-        usuario: _el('logUsuario')?.value || '',
-        termo:   (_el('filtroNomeLog')?.value || '').trim(),
-        chips:   new Set(_chipsAtivos),
-    };
-}
-
-/** Chips de ação selecionados (vazio = todas as ações). */
-const _chipsAtivos = new Set();
-
-/**
- * Aplica os filtros a uma query de reservas_log (PostgREST). Exportada pra teste.
- *
- * - "dia da alteração": criado_em é timestamptz; os limites do dia local (00:00–23:59)
- *   são convertidos pra UTC aqui — com limites em UTC puro, alterações após as 21h
- *   (UTC-3) caíam no dia seguinte.
- * - "noite da reserva": filtra pela data DENTRO do snapshot (dados_antes/dados_depois —
- *   uma linha EXCLUIR só tem dados_antes).
- * - Busca: nome, apto, código e mesa, também nos dois snapshots. Escapa curingas do
- *   ILIKE (% e _) e remove vírgula/parênteses, delimitadores do .or() do PostgREST.
- */
-export function _aplicarFiltros(query, f) {
-    let condNoite = null;
-    if (f.modo === 'noite') {
-        const lado = (s) => `and(${s}->>data.gte.${f.de},${s}->>data.lte.${f.ate})`;
-        condNoite = `${lado('dados_depois')},${lado('dados_antes')}`;
-    } else {
-        query = query
-            .gte('criado_em', new Date(f.de + 'T00:00:00').toISOString())
-            .lte('criado_em', new Date(f.ate + 'T23:59:59.999').toISOString());
-    }
-
-    if (f.chips && f.chips.size) {
-        const acoes = CHIPS_ACAO.filter(c => f.chips.has(c.id)).flatMap(c => c.acoes);
-        query = query.in('acao', acoes);
-    }
-    if (f.usuario) query = query.eq('usuario', f.usuario);
-
-    // Virgula/parenteses sao delimitadores do .or(); '*' e curinga alternativo do
-    // PostgREST e '\' escaparia o '%' final - todos saem do termo antes de escapar % e _.
-    let condBusca = null;
-    const t = (f.termo || '').replace(/[,()*\\]/g, '').replace(/[%_]/g, '\\$&');
-    if (t.trim()) {
-        const condicoes = [];
-        ['dados_antes', 'dados_depois'].forEach(lado => {
-            ['nomes', 'apto', 'codigoReserva', 'mesa'].forEach(campo => {
-                condicoes.push(`${lado}->>${campo}.ilike.%${t}%`);
-            });
-        });
-        condBusca = condicoes.join(',');
-    }
-
-    // Dois .or() viram dois parametros `or=` na URL; em vez de depender de como o
-    // PostgREST combina parametros repetidos, noite + busca vao num unico grupo and().
-    if (condNoite && condBusca) query = query.or(`and(or(${condNoite}),or(${condBusca}))`);
-    else if (condNoite) query = query.or(condNoite);
-    else if (condBusca) query = query.or(condBusca);
-    return query;
-}
-
-// Estado da listagem atual (a paginação precisa lembrar os filtros usados na 1ª página).
-let _geracao = 0;
-const _estado = { filtros: null, logs: [], total: 0, usuariosVistos: new Set(), emHistorico: false };
-const _logsPorId = new Map();
-
-function _mensagemCentral(icone, texto) {
-    return '<div class="tl-vazio"><div class="tl-vazio-icone">' + icone + '</div><div class="tl-vazio-texto">' + esc(texto) + '</div></div>';
-}
-
-function _carregando(texto) {
-    return '<div class="tl-vazio"><div class="tl-vazio-texto">' + esc(texto) + '</div></div>';
-}
-
-/**
- * Carrega (ou recarrega) a primeira página com os filtros atuais da tela.
- * É o ponto de entrada de navegação, do botão APLICAR e dos chips.
- */
 export async function carregarLogs() {
-    const container = _el('listaLogs');
+    _injetarCSS();
+
+    const container = document.getElementById('listaLogs');
     if (!container) return;
-    _configurarTela();
-    _estado.emHistorico = false;
-    _el('logPainelHistorico')?.setAttribute('hidden', '');
-    _el('logFiltros')?.removeAttribute('hidden');
 
-    const filtros = _lerFiltros();
-    // Espelha na tela o que foi de fato usado (data vazia → hoje; invertida → trocada).
-    if (_el('dataFiltroLog'))    _el('dataFiltroLog').value    = filtros.de;
-    if (_el('dataFiltroLogAte')) _el('dataFiltroLogAte').value = filtros.ate;
+    container.innerHTML = '<div style="text-align:center;padding:50px;color:var(--texto-suave);opacity:1;"><div style="font-size:1.6rem;margin-bottom:10px;">⏳</div><div style="font-size:.82rem;font-weight:600;letter-spacing:1px;">CARREGANDO...</div></div>';
 
-    container.innerHTML = _carregando('Carregando...');
-    // Respostas de consultas antigas (busca digitando, chips em sequencia) sao descartadas.
-    const minhaGeracao = ++_geracao;
-    try {
-        const { logs, total } = await _buscarPagina(filtros, 0);
-        if (minhaGeracao !== _geracao) return;
-        _estado.filtros = filtros;
-        _estado.logs = logs;
-        _estado.total = total;
-        _desenharLista();
-    } catch (e) {
-        if (minhaGeracao !== _geracao) return;
-        console.error('❌ Erro ao carregar logs:', e);
-        notificarErro('Erro ao carregar histórico de alterações.');
-        container.innerHTML = _mensagemCentral('!', 'Erro ao carregar o histórico.');
-        _atualizarRodape(false);
-    }
-}
-
-async function carregarMaisLogs() {
-    if (!_estado.filtros) return;
-    const botao = _el('logCarregarMais');
-    if (botao) botao.disabled = true;
-    const minhaGeracao = _geracao;
-    try {
-        const { logs } = await _buscarPagina(_estado.filtros, _estado.logs.length);
-        if (minhaGeracao !== _geracao) return;
-        // Entrou log novo entre as paginas -> o offset desloca e repete linhas; ids de DOM
-        // duplicados quebrariam expandir/aria-controls. Dedupe por id.
-        const vistos = new Set(_estado.logs.map(l => l.id));
-        _estado.logs = _estado.logs.concat(logs.filter(l => !vistos.has(l.id)));
-        _desenharLista();
-    } catch (e) {
-        console.error('❌ Erro ao carregar mais logs:', e);
-        notificarErro('Erro ao carregar mais registros.');
-    } finally {
-        if (botao) botao.disabled = false;
-    }
-}
-
-async function _buscarPagina(filtros, offset) {
-    await db.aguardarInicializacao();
-    const client = db.getClient();
-    const base = client.from('reservas_log').select('*', { count: 'exact' });
-    const { data: rows, count, error } = await _aplicarFiltros(base, filtros)
-        .order('criado_em', { ascending: false })
-        .order('id', { ascending: false })
-        .range(offset, offset + TAMANHO_PAGINA - 1);
-    if (error) throw error;
-    const logs = (rows || []).map(_paraLogApp);
-    logs.forEach(l => { _logsPorId.set(l.id, l); if (l.usuario) _estado.usuariosVistos.add(l.usuario); });
-    return { logs, total: Number.isInteger(count) ? count : offset + logs.length };
-}
-
-/**
- * Totais do que está carregado (exportada pra teste). O resumo avisa quando a lista
- * está truncada pela paginação, pra ninguém ler "12 exclusões" achando que é o total.
- */
-export function _resumoDosLogs(logs) {
-    const porAcao = {};
-    const porUsuario = {};
-    logs.forEach(l => {
-        porAcao[l.acao] = (porAcao[l.acao] || 0) + 1;
-        const u = l.usuario || 'sistema';
-        porUsuario[u] = (porUsuario[u] || 0) + 1;
-    });
-    const usuarios = Object.entries(porUsuario).sort((a, b) => b[1] - a[1]);
-    return { porAcao, usuarios };
-}
-
-function _desenharLista() {
-    const container = _el('listaLogs');
-    const { filtros, logs, total } = _estado;
-    _atualizarSeletorUsuario();
-    _desenharResumo();
-
-    if (!logs.length) {
-        const buscando = filtros.termo || filtros.usuario || filtros.chips.size;
-        container.innerHTML = _mensagemCentral(
-            '',
-            buscando ? 'Nenhuma alteração encontrada com esses filtros.' : 'Nenhuma alteração neste período.'
-        );
-        _atualizarRodape(false);
-        return;
-    }
-
-    const umDia = filtros.de === filtros.ate && filtros.modo === 'alteracao';
-    container.innerHTML = _renderizarTimeline(logs, { agruparPorDia: !umDia });
-    _atualizarRodape(logs.length < total);
-}
-
-function _desenharResumo() {
-    const el = _el('logResumo');
-    if (!el) return;
-    const { logs, total } = _estado;
-    if (!logs.length) { el.innerHTML = ''; return; }
-
-    const { porAcao, usuarios } = _resumoDosLogs(logs);
-    const n = (...acoes) => acoes.reduce((s, a) => s + (porAcao[a] || 0), 0);
-    const celula = (rotulo, valor) =>
-        '<div class="log-resumo-item"><span class="log-resumo-valor">' + esc(valor) + '</span><span class="log-resumo-rotulo">' + esc(rotulo) + '</span></div>';
-
-    const topo = usuarios[0] ? usuarios[0][0] + ' (' + usuarios[0][1] + ')' : '—';
-    const parcial = logs.length < total
-        ? '<div class="log-resumo-nota">Resumo dos ' + logs.length + ' registros carregados de ' + total + '.</div>'
-        : '';
-    el.innerHTML =
-        '<div class="log-resumo-grade">' +
-            celula('Alterações', total) +
-            celula('Criados', n('CRIAR', 'RECRIAR')) +
-            celula('Editados', n('EDITAR', 'OBSERVAR')) +
-            celula('Excluídos', n('EXCLUIR')) +
-            celula('Cancelados', n('CANCELAR')) +
-            celula('Mais ativo', topo) +
-        '</div>' + parcial;
-}
-
-function _atualizarRodape(temMais) {
-    const rodape = _el('logRodape');
-    if (!rodape) return;
-    const { logs, total } = _estado;
-    rodape.hidden = !logs.length;
-    const contador = _el('logContador');
-    if (contador) contador.textContent = 'Mostrando ' + logs.length + ' de ' + total;
-    const botao = _el('logCarregarMais');
-    if (botao) botao.hidden = !temMais;
-}
-
-/** Mantém o seletor de usuário com todos que já apareceram, sem perder a escolha atual. */
-function _atualizarSeletorUsuario() {
-    const sel = _el('logUsuario');
-    if (!sel) return;
-    const atual = sel.value;
-    const nomes = Array.from(_estado.usuariosVistos).sort();
-    if (atual && !nomes.includes(atual)) nomes.push(atual);
-    sel.innerHTML = '<option value="">Todos</option>' +
-        nomes.map(u => '<option value="' + esc(u) + '">' + esc(u) + '</option>').join('');
-    sel.value = atual;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// HISTÓRICO DE UMA RESERVA
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Mostra a vida inteira de uma reserva (todos os logs com o mesmo reserva_id), do mais
- * antigo pro mais recente. Usado pelo botão "Histórico" do cartão e pelo sino.
- * @param {string} reservaId
- * @param {string} [destacarLogId] - cartão a rolar até, destacar e expandir
- */
-export async function mostrarHistoricoReserva(reservaId, destacarLogId = null, tentativas = 1) {
-    const container = _el('listaLogs');
-    if (!container || !reservaId) return;
-    _configurarTela();
-    _estado.emHistorico = true;
-    _el('logFiltros')?.setAttribute('hidden', '');
-    _el('logResumo').innerHTML = '';
-    _atualizarRodape(false);
-    if (_el('logRodape')) _el('logRodape').hidden = true;
-    container.innerHTML = _carregando('Carregando histórico...');
+    const inputData = document.getElementById('dataFiltroLog');
+    const data = inputData?.value || _hojeLocal();
+    if (inputData && !inputData.value) inputData.value = data;
 
     try {
         await db.aguardarInicializacao();
-        // O sino dispara este fluxo logo após o INSERT da notificação; o log pode ainda
-        // não ter chegado (race entre notificação e registrarLog) — o sino pede 5 tentativas.
-        let rows = [];
-        for (let tentativa = 0; tentativa < tentativas; tentativa++) {
-            const { data, error } = await db.getClient().from('reservas_log')
-                .select('*').eq('reserva_id', reservaId).order('criado_em', { ascending: true });
-            if (error) throw error;
-            rows = data || [];
-            if (rows.length > 0 && (!destacarLogId || rows.some(r => r.id === destacarLogId))) break;
-            await new Promise(r => setTimeout(r, 800));
-        }
+        const client = db.getClient();
 
-        const painel = _el('logPainelHistorico');
-        if (!rows.length) {
-            if (painel) painel.setAttribute('hidden', '');
-            container.innerHTML = _mensagemCentral('', 'Nenhum histórico encontrado para esta reserva.');
-            _el('logFiltros')?.removeAttribute('hidden');
+        // Limites do dia no fuso LOCAL, convertidos pra UTC na query — criado_em é
+        // timestamptz. Com limites em UTC puro, alterações após as 21h (UTC-3) caíam
+        // no dia seguinte do filtro.
+        const inicioDia = new Date(data + 'T00:00:00').toISOString();
+        const fimDia    = new Date(data + 'T23:59:59.999').toISOString();
+
+        const { data: rows, error } = await client.from('reservas_log')
+            .select('*')
+            .gte('criado_em', inicioDia)
+            .lte('criado_em', fimDia)
+            .order('criado_em', { ascending: false });
+        if (error) throw error;
+
+        const logs = rows.map(r => _paraLogApp(r));
+
+        if (logs.length === 0) {
+            container.innerHTML = '<div class="tl-vazio"><div class="tl-vazio-icone">📋</div><div class="tl-vazio-texto">Nenhuma alteração nesta data</div></div>';
             return;
         }
 
-        const logs = rows.map(_paraLogApp);
-        logs.forEach(l => _logsPorId.set(l.id, l));
-        const ultimo = logs[logs.length - 1];
-        const ref = ultimo.dadosDepois || ultimo.dadosAntes || {};
-        if (painel) {
-            painel.removeAttribute('hidden');
-            painel.innerHTML =
-                '<div><div class="log-historico-titulo">Histórico da reserva</div>' +
-                '<div class="log-historico-nome">' + esc(ref.nomes || 'Reserva') + '</div>' +
-                '<div class="log-historico-sub">' + logs.length + (logs.length === 1 ? ' registro' : ' registros') + '</div></div>' +
-                '<button type="button" class="btn-main cancel-btn" data-log-acao="voltar">Voltar</button>';
-        }
-        container.innerHTML = _renderizarTimeline(logs, { agruparPorDia: true, contextoHistorico: true });
-        // O botao que levou ate aqui foi destruido pelo re-render: foco no painel do historico.
-        if (painel && typeof painel.focus === 'function') { painel.setAttribute('tabindex', '-1'); painel.focus({ preventScroll: true }); }
+        container.innerHTML = _renderizarTimeline(logs);
 
-        const alvoId = destacarLogId || ultimo.id;
-        requestAnimationFrame(() => {
-            const card = _el('log-' + alvoId);
-            if (!card) return;
-            card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            card.classList.add('tl-destaque');
-            setTimeout(() => card.classList.remove('tl-destaque'), 3000);
-            if (_el('diff-' + alvoId)) expandirLog(alvoId);
-        });
     } catch (e) {
-        console.error('❌ Erro ao carregar histórico da reserva:', e);
-        notificarErro('Erro ao carregar o histórico da reserva.');
-        container.innerHTML = _mensagemCentral('!', 'Erro ao carregar o histórico.');
+        console.error('❌ Erro ao carregar logs:', e);
+        notificarErro('Erro ao carregar histórico de alterações.');
+        container.innerHTML = '<p style="color:var(--cor-erro);text-align:center;padding:40px;">Erro ao carregar logs</p>';
+    }
+}
+
+/**
+ * Busca alterações por nome do cliente, em TODAS as datas (não respeita o filtro de
+ * Data — é um campo de busca à parte, pra achar o histórico de uma reserva sem
+ * precisar saber o dia). Campo vazio volta pro comportamento normal (carregarLogs()).
+ *
+ * Procura tanto em dados_antes quanto em dados_depois (uma linha EXCLUIR, por exemplo,
+ * só tem dados_antes) via .or() do PostgREST em cima dos campos jsonb.
+ * @param {string} nome
+ */
+export async function buscarLogsPorNome(nome) {
+    _injetarCSS();
+
+    const container = document.getElementById('listaLogs');
+    if (!container) return;
+
+    const termo = (nome || '').trim();
+    if (!termo) {
+        await carregarLogs();
+        return;
+    }
+
+    container.innerHTML = '<div style="text-align:center;padding:50px;color:var(--texto-suave);opacity:1;"><div style="font-size:1.6rem;margin-bottom:10px;">⏳</div><div style="font-size:.82rem;font-weight:600;letter-spacing:1px;">BUSCANDO...</div></div>';
+
+    try {
+        await db.aguardarInicializacao();
+        const client = db.getClient();
+
+        // Escapa curingas do ILIKE (% e _) e remove vírgula/parênteses — delimitadores
+        // do próprio filtro .or() do PostgREST, quebrariam a sintaxe se vierem no termo.
+        const termoEscapado = termo.replace(/[%_]/g, '\\$&').replace(/[,()]/g, '');
+
+        const { data: rows, error } = await client.from('reservas_log')
+            .select('*')
+            .or(`dados_antes->>nomes.ilike.%${termoEscapado}%,dados_depois->>nomes.ilike.%${termoEscapado}%`)
+            .order('criado_em', { ascending: false })
+            .limit(200);
+        if (error) throw error;
+
+        const logs = rows.map(r => _paraLogApp(r));
+
+        if (logs.length === 0) {
+            container.innerHTML = '<div class="tl-vazio"><div class="tl-vazio-icone">🔍</div><div class="tl-vazio-texto">Nenhuma alteração encontrada para "' + escapeHtml(termo) + '"</div></div>';
+            return;
+        }
+
+        container.innerHTML = _renderizarTimeline(logs, { agruparPorDia: true });
+
+    } catch (e) {
+        console.error('❌ Erro ao buscar logs por nome:', e);
+        notificarErro('Erro ao buscar histórico de alterações.');
+        container.innerHTML = '<p style="color:var(--cor-erro);text-align:center;padding:40px;">Erro ao buscar logs</p>';
     }
 }
 
@@ -545,184 +330,107 @@ export async function mostrarHistoricoReserva(reservaId, destacarLogId = null, t
 
 /**
  * @param {Array} logs
- * @param {{agruparPorDia?: boolean, contextoHistorico?: boolean}} [opcoes]
- *   agruparPorDia: separadores por data (DD/MM/AAAA) em vez de só hora — necessário
- *   quando os resultados cruzam datas (agrupar só por hora misturaria dias diferentes
- *   sob o mesmo rótulo "20:30"). Cada cartão já mostra a própria hora.
- *   contextoHistorico: dentro do histórico de uma reserva não faz sentido oferecer
- *   "Histórico" de novo.
+ * @param {{agruparPorDia?: boolean}} [opcoes] - agruparPorDia: true agrupa os separadores
+ *   por data (DD/MM/AAAA) em vez de só hora — usado na busca por nome, que cruza várias
+ *   datas (agrupar só por hora misturaria dias diferentes sob o mesmo rótulo "20:30").
+ *   Cada card já mostra o próprio horário completo (tl-meta), então nada se perde.
  */
-export function _renderizarTimeline(logs, opcoes) {
-    const agruparPorDia = !!(opcoes && opcoes.agruparPorDia);
-    // Ultima recriacao de cada reserva: o botao so some dos EXCLUIR ANTERIORES a ela
-    // (EXCLUIR -> RECRIAR -> EXCLUIR de novo precisa poder recriar outra vez).
-    const recriados = new Map();
-    logs.filter(l => l.acao === 'RECRIAR').forEach(l => {
-        if (!recriados.has(l.reservaId) || l.timestamp > recriados.get(l.reservaId)) recriados.set(l.reservaId, l.timestamp);
-    });
-    let html = '<div class="tl-wrapper">';
-    let chaveAtual = null;
+function _renderizarTimeline(logs, opcoes) {
+    var agruparPorDia = !!(opcoes && opcoes.agruparPorDia);
+    var html = '<div class="tl-wrapper">';
+    var chaveAtual = null;
 
     logs.forEach(function(log) {
-        const dt = new Date(log.timestamp);
-        const chave = agruparPorDia
+        var dt = new Date(log.timestamp);
+        var chave = agruparPorDia
             ? dt.toLocaleDateString('pt-BR')
             : dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
         if (chave !== chaveAtual) {
             chaveAtual = chave;
-            html += '<div class="tl-hora-sep"><span>' + esc(chave) + '</span></div>';
+            html += '<div class="tl-hora-sep"><span>' + chave + '</span></div>';
         }
-        html += _renderizarItem(log, { ...opcoes, recriados });
+
+        html += _renderizarItem(log);
     });
 
-    return html + '</div>';
+    html += '</div>';
+    return html;
 }
 
-/** Linhas {rotulo, antes, depois} do que mudou — reserva (EDITAR/OBSERVAR) ou configuração. */
-function _linhasDiff(log) {
-    if (log.acao === 'CONFIG') {
-        const a = log.dadosAntes || {}, d = log.dadosDepois || {};
-        return Object.keys(LABELS_CONFIG)
-            .filter(c => JSON.stringify(a[c] ?? null) !== JSON.stringify(d[c] ?? null))
-            .map(c => ({ rotulo: LABELS_CONFIG[c], antes: _valorConfig(a[c]), depois: _valorConfig(d[c]) }));
-    }
-    if ((log.acao === 'EDITAR' || log.acao === 'OBSERVAR') && log.dadosAntes && log.dadosDepois) {
-        return _camposAlterados(log.dadosAntes, log.dadosDepois).map(c => ({
-            rotulo: LABELS_CAMPOS[c],
-            antes:  _valorCampo(log.dadosAntes[c]),
-            depois: _valorCampo(log.dadosDepois[c]),
-        }));
-    }
-    return [];
-}
+function _renderizarItem(log) {
+    var cfg     = CONFIG_ACAO[log.acao] || { cor: 'var(--texto-suave)', label: log.acao, icone: '' };
+    var dt      = new Date(log.timestamp);
+    var horaSec = dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    var reserva = log.dadosDepois || log.dadosAntes || {};
 
-function _valorCampo(v) {
-    if (v === true) return 'Sim';
-    if (v === false) return '—';
-    const s = String(v != null ? v : '');
-    return s || '—';
-}
+    // Título
+    var isBloqueio   = reserva.bloqueado || reserva.somenteHospedes;
+    var tipoBloqueio = reserva.bloqueado ? 'BLOQUEADO' : reserva.somenteHospedes ? 'SÓ HÓSPEDES' : null;
+    var nome = log.acao === 'DESBLOQUEAR'
+        ? (reserva.nomes ? reserva.nomes : 'DESBLOQUEADO')
+        : (tipoBloqueio || reserva.nomes || '—');
 
-function _valorConfig(v) {
-    if (v === undefined || v === null) return '—';
-    if (typeof v === 'boolean') return v ? 'Ligado' : 'Desligado';
-    if (typeof v === 'object') return Object.keys(v).length ? JSON.stringify(v) : '—';
-    return String(v);
-}
+    // Pills de detalhe
+    var parts = (isBloqueio || log.acao === 'DESBLOQUEAR')
+        ? [reserva.horario, tipoBloqueio].filter(Boolean)
+        : [
+            reserva.horario,
+            reserva.apto                ? 'APT ' + reserva.apto      : '',
+            reserva.tipo                ? reserva.tipo.toUpperCase()  : '',
+            (reserva.paxs || 0) > 0    ? reserva.paxs + ' ADT'      : '',
+            (reserva.chd  || 0) > 0    ? reserva.chd  + ' CHD'      : '',
+            reserva.mesa                ? 'MESA ' + reserva.mesa      : '',
+          ].filter(Boolean);
 
-/** Dados registrados no momento da ação (EXCLUIR/CANCELAR/RECRIAR) — só campos preenchidos. */
-function _linhasSnapshot(log) {
-    const r = log.dadosAntes || log.dadosDepois || {};
-    return Object.keys(LABELS_CAMPOS)
-        .filter(c => r[c] !== undefined && r[c] !== null && r[c] !== '' && r[c] !== false && r[c] !== 0)
-        .map(c => ({ rotulo: LABELS_CAMPOS[c], valor: _valorCampo(r[c]) }));
-}
-
-function _titulo(log, reserva) {
-    switch (log.acao) {
-        case 'LOGIN':  return log.usuario || 'Usuário';
-        case 'LOGOUT': return log.usuario || 'Usuário';
-        case 'CONFIG': return 'Configurações do sistema';
-        case 'NOSHOW': {
-            const q = (log.dadosDepois && log.dadosDepois.quantidade) || 0;
-            return q + (q === 1 ? ' reserva marcada como no-show' : ' reservas marcadas como no-show');
-        }
-        case 'DESBLOQUEAR': return reserva.nomes || 'Desbloqueado';
-        default: {
-            const tipoBloqueio = reserva.bloqueado ? 'BLOQUEADO' : reserva.somenteHospedes ? 'SÓ HÓSPEDES' : null;
-            return tipoBloqueio || reserva.nomes || '—';
-        }
-    }
-}
-
-function _renderizarItem(log, opcoes) {
-    const cfg     = CONFIG_ACAO[log.acao] || { tom: 'neutro', label: log.acao, icone: '' };
-    const dt      = new Date(log.timestamp);
-    const horaSec = dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    const reserva = log.dadosDepois || log.dadosAntes || {};
-    const ehReserva = !['LOGIN', 'LOGOUT', 'CONFIG', 'NOSHOW'].includes(log.acao);
-
-    const isBloqueio   = ehReserva && (reserva.bloqueado || reserva.somenteHospedes);
-    const tipoBloqueio = reserva.bloqueado ? 'BLOQUEADO' : reserva.somenteHospedes ? 'SÓ HÓSPEDES' : null;
-
-    // Pills de detalhe. A noite da reserva vem primeiro: a data do log é QUANDO mexeram,
-    // a noite é DE QUAL reserva se trata — a distinção que mais gerava dúvida.
-    let partes = [];
-    if (log.acao === 'NOSHOW') {
-        partes = [log.dadosDepois && log.dadosDepois.data ? 'Até ' + _formatarData(log.dadosDepois.data) : ''];
-    } else if (ehReserva) {
-        const noite = reserva.data ? 'Noite ' + _formatarData(reserva.data).slice(0, 5) : '';
-        partes = (isBloqueio || log.acao === 'DESBLOQUEAR')
-            ? [noite, reserva.horario, tipoBloqueio]
-            : [
-                noite,
-                reserva.horario,
-                reserva.apto ? 'APT ' + reserva.apto : '',
-                reserva.tipo ? String(reserva.tipo).toUpperCase() : '',
-                (reserva.paxs || 0) > 0 ? reserva.paxs + ' ADT' : '',
-                (reserva.chd  || 0) > 0 ? reserva.chd  + ' CHD' : '',
-                reserva.mesa ? 'MESA ' + reserva.mesa : '',
-            ];
-    }
-    partes = partes.filter(Boolean);
-    const detalhesHtml = partes.length
-        ? '<div class="tl-detalhes">' + partes.map((p, i) =>
-            (i > 0 ? '<span class="tl-sep" aria-hidden="true">·</span>' : '') + '<span>' + esc(p) + '</span>').join('') + '</div>'
+    var detalhesHtml = parts.length
+        ? '<div class="tl-detalhes">' +
+          parts.map(function(p, i) {
+              return (i > 0 ? '<span class="tl-sep">●</span>' : '') + '<span>' + p + '</span>';
+          }).join('') +
+          '</div>'
         : '';
 
-    // Conteúdo expansível: diff (edições/config) ou os dados registrados (exclusão/cancelamento).
-    const diff = _linhasDiff(log);
-    const snapshot = (!diff.length && (log.acao === 'EXCLUIR' || log.acao === 'CANCELAR') && ehReserva)
-        ? _linhasSnapshot(log) : [];
-    const expansivel = diff.length > 0 || snapshot.length > 0;
-    const dicaHtml = diff.length
-        ? '<div class="tl-dica">Alterou: ' + esc(diff.map(l => l.rotulo).join(', ')) + ' — toque para detalhes</div>'
-        : (snapshot.length ? '<div class="tl-dica">Toque para ver os dados registrados</div>' : '');
-
-    // Ações do cartão
-    const acoes = [];
-    if (log.reservaId && ehReserva && !(opcoes && opcoes.contextoHistorico)) {
-        acoes.push('<button type="button" class="tl-btn" data-log-acao="historico" data-log-reserva="' + esc(log.reservaId) + '" data-log-id="' + esc(log.id) + '">Histórico da reserva</button>');
-    }
-    const recriadaEm = opcoes && opcoes.recriados && opcoes.recriados.get(log.reservaId);
-    const jaRecriada = !!recriadaEm && recriadaEm > log.timestamp;
-    // Reserva cancelada e depois excluida nao e recriada como ativa (o service tambem recusa).
-    if (log.acao === 'EXCLUIR' && log.dadosAntes && log.dadosAntes.nomes && !log.dadosAntes.canceladoEm && !jaRecriada) {
-        acoes.push('<button type="button" class="tl-btn tl-btn-primario" data-log-acao="recriar" data-log-id="' + esc(log.id) + '">Recriar reserva</button>');
-    }
-    const acoesHtml = acoes.length ? '<div class="tl-acoes">' + acoes.join('') + '</div>' : '';
-
-    const corpoExpandido = expansivel ? _renderizarExpandido(log, diff, snapshot) : '';
-    const attrsClique = expansivel
-        ? ' role="button" tabindex="0" aria-expanded="false" aria-controls="diff-' + esc(log.id) + '" data-log-acao="expandir" data-log-id="' + esc(log.id) + '"'
+    // Diff — só existe quando a edição alterou de fato algum campo rastreado.
+    // Só EDITAR expande: CRIAR não tem "antes" (nada existia), EXCLUIR/DESBLOQUEAR/
+    // CANCELAR/RESTAURAR não precisam do detalhe pra fazer sentido no log.
+    var camposAlterados = (log.acao === 'EDITAR' && log.dadosAntes && log.dadosDepois)
+        ? _camposAlterados(log.dadosAntes, log.dadosDepois)
+        : [];
+    var temDetalhes   = camposAlterados.length > 0;
+    var diffHtml      = temDetalhes ? _renderizarDiff(log, camposAlterados) : '';
+    var clicavelClass = temDetalhes ? 'tl-clicavel' : '';
+    var onclickAttr   = temDetalhes ? 'onclick="expandirLog(\'' + log.id + '\')"' : '';
+    var nomesCampos   = camposAlterados.map(function(c) { return LABELS_CAMPOS[c]; }).join(', ');
+    var dicaHtml      = temDetalhes
+        ? '<div class="tl-dica">' + _iconeLapis() + ' <span>Alterou: ' + nomesCampos + ' — toque para detalhes</span></div>'
         : '';
 
     return (
-        '<div class="tl-item" data-tom="' + cfg.tom + '">' +
-            '<div class="tl-icon" aria-hidden="true">' + cfg.icone + '</div>' +
-            '<div id="log-' + esc(log.id) + '" class="tl-card' + (expansivel ? ' tl-clicavel' : '') + '">' +
-                '<div class="tl-card-corpo' + (expansivel ? ' tl-clicavel' : '') + '"' + attrsClique + '>' +
+        '<div class="tl-item">' +
+            '<div class="tl-icon ' + clicavelClass + '" style="background:var(--accent-soft);color:' + cfg.cor + ';" ' + onclickAttr + '>' + cfg.icone + '</div>' +
+            '<div id="log-' + log.id + '" class="tl-card ' + clicavelClass + '" ' + onclickAttr + '>' +
+                '<div class="tl-card-topo" style="background:' + cfg.cor + ';"></div>' +
+                '<div class="tl-card-corpo">' +
                     '<div class="tl-card-principal">' +
-                        '<span class="tl-badge">' + esc(cfg.label) + '</span>' +
-                        '<span class="tl-nome">' + esc(_titulo(log, reserva)) + '</span>' +
+                        '<span class="tl-badge" style="background:var(--accent-soft);color:' + cfg.cor + ';">' + cfg.label + '</span>' +
+                        '<span class="tl-nome">' + nome + '</span>' +
                         '<div class="tl-meta">' +
-                            '<span class="tl-meta-item">' + _iconeRelogio() + ' ' + esc(horaSec) + '</span>' +
-                            '<span class="tl-meta-item">' + _iconeUsuario() + ' ' + esc(log.usuario || 'sistema') + '</span>' +
+                            '<span class="tl-meta-item">' + _iconeRelogio() + ' ' + horaSec + '</span>' +
+                            '<span class="tl-meta-item">' + _iconeUsuario() + ' ' + (log.usuario || 'sistema') + '</span>' +
                         '</div>' +
                     '</div>' +
                     detalhesHtml +
                     dicaHtml +
                 '</div>' +
-                acoesHtml +
-                corpoExpandido +
+                diffHtml +
             '</div>' +
         '</div>'
     );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// DIFF / DADOS REGISTRADOS
+// DIFF EXPANDIDO
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Campos rastreados cujo valor mudou entre antes e depois, na ordem de LABELS_CAMPOS. */
@@ -732,27 +440,40 @@ export function _camposAlterados(antes, depois) {
     });
 }
 
-function _renderizarExpandido(log, diff, snapshot) {
-    let miolo;
-    if (diff.length) {
-        const qtd = diff.length;
-        miolo =
-            '<div class="tl-diff-cabecalho">Alterações — ' + (qtd === 1 ? '1 campo alterado' : qtd + ' campos alterados') + '</div>' +
-            '<table class="tl-diff-tabela"><thead><tr><th>Campo</th><th>Antes</th><th>Depois</th></tr></thead><tbody>' +
-            diff.map(l =>
-                '<tr><td class="col-campo">' + esc(l.rotulo) + '</td>' +
-                '<td class="col-antes">' + esc(l.antes) + '</td>' +
-                '<td class="col-depois">' + esc(l.depois) + '</td></tr>').join('') +
-            '</tbody></table>';
-    } else {
-        miolo =
-            '<div class="tl-diff-cabecalho">Dados registrados no momento da ação</div>' +
-            '<table class="tl-diff-tabela"><tbody>' +
-            snapshot.map(l => '<tr><td class="col-campo">' + esc(l.rotulo) + '</td><td>' + esc(l.valor) + '</td></tr>').join('') +
-            '</tbody></table>';
-    }
-    return '<div id="diff-' + esc(log.id) + '" class="tl-diff">' + miolo +
-        '<button type="button" class="tl-btn" data-log-acao="recolher" data-log-id="' + esc(log.id) + '">Fechar</button></div>';
+function _renderizarDiff(log, camposAlterados) {
+    var antes  = log.dadosAntes  || {};
+    var depois = log.dadosDepois || {};
+
+    // ✅ v3.2: só os campos que mudaram — os iguais são ruído (antes apareciam esmaecidos)
+    var linhas = camposAlterados.map(function(c) {
+        var vAntes  = String(antes[c]  != null ? antes[c]  : '') || '—';
+        var vDepois = String(depois[c] != null ? depois[c] : '') || '—';
+        return (
+            '<tr class="linha-alterada">' +
+                '<td class="col-campo">' + LABELS_CAMPOS[c] + '</td>' +
+                '<td class="col-antes">' + vAntes  + '</td>' +
+                '<td class="col-depois">' + vDepois + '</td>' +
+            '</tr>'
+        );
+    }).join('');
+
+    var qtd = camposAlterados.length;
+    var subtitulo = qtd === 1 ? '1 campo alterado' : qtd + ' campos alterados';
+
+    return (
+        '<div id="diff-' + log.id + '" class="tl-diff">' +
+            '<div class="tl-diff-cabecalho">Alterações — ' + subtitulo + '</div>' +
+            '<table class="tl-diff-tabela">' +
+                '<thead><tr>' +
+                    '<th>Campo</th>' +
+                    '<th style="color:var(--cor-erro);">Antes</th>' +
+                    '<th style="color:var(--cor-sucesso);">Depois</th>' +
+                '</tr></thead>' +
+                '<tbody>' + linhas + '</tbody>' +
+            '</table>' +
+            '<button class="tl-btn-fechar" onclick="recolherLog(\'' + log.id + '\');event.stopPropagation();">▲ fechar</button>' +
+        '</div>'
+    );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -760,144 +481,27 @@ function _renderizarExpandido(log, diff, snapshot) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function expandirLog(logId) {
-    const diff = _el('diff-' + logId);
+    var diff = document.getElementById('diff-' + logId);
     if (!diff) return;
-    const jaAberto = diff.classList.contains('aberto');
+
+    var jaAberto = diff.classList.contains('aberto');
 
     // Fecha qualquer outro diff aberto
     document.querySelectorAll('.tl-diff.aberto').forEach(function(el) { el.classList.remove('aberto'); });
-    document.querySelectorAll('.tl-card-corpo[aria-expanded="true"]').forEach(function(el) { el.setAttribute('aria-expanded', 'false'); });
 
-    if (!jaAberto) {
-        diff.classList.add('aberto');
-        _el('log-' + logId)?.querySelector('.tl-card-corpo')?.setAttribute('aria-expanded', 'true');
-    }
+    if (!jaAberto) diff.classList.add('aberto');
 }
 
 function recolherLog(logId) {
-    _el('diff-' + logId)?.classList.remove('aberto');
-    const corpo = _el('log-' + logId)?.querySelector('.tl-card-corpo');
-    corpo?.setAttribute('aria-expanded', 'false');
-    // O botao "Fechar" some junto com o painel: devolve o foco ao cartao (teclado/leitor de tela).
-    if (corpo && typeof corpo.focus === 'function') corpo.focus();
+    var diff = document.getElementById('diff-' + logId);
+    if (diff) diff.classList.remove('aberto');
 }
 
-/**
- * Recria uma reserva excluída a partir do snapshot do log. Confirma antes (a recepção
- * pode estar com a mesma reserva já refeita à mão) e delega a escrita ao service, que
- * recalcula a posição livre e registra o log RECRIAR. A mesa não é restaurada.
- */
-async function recriarReservaDoLog(logId) {
-    const log = _logsPorId.get(logId);
-    if (!log || !log.dadosAntes) return;
-    const r = log.dadosAntes;
-    try {
-        const existente = log.reservaId ? await db.getReservaPorId(log.reservaId) : null;
-        if (existente) {
-            notificarAviso('Esta reserva já existe — não é preciso recriá-la.');
-            return;
-        }
-    } catch (e) {
-        console.error('❌ Erro ao conferir a reserva antes de recriar:', e);
-        notificarErro('Não foi possível conferir a reserva. Tente novamente.');
-        return;
-    }
-
-    const quando = [r.data ? _formatarData(r.data) : '', r.horario].filter(Boolean).join(' às ');
-    window.modalConfirmar(
-        'Recriar a reserva de <strong>' + esc(r.nomes) + '</strong>' + (quando ? ' (' + esc(quando) + ')' : '') +
-        '? Ela volta à grade na primeira linha livre do horário; a mesa não é restaurada.',
-        async () => {
-            try {
-                const { recriarReservaDoLog: recriar } = await import('./service.js');
-                await recriar(r);
-                notificarSucesso('Reserva recriada.');
-                if (_estado.emHistorico && log.reservaId) await mostrarHistoricoReserva(log.reservaId);
-                else await carregarLogs();
-            } catch (e) {
-                // o service já notifica o erro; aqui só garantimos que não vire rejeição solta
-                console.error('❌ Erro ao recriar reserva:', e);
-            }
-        }
-    );
-}
-
-/** Delegação de eventos: um único listener serve a todos os cartões, inclusive os novos. */
-function _aoClicarNaLista(ev) {
-    const alvo = ev.target.closest('[data-log-acao]');
-    if (!alvo) return;
-    const id = alvo.getAttribute('data-log-id');
-    switch (alvo.getAttribute('data-log-acao')) {
-        case 'expandir':  expandirLog(id); break;
-        case 'recolher':  recolherLog(id); break;
-        case 'historico': mostrarHistoricoReserva(alvo.getAttribute('data-log-reserva'), id); break;
-        case 'recriar':   recriarReservaDoLog(id); break;
-        case 'voltar':    carregarLogs().then(() => _el('dataFiltroLog')?.focus()); break;
-    }
-}
-
-function _aoTeclarNaLista(ev) {
-    if (ev.key !== 'Enter' && ev.key !== ' ') return;
-    const alvo = ev.target.closest('[role="button"][data-log-acao="expandir"]');
-    if (!alvo) return;
-    ev.preventDefault();
-    expandirLog(alvo.getAttribute('data-log-id'));
-}
-
-let _debounceBusca = null;
-/** Debounce (400ms) do campo de busca — evita uma query a cada tecla digitada. */
-function buscarLogsPorNomeDebounced() {
-    clearTimeout(_debounceBusca);
-    _debounceBusca = setTimeout(carregarLogs, 400);
-}
-
-function _desenharChips() {
-    const el = _el('logChips');
-    if (!el) return;
-    el.innerHTML = CHIPS_ACAO.map(c =>
-        '<button type="button" class="log-chip" data-log-chip="' + c.id + '" aria-pressed="' + _chipsAtivos.has(c.id) + '">' + esc(c.texto) + '</button>'
-    ).join('');
-}
-
-function _limparFiltros() {
-    const hoje = _hojeLocal();
-    if (_el('dataFiltroLog'))    _el('dataFiltroLog').value = hoje;
-    if (_el('dataFiltroLogAte')) _el('dataFiltroLogAte').value = hoje;
-    if (_el('logModo'))          _el('logModo').value = 'alteracao';
-    if (_el('logUsuario'))       _el('logUsuario').value = '';
-    if (_el('filtroNomeLog'))    _el('filtroNomeLog').value = '';
-    _chipsAtivos.clear();
-    _desenharChips();
-    carregarLogs();
-}
-
-/** Liga os listeners da tela uma única vez (a tela existe desde o carregamento do index). */
-function _configurarTela() {
-    const lista = _el('listaLogs');
-    if (!lista || lista.dataset.logPronto) return;
-    lista.dataset.logPronto = '1';
-
-    lista.addEventListener('click', _aoClicarNaLista);
-    lista.addEventListener('keydown', _aoTeclarNaLista);
-    _el('logPainelHistorico')?.addEventListener('click', _aoClicarNaLista);
-
-    _desenharChips();
-    _el('logChips')?.addEventListener('click', (ev) => {
-        const chip = ev.target.closest('[data-log-chip]');
-        if (!chip) return;
-        const id = chip.getAttribute('data-log-chip');
-        if (_chipsAtivos.has(id)) _chipsAtivos.delete(id); else _chipsAtivos.add(id);
-        chip.setAttribute('aria-pressed', String(_chipsAtivos.has(id)));
-        carregarLogs();
-    });
-
-    _el('logBtnAplicar')?.addEventListener('click', carregarLogs);
-    _el('logBtnLimpar')?.addEventListener('click', _limparFiltros);
-    _el('filtroNomeLog')?.addEventListener('input', buscarLogsPorNomeDebounced);
-    _el('filtroNomeLog')?.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { clearTimeout(_debounceBusca); carregarLogs(); } });
-    ['dataFiltroLog', 'dataFiltroLogAte', 'logModo', 'logUsuario'].forEach(id =>
-        _el(id)?.addEventListener('change', carregarLogs));
-    _el('logCarregarMais')?.addEventListener('click', carregarMaisLogs);
+/** Debounce (400ms) do campo de busca por nome — evita uma query a cada tecla digitada. */
+let _debounceBuscaNomeLog = null;
+function buscarLogsPorNomeDebounced(nome) {
+    clearTimeout(_debounceBuscaNomeLog);
+    _debounceBuscaNomeLog = setTimeout(() => buscarLogsPorNome(nome), 400);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -907,15 +511,69 @@ function _configurarTela() {
 window.carregarLogs = carregarLogs;
 window.expandirLog  = expandirLog;
 window.recolherLog  = recolherLog;
-window.registrarLogEvento = registrarLogEvento;
 window.buscarLogsPorNomeDebounced = buscarLogsPorNomeDebounced;
 
 /**
- * Chamado pelo sino após navegar para a tela de logs: abre o histórico da reserva e
- * destaca o registro mais recente.
+ * Chamado pelo sino após navegar para a tela de logs.
+ * Carrega os logs do dia da reserva, destaca o item e expande o diff.
  * @param {string} reservaId
  */
-window.destacarLogPorReservaId = function(reservaId) {
+window.destacarLogPorReservaId = async function(reservaId) {
     if (!reservaId) return;
-    return mostrarHistoricoReserva(reservaId, null, 5);
+
+    _injetarCSS();
+
+    const container = document.getElementById('listaLogs');
+    if (!container) return;
+
+    container.innerHTML = '<div style="text-align:center;padding:50px;color:var(--texto-suave);opacity:1;"><div style="font-size:1.6rem;margin-bottom:10px;">⏳</div><div style="font-size:.82rem;font-weight:600;letter-spacing:1px;">CARREGANDO...</div></div>';
+
+    try {
+        await db.aguardarInicializacao();
+        const client = db.getClient();
+
+        // Tenta até 5x com intervalo de 800ms — cobre race condition entre
+        // notificação (evento de INSERT) e registrarLog (escrita no Supabase)
+        let rows = [];
+        for (let tentativa = 0; tentativa < 5; tentativa++) {
+            const { data, error } = await client.from('reservas_log')
+                .select('*')
+                .eq('reserva_id', reservaId);
+            if (error) throw error;
+            rows = data;
+            if (rows.length > 0) break;
+            await new Promise(r => setTimeout(r, 800));
+        }
+
+        if (rows.length === 0) {
+            container.innerHTML = '<div class="tl-vazio"><div class="tl-vazio-icone">📋</div><div class="tl-vazio-texto">Nenhum histórico encontrado para esta reserva</div></div>';
+            return;
+        }
+
+        // Ordena no cliente e pega o mais recente
+        const todos = rows.map(r => _paraLogApp(r));
+        todos.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+        const logAlvo = todos[0];
+
+        container.innerHTML = _renderizarTimeline([logAlvo]);
+
+        requestAnimationFrame(() => {
+            const cardEl = document.getElementById('log-' + logAlvo.id);
+            if (!cardEl) return;
+            cardEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            cardEl.style.transition = 'box-shadow 0.3s, outline 0.3s';
+            cardEl.style.outline = '3px solid var(--primaria, #d4a373)';
+            cardEl.style.boxShadow = '0 0 0 6px rgba(212,163,115,0.2)';
+            setTimeout(() => {
+                cardEl.style.outline = '';
+                cardEl.style.boxShadow = '';
+            }, 3000);
+            expandirLog(logAlvo.id);
+        });
+
+    } catch (e) {
+        console.error('❌ Erro ao destacar log:', e);
+        container.innerHTML = '<div class="tl-vazio"><div class="tl-vazio-icone">❌</div><div class="tl-vazio-texto">Erro ao carregar histórico</div></div>';
+    }
 };
+

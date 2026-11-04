@@ -1,5 +1,4 @@
 import { db } from '../../core/database.js';
-import { registrarLogEvento } from './log.js';
 
 const ATRASO_APOS_MEIA_NOITE_MS = 5000;
 let timerVirada = null;
@@ -29,10 +28,6 @@ export async function atualizarNoShowsAutomaticamente() {
         const quantidade = await db.marcarNoShowsAnteriores(dataLocalHoje());
         if (quantidade > 0) {
             console.info(`✅ ${quantidade} reserva(s) marcada(s) como no-show após a virada do dia.`);
-            // Ação do sistema (sem usuário): fica no log para explicar por que reservas
-            // mudaram de status sozinhas. registrarLogEvento nunca lança, mas o catch
-            // abaixo garante que a função continue sem exceção mesmo se isso mudar.
-            await registrarLogEvento('NOSHOW', null, { quantidade, data: dataLocalHoje() });
         }
         return quantidade;
     } catch (error) {

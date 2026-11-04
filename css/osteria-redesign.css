@@ -258,68 +258,6 @@ input[type="number"] {
   body.sidebar-aberta .sidebar:hover { width: 236px !important; left: 0 !important; }
 }
 
-/* Tablet/janela estreita COM mouse: a rail de ícones abre ao passar o mouse e recolhe ao sair.
-   Em touch (hover: none) nada muda — lá o botão ☰ continua sendo o único jeito de abrir.
-   Fica depois do bloco acima e com a mesma especificidade para vencer o "trava em 52px". */
-@media (min-width: 768px) and (max-width: 1200px) and (hover: hover) and (pointer: fine) {
-  body:not(.sidebar-aberta) .sidebar:hover { width: 236px !important; }
-  body:not(.sidebar-aberta) .sidebar:hover .sb-header { padding: 24px 20px 20px !important; }
-  body:not(.sidebar-aberta) .sidebar:hover .sb-nav { padding: 18px 14px !important; gap: 4px !important; }
-  body:not(.sidebar-aberta) .sidebar:hover .nav-item { padding: 12px 13px !important; }
-  body:not(.sidebar-aberta) .sidebar:hover .sb-footer { padding: 0 14px 20px !important; }
-  body:not(.sidebar-aberta) .sidebar:hover .sb-brand,
-  body:not(.sidebar-aberta) .sidebar:hover .nav-item span,
-  body:not(.sidebar-aberta) .sidebar:hover .sb-theme-row span,
-  body:not(.sidebar-aberta) .sidebar:hover .sb-theme-row .switch { opacity: 1 !important; pointer-events: auto !important; }
-}
-
-/* Tablet/janela estreita, qualquer ponteiro: foco por TECLADO (Tab) também abre a rail, para o
-   texto do item focado aparecer. Usa :focus-visible (clique de mouse em botão não ativa),
-   então o menu não fica preso aberto depois de um clique. */
-@media (min-width: 768px) and (max-width: 1200px) {
-  body:not(.sidebar-aberta) .sidebar:has(:focus-visible) { width: 236px !important; }
-  body:not(.sidebar-aberta) .sidebar:has(:focus-visible) .sb-header { padding: 24px 20px 20px !important; }
-  body:not(.sidebar-aberta) .sidebar:has(:focus-visible) .sb-nav { padding: 18px 14px !important; gap: 4px !important; }
-  body:not(.sidebar-aberta) .sidebar:has(:focus-visible) .nav-item { padding: 12px 13px !important; }
-  body:not(.sidebar-aberta) .sidebar:has(:focus-visible) .sb-footer { padding: 0 14px 20px !important; }
-  body:not(.sidebar-aberta) .sidebar:has(:focus-visible) .sb-brand,
-  body:not(.sidebar-aberta) .sidebar:has(:focus-visible) .nav-item span,
-  body:not(.sidebar-aberta) .sidebar:has(:focus-visible) .sb-theme-row span,
-  body:not(.sidebar-aberta) .sidebar:has(:focus-visible) .sb-theme-row .switch { opacity: 1 !important; pointer-events: auto !important; }
-}
-
-/* Desktop COM mouse: mesma rail de ícones (52px). Ao passar o mouse abre por cima do conteúdo
-   (position: fixed, sem empurrar a lista) e recolhe ao sair. Também abre com foco por teclado
-   (:focus-visible) e quando o botão ☰ a abre (.sb-aberta, ver bloco de notebook touch abaixo).
-   O estado aberto usa as regras de menu aberto definidas lá em cima; aqui só se define o
-   estado recolhido.
-   Touch >1200px (hover: none) continua com o menu aberto de sempre. */
-@media (min-width: 1201px) and (hover: hover) and (pointer: fine) {
-  .sidebar { width: 52px !important; }
-  .sidebar:hover,
-  .sidebar:has(:focus-visible),
-  .sidebar.sb-aberta { width: 236px !important; }
-  .main-content { margin-left: 52px !important; }
-  .sidebar:not(:hover):not(:has(:focus-visible)):not(.sb-aberta) .sb-header { padding: 22px 7px 18px; }
-  .sidebar:not(:hover):not(:has(:focus-visible)):not(.sb-aberta) .sb-nav { padding: 10px 7px; gap: 2px; }
-  .sidebar:not(:hover):not(:has(:focus-visible)):not(.sb-aberta) .nav-item { padding: 10px 9px; }
-  .sidebar:not(:hover):not(:has(:focus-visible)):not(.sb-aberta) .sb-footer { padding: 0 7px 20px; }
-  .sidebar:not(:hover):not(:has(:focus-visible)):not(.sb-aberta) .sb-brand,
-  .sidebar:not(:hover):not(:has(:focus-visible)):not(.sb-aberta) .nav-item span,
-  .sidebar:not(:hover):not(:has(:focus-visible)):not(.sb-aberta) .sb-theme-row span,
-  .sidebar:not(:hover):not(:has(:focus-visible)):not(.sb-aberta) .sb-theme-row .switch { opacity: 0 !important; pointer-events: none !important; }
-}
-
-/* Notebook com tela de toque (mouse/touchpad como ponteiro principal + qualquer ponteiro coarse):
-   o toque não é um hover confiável, então mostramos o botão ☰ (o JS o trata em _isMobile). */
-@media (min-width: 1201px) and (hover: hover) and (pointer: fine) and (any-pointer: coarse) {
-  #sb-btn-toggle { display: flex !important; margin: 0 auto; }
-  .menu-overlay.sb-overlay-ativo { background: transparent !important; }
-}
-
-/* Troca de padding suave entre rail e menu aberto (evita "salto" dos ícones). */
-.sb-header, .sb-nav, .sb-footer { transition: padding .2s ease; }
-
 @media (max-width: 767px) {
   .view[style*="padding"] { padding: 16px 12px 24px !important; }
   .top-bar-unica { padding: 10px 12px; }

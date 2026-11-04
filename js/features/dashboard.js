@@ -1,5 +1,6 @@
 /* =========================================================================================
-   OSTERIA DI LUCCA - DASHBOARD.JS v3.15
+   OSTERIA DI LUCCA - DASHBOARD.JS v4.0
+   v4.0: BI por perfil/calendário, degustação, DDD, pagamentos e estornos em módulos próprios.
    ✅ v3.8: Padroniza error handling — usa notificacao.js
    ✅ v3.9: Bug #7 — usa buscarReservasPorPeriodo() de service.js — elimina acesso direto ao Firestore
    ✅ v3.10: ocupacaoHorario construído a partir de getHorariosPadrao() — elimina array hardcoded (Manutenção #6)
@@ -20,7 +21,9 @@ import { buscarReservasPorPeriodo, buscarReservasPorData } from './reservas/serv
 import { notificarErro } from '../core/notificacao.js';
 import { getConfig } from '../core/state.js';
 import { db } from '../core/database.js';
-import { reservaAtiva, tipoCliente, horariosAnalise } from '../core/analytics.js';
+import { reservaAtiva, tipoCliente, paxReserva, horariosAnalise } from '../core/analytics.js';
+import { datasDaConsultaBI, dataBIValida } from '../core/bi.js';
+import { processarBI, limparBI } from './dashboard-bi.js';
 import { CORES_OSTERIA, coresGrafico } from '../core/theme.js';
 
 // --- VARIÁVEIS GLOBAIS ---
@@ -43,7 +46,7 @@ let modoConsulta = 'periodo'; // 'periodo' | 'especificas'
 let datasExcluidas = [];      // usado no modo 'periodo' — datas dentro do intervalo a ignorar
 let datasEspecificas = [];    // usado no modo 'especificas' — datas avulsas a analisar
 
-function processarDashboard(reservas, diasNoPeriodo = 1) {
+function processarDashboard(reservas, diasNoPeriodo = 1, datasSelecionadas = null) {
     console.log("📊 Dashboard processando", reservas.length, "reservas em", diasNoPeriodo, "dias");
 
     let kpis = { totalPax: 0, adultos: 0, criancas: 0, tempoTotalMinutos: 0, mesasFinalizadasCount: 0, cancelamentos: 0, paxRestaurante: 0 };
@@ -64,12 +67,13 @@ function processarDashboard(reservas, diasNoPeriodo = 1) {
     reservas.forEach(r => {
         // Cancelada (soft-delete) conta separadamente — não entra em nenhum KPI/gráfico
         // de reserva ativa, mas o restaurante precisa ver que aconteceu (bug #57).
+        if (!reservaAtiva({ ...r, canceladoEm: null })) return;
         if (r.canceladoEm) { kpis.cancelamentos++; return; }
         if (!reservaAtiva(r)) return;
 
-        let qtdAdultos = parseInt(r.paxs) || 0;
-        let qtdCriancas = parseInt(r.chd) || 0;
-        let totalReserva = qtdAdultos + qtdCriancas;
+        let qtdAdultos = Math.max(0, parseInt(r.paxs) || 0);
+        let qtdCriancas = Math.max(0, parseInt(r.chd) || 0);
+        let totalReserva = paxReserva(r);
 
         kpis.totalPax += totalReserva;
         kpis.adultos += qtdAdultos;
@@ -82,7 +86,8 @@ function processarDashboard(reservas, diasNoPeriodo = 1) {
             mixCliente[tipo] += totalReserva;
         }
 
-        let h = r.originalBase || r.horario;
+        let h = r.horario || r.originalBase;
+        if (h && !ocupacaoHorario[h]) ocupacaoHorario[h] = { hospede: 0, externo: 0, passante: 0 };
         if (ocupacaoHorario[h] !== undefined && ocupacaoHorario[h][tipo] !== undefined) {
             ocupacaoHorario[h][tipo] += totalReserva;
         }
@@ -115,8 +120,12 @@ function processarDashboard(reservas, diasNoPeriodo = 1) {
     let mesaTop = Object.keys(usoMesas).reduce((a, b) => usoMesas[a] > usoMesas[b] ? a : b);
     if (usoMesas[mesaTop] === 0) mesaTop = "-";
 
+    const cobertura = document.getElementById('biAmostraTempo');
+    if (cobertura) cobertura.textContent = `${kpis.mesasFinalizadasCount} reservas com cronômetro válido de restaurante. Não representa o atendimento de toda a base.`;
+
     atualizarKpisNaTela(taxaOcupacao, kpis.totalPax, tempoMedio, mesaTop, kpis.criancas, kpis.cancelamentos);
     renderizarGraficosAvancados(ocupacaoHorario, mixCliente, porDiaSemana, usoMesas);
+    processarBI(reservas, datasSelecionadas || [...new Set(reservas.map(r => r.data).filter(dataBIValida))]);
 }
 
 function atualizarKpisNaTela(ocupacao, total, tempo, mesaTop, criancas, cancelamentos) {
@@ -236,11 +245,16 @@ let timerAtualizacao;
 
 function statusAnalise(mensagem, estado) {
     const el = document.getElementById('dashStatus');
-    if (el) { el.textContent = mensagem; el.dataset.estado = estado; }
+    if (el) {
+        el.textContent = estado === 'pronto' ? '' : mensagem;
+        el.dataset.estado = estado;
+        el.hidden = estado === 'pronto';
+    }
 }
 
 function limparAnalise() {
     destruirGraficos(); ultimosDadosGraficos = null;
+    limparBI();
     for (const id of ['kpiOcupacao','kpiTotalPax','kpiTempoMedio','kpiMesaTop','kpiCriancas','kpiCancelamentos']) {
         const el = document.getElementById(id); if (el) el.innerText = '—';
     }
@@ -273,7 +287,8 @@ function capturarConsulta() {
     if (modoConsulta === 'especificas') {
         const datas = [...new Set(datasEspecificas)].sort();
         if (!datas.length) throw new Error('Adicione ao menos uma data específica para analisar.');
-        return { modo: 'especificas', datas, dias: datas.length };
+        if (!datas.every(dataBIValida)) throw new Error('Informe datas específicas válidas.');
+        return { modo: 'especificas', datas, dias: datas.length, perfil: document.getElementById('dashPerfil')?.value || 'todos' };
     }
     const inputInicio = document.getElementById('dashInicio'), inputFim = document.getElementById('dashFim');
     if (!inputInicio || !inputFim) return null;
@@ -282,11 +297,18 @@ function capturarConsulta() {
         inputInicio.value = hoje; inputFim.value = hoje;
     }
     const inicio = inputInicio.value, fim = inputFim.value;
-    if (!inicio || !fim || inicio > fim) throw new Error('Informe um período válido: a data inicial deve ser anterior ou igual à final.');
+    if (!dataBIValida(inicio) || !dataBIValida(fim) || inicio > fim) throw new Error('Informe um período válido: a data inicial deve ser anterior ou igual à final.');
     const excluidas = [...new Set(datasExcluidas)].filter(d => d >= inicio && d <= fim);
     const dias = Math.round((new Date(fim) - new Date(inicio)) / 86400000) + 1 - excluidas.length;
     if (dias <= 0) throw new Error('O período não contém dias para analisar. Remova uma exclusão ou escolha outro período.');
-    return { modo: 'periodo', inicio, fim, excluidas, dias };
+    return { modo: 'periodo', inicio, fim, excluidas, dias, perfil: document.getElementById('dashPerfil')?.value || 'todos' };
+}
+
+async function lerConsultaDashboard(consulta) {
+    const rows = consulta.modo === 'especificas'
+        ? (await Promise.all(consulta.datas.map(d => buscarReservasPorData(d)))).flat()
+        : (await buscarReservasPorPeriodo(consulta.inicio,consulta.fim)).filter(r => !(consulta.excluidas || []).includes(r.data));
+    return consulta.perfil && consulta.perfil !== 'todos' ? rows.filter(r => tipoCliente(r) === consulta.perfil) : rows;
 }
 
 async function carregarDadosDashboard(contexto = null) {
@@ -299,13 +321,12 @@ async function carregarDadosDashboard(contexto = null) {
         if (!consulta) return;
         // Cópias imutáveis: nenhuma lista global é lida depois dos awaits.
         ultimaConsulta = consulta;
-        const reservas = consulta.modo === 'especificas'
-            ? (await Promise.all(consulta.datas.map(d => buscarReservasPorData(d)))).flat()
-            : (await buscarReservasPorPeriodo(consulta.inicio, consulta.fim)).filter(r => !consulta.excluidas.includes(r.data));
+        const selecionadas = await lerConsultaDashboard(consulta);
         if (geracao !== geracaoConsulta) return;
-        processarDashboard(reservas, consulta.dias);
+        processarDashboard(selecionadas, consulta.dias, datasDaConsultaBI(consulta));
         const periodo = consulta.modo === 'especificas' ? consulta.datas.map(_formatarDataChip).join(', ') : _formatarDataChip(consulta.inicio) + ' a ' + _formatarDataChip(consulta.fim);
-        statusAnalise('Análise: ' + periodo + ' · ' + consulta.dias + ' dia(s) · Atualizado às ' + new Date().toLocaleTimeString('pt-BR', {timeZone:'America/Sao_Paulo'}), 'pronto');
+        const perfil = document.getElementById('dashPerfil')?.selectedOptions?.[0]?.textContent || 'Todos os perfis';
+        statusAnalise('Análise: ' + periodo + ' · ' + consulta.dias + ' dia(s) · ' + perfil + ' · Atualizado às ' + new Date().toLocaleTimeString('pt-BR', {timeZone:'America/Sao_Paulo'}), 'pronto');
         iniciarAtualizacoesDashboard();
     } catch (error) {
         if (geracao !== geracaoConsulta) return;
@@ -315,7 +336,7 @@ async function carregarDadosDashboard(contexto = null) {
 }
 
 document.addEventListener('change', event => {
-    if (['dashInicio', 'dashFim'].includes(event.target.id)) invalidarAnalise();
+    if (['dashInicio', 'dashFim', 'dashPerfil'].includes(event.target.id)) invalidarAnalise();
 });
 document.addEventListener('visibilitychange', () => {
     if (!document.hidden && ultimaConsulta && !document.getElementById('tela-dashboard')?.classList.contains('hidden')) carregarDadosDashboard(ultimaConsulta);

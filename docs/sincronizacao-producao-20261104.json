@@ -1,0 +1,271 @@
+{
+  "head": "84a92282aa4c93bb01c209ae2ff468b71b85fa28",
+  "tree": "6a58f595fbd5b78d4bc40452e6be7786ebb6e955",
+  "verifiedAt": "2026-11-04T22:35:56.507Z",
+  "files": [
+    {
+      "path": "css/analytics.css",
+      "status": 200,
+      "sha": "7a7545b3833188812686b63fb15d2da0ea1d1558",
+      "oldSha": "10444b48803af880cdd3e0141699ba98eb30cb14"
+    },
+    {
+      "path": "css/base.css",
+      "status": 200,
+      "sha": "22f134da0a5df77abed9ca60111f7ba1e4d3e4e7",
+      "oldSha": "ca645b9568474220ef824d3cb9b64dc5895bbc17"
+    },
+    {
+      "path": "css/dashboard.css",
+      "status": 200,
+      "sha": "ea7ba7b16f114fb8ced7b1cf88ca804e39376ce7",
+      "oldSha": "0a057a1d2e8aeb8dc47536c1f151448b8046dcf0"
+    },
+    {
+      "path": "css/home.css",
+      "status": 200,
+      "sha": "940868823a2afbec723d6481a040401a16ac681d",
+      "oldSha": "7a0d5b833b80e2452775085d038b029c252151f6"
+    },
+    {
+      "path": "css/layout.css",
+      "status": 200,
+      "sha": "989172b07b920e325daf645777246b12eb9e7535",
+      "oldSha": "4f8b8355c4648a76f9b2340b5df07ae421262e67"
+    },
+    {
+      "path": "css/log.css",
+      "status": 404,
+      "sha": null,
+      "oldSha": "580a7f5414bde0b86bb2c50c91ecdc2e23ad6cce"
+    },
+    {
+      "path": "css/mesas-timers.css",
+      "status": 200,
+      "sha": "1d5e9badc4fed3659efb8a00c065b3b3a3f52a51",
+      "oldSha": "b4085e43e9449d7f14962aee5d7be41f7ebeb695"
+    },
+    {
+      "path": "css/modais.css",
+      "status": 200,
+      "sha": "047fc0329c4ad896c106d863fdc096071f301c1e",
+      "oldSha": "f9f7931a6b12a7a9204daa4b132601c54b3f0dce"
+    },
+    {
+      "path": "css/osteria-redesign.css",
+      "status": 200,
+      "sha": "6964b3f015de01059f5be14ad52e384f42d0bd2d",
+      "oldSha": "90d51548a7d559d6facaad97f482b866c1605e5d"
+    },
+    {
+      "path": "css/reservas.css",
+      "status": 200,
+      "sha": "d8b6bfba4319f216fa2759bb2e5af82dfe04797d",
+      "oldSha": "5c239611d90ce94e144d38d4cd27a9475a51fd7b"
+    },
+    {
+      "path": "css/responsive-fixes.css",
+      "status": 200,
+      "sha": "f04c8804b9adbe4de63d7fa41bce364ee119e97b",
+      "oldSha": "5e3c1a02d048ea741bfe770c226da93c3df4fe8b"
+    },
+    {
+      "path": "css/responsive.css",
+      "status": 200,
+      "sha": "3b804f9c7b9872e5d76841df6bab90789f5a25a0",
+      "oldSha": "761497b805d4b3600b2a0340756b1f2cc0dc466e"
+    },
+    {
+      "path": "icons/icon-192.png",
+      "status": 200,
+      "sha": "b75acd040be83bb1471b2537e19b6f675703a2bb",
+      "oldSha": "b75acd040be83bb1471b2537e19b6f675703a2bb"
+    },
+    {
+      "path": "icons/icon-512.png",
+      "status": 200,
+      "sha": "9030a20a9ce0a74127d89286c973840c875b614a",
+      "oldSha": "9030a20a9ce0a74127d89286c973840c875b614a"
+    },
+    {
+      "path": "index.html",
+      "status": 200,
+      "sha": "9dba44860cb32c32046d5ffce0679ff766aafc6f",
+      "oldSha": "96c7fdd934b9fed3b0e76552704d87721ba71f73"
+    },
+    {
+      "path": "js/app.js",
+      "status": 200,
+      "sha": "9c7da97700deca6cda70c9e2c5f7069222f15973",
+      "oldSha": "697c42dcd308971fe1c20e2381ada2da4d658197"
+    },
+    {
+      "path": "js/core/analytics.js",
+      "status": 200,
+      "sha": "d30885ca64bb1333908ddb643a5b9c4baeede774",
+      "oldSha": "59d45f73452be32d9394ec269ddd38e812318ab9"
+    },
+    {
+      "path": "js/core/bootstrap.js",
+      "status": 200,
+      "sha": "6904cece3e0198bf016d26482ea8984173ae2d6a",
+      "oldSha": "0392495b3b9ceeeb154092bd4c2491a0e735375c"
+    },
+    {
+      "path": "js/core/database.js",
+      "status": 200,
+      "sha": "b740379d9fc2d018b7494e417476c2ca5c838585",
+      "oldSha": "f4671f3565f1e76e057fe08c8856c50be0ac2081"
+    },
+    {
+      "path": "js/core/init.js",
+      "status": 200,
+      "sha": "a08bd8068d0e34a5d63f8a50dbdb5c24ac80b962",
+      "oldSha": "73e1acfbd6625f815e7d57d5edf7450f68f20375"
+    },
+    {
+      "path": "js/core/navigation.js",
+      "status": 200,
+      "sha": "224b50941667af0265d9811a2db9ec101721cc2d",
+      "oldSha": "1d491f43ee5d3793c15255f49f7693b68d6816fb"
+    },
+    {
+      "path": "js/core/notificacao.js",
+      "status": 200,
+      "sha": "da14285a536f030a3f17cc4012d3c2e3e8e9a84a",
+      "oldSha": "fa40b21826b21e4ac0f322876bf5a5428e3eb417"
+    },
+    {
+      "path": "js/core/pinch-zoom.js",
+      "status": 200,
+      "sha": "85d8f918624e8fcbfb1f036187ef590c25ac8b39",
+      "oldSha": "e33577197fb4e00961c0e91df06ce496f127f1da"
+    },
+    {
+      "path": "js/core/state.js",
+      "status": 200,
+      "sha": "92ba938fd8bb56770e9c03b022b97174400d83b9",
+      "oldSha": "844133c547ec12d0b3d0c0549079ad75146dcfc4"
+    },
+    {
+      "path": "js/core/supabaseClient.js",
+      "status": 200,
+      "sha": "1b8ef695030f1e8aa9321d099a165ccbf03345c7",
+      "oldSha": "85963572bfbafd1e3a79229692361c9fac57d11b"
+    },
+    {
+      "path": "js/core/theme.js",
+      "status": 200,
+      "sha": "80ebaa67ce9b0f1e70f77b5eb979ef2a4cc7b09b",
+      "oldSha": "2925853b7ebce84a3f0b23870617d3456461b557"
+    },
+    {
+      "path": "js/features/dashboard.js",
+      "status": 200,
+      "sha": "0a462fab5e4ac4797b52a6bb7cac07da996a0c61",
+      "oldSha": "15240a876e24935f1a80f2cfa106fcdaa445240b"
+    },
+    {
+      "path": "js/features/home.js",
+      "status": 200,
+      "sha": "7d5edfad395fadb8162623f506e1558f05c9f337",
+      "oldSha": "84dfcd5e37d3686344b7e4d1606d971bc7213ca7"
+    },
+    {
+      "path": "js/features/mesas/modal.js",
+      "status": 200,
+      "sha": "76031ad245b5db5e01529e2c1abb0a131d4b4f1a",
+      "oldSha": "7112b2ef08847d62af759b593acb4bb2fe126fd2"
+    },
+    {
+      "path": "js/features/reservas/listener.js",
+      "status": 200,
+      "sha": "90377f33d7b8da2200d293f79e80fa566846a6a6",
+      "oldSha": "3d739d57891d767b19b68570432b651647e564f3"
+    },
+    {
+      "path": "js/features/reservas/log.js",
+      "status": 200,
+      "sha": "19a2329cb3455e929eb984cc496200078d0d99b1",
+      "oldSha": "8c991e7e5b8b7af6536698e92c5d44f149f1faf3"
+    },
+    {
+      "path": "js/features/reservas/modal.js",
+      "status": 200,
+      "sha": "bcfb1709288e4605ee881797776a34b2820bdf6d",
+      "oldSha": "8f62ee1d940fe6c50615829b7b7b0c6b02977095"
+    },
+    {
+      "path": "js/features/reservas/no-show.js",
+      "status": 200,
+      "sha": "e826625325b82b7404e12efc8a680f223d02d54a",
+      "oldSha": "c880e62154830638ef99561ecba02fd158f0852c"
+    },
+    {
+      "path": "js/features/reservas/service.js",
+      "status": 200,
+      "sha": "26b13f50d42a47e33069a5a7df8ef9cfdcc9b423",
+      "oldSha": "042bd15d70f21fae1693b6c241d270bd69166a55"
+    },
+    {
+      "path": "js/features/reservas/validators.js",
+      "status": 200,
+      "sha": "61bd92bba2ed9cc5981c6a963f3c43140d4a1ca1",
+      "oldSha": "8c19abd44560d52d3f7ecf872b536766fc688398"
+    },
+    {
+      "path": "js/ui/controls.js",
+      "status": 200,
+      "sha": "5a5a9009bd141de40c3190aa1d5ad5d4e231b861",
+      "oldSha": "add24ba3520e01d1ec4a053970670be5c28e8883"
+    },
+    {
+      "path": "js/ui/filters.js",
+      "status": 200,
+      "sha": "c0918ad66f61b0235bcc41ba969b7cd890b2693b",
+      "oldSha": "0c90138a3a0b6ea1c02f5d25b901d04c61637030"
+    },
+    {
+      "path": "js/ui/render.js",
+      "status": 200,
+      "sha": "af514751f962d7edbfa2fd628e8717759434262c",
+      "oldSha": "a25af8fe4872070d996c4c3c0f946ddb611bbfdc"
+    },
+    {
+      "path": "js/ui/reservas-cards-ticker.js",
+      "status": 200,
+      "sha": "8b533dd47d650d439b0e44165101402404b9e094",
+      "oldSha": "8a3ec610ffdaf1edc95e206b4ba9ba250c7ff475"
+    },
+    {
+      "path": "js/ui/timers.js",
+      "status": 200,
+      "sha": "e77c55e86ce2b246deefde84ec53bf2a7fd69dfb",
+      "oldSha": "8ca891728ebd6d2b04a2270fe7b8e961618aeaf5"
+    },
+    {
+      "path": "manifest.json",
+      "status": 200,
+      "sha": "966585788b6e95c675f7300578d5e957b48f1acd",
+      "oldSha": "d36498e3fa383b9f8d50054e6b384e167b5292f4"
+    },
+    {
+      "path": "sw.js",
+      "status": 200,
+      "sha": "94ecdd941589b772b078c121571bc48465442064",
+      "oldSha": "45be7aef992c2abe4b57101ebeb89024380f48dc"
+    },
+    {
+      "path": "js/core/bi.js",
+      "status": 200,
+      "sha": "d051b7befdfa4a201d29a8a1e18d69252cd4c6e6",
+      "oldSha": null
+    },
+    {
+      "path": "js/features/dashboard-bi.js",
+      "status": 200,
+      "sha": "b532435408286cc797157966895c838a17de6f04",
+      "oldSha": null
+    }
+  ]
+}

@@ -88,7 +88,6 @@ async function inicializar() {
     // ✅ v1.9: Uma vez por sessão, após o sistema estar 100% pronto.
     //          Falha silenciosa — nunca interrompe o fluxo principal.
     limparConfigDiasAntigosBackground();
-    limparLogsAntigosBackground();
 
     // 11. Limpeza proativa de docs fantasmas do dia atual — roda em background
     // ✅ v2.1: Resolve o 🔴 bug de fantasmas pré-v3.0 que removerLinhaDoBloco() não alcançava.
@@ -366,18 +365,6 @@ async function limparConfigDiasAntigosBackground() {
     } catch (e) {
         // Não propaga — limpeza de manutenção nunca deve derrubar o sistema
         console.error('⚠️ Limpeza de config_dia falhou silenciosamente:', e.message);
-    }
-}
-
-/**
- * Retenção do log de auditoria (reservas_log): 24 meses, aplicada no servidor pela
- * função limpar_logs_antigos. Falha silenciosa — manutenção nunca derruba o sistema.
- */
-async function limparLogsAntigosBackground() {
-    try {
-        await db.limparLogsAntigos();
-    } catch (e) {
-        console.error('⚠️ Limpeza de reservas_log falhou silenciosamente:', e.message);
     }
 }
 

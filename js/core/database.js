@@ -303,19 +303,37 @@ class DatabaseService {
     }
 
     escutarReservasPorPeriodo(inicio, fim, callback, onError = () => {}) {
-        let ativo = true, geracao = 0, timer;
+        let ativo = true, buscando = false, pendente = false, timer, tentativas = 0;
+        const agendar = (atraso = 150) => {
+            if (!ativo) return;
+            clearTimeout(timer);
+            timer = setTimeout(buscar, atraso);
+        };
         const buscar = async () => {
-            const atual = ++geracao;
+            if (!ativo) return;
+            if (buscando) { pendente = true; return; }
+            buscando = true; pendente = false;
             try {
                 const reservas = await this.getReservasPorPeriodo(inicio, fim);
-                if (ativo && atual === geracao) callback(reservas);
-            } catch (error) { if (ativo && atual === geracao) onError(error); }
+                tentativas = 0;
+                if (ativo) callback(reservas);
+            } catch (error) {
+                if (ativo) {
+                    agendar(Math.min(5000 * 2 ** tentativas++, 30000));
+                    onError(error);
+                }
+            } finally {
+                buscando = false;
+                if (ativo && pendente) agendar();
+            }
         };
-        const parar = this.escutarAlteracoesReservas(() => {
-            ++geracao; clearTimeout(timer); timer = setTimeout(buscar, 150);
-        }, error => { ++geracao; if (ativo) onError(error); });
+        // Coalesce rajadas sem leituras paralelas nem descartar a carga inicial
+        // quando o canal confirma SUBSCRIBED. REST continua útil se Realtime falhar.
+        const parar = this.escutarAlteracoesReservas(() => agendar(), () => agendar());
         buscar();
-        return () => { ativo = false; ++geracao; clearTimeout(timer); parar(); };
+        const cancelar = () => { ativo = false; clearTimeout(timer); parar(); };
+        cancelar.atualizar = () => agendar(0);
+        return cancelar;
     }
 
     /**
@@ -351,15 +369,8 @@ class DatabaseService {
         return row ? this._paraReservaApp(row) : null;
     }
 
-    /**
-     * @param {Object} dados
-     * @param {string|null} [idFixo] - Quando informado, grava a reserva com este id.
-     *   Usado para recriar uma reserva excluída (a partir do log) mantendo o mesmo id,
-     *   assim a cadeia de histórico em reservas_log (sem FK de propósito) continua ligada.
-     */
-    async criarReserva(dados, idFixo = null) {
+    async criarReserva(dados) {
         const colunas = await this._paraColunasReserva(dados);
-        if (idFixo) colunas.id = idFixo;
         const { data: nova, error } = await this.client
             .from('reservas').insert(colunas).select('id').single();
         if (error) throw error;
@@ -699,21 +710,6 @@ class DatabaseService {
 
         console.log(`✅ config_dia: limpeza concluída — ${apagados.length} linha(s) removida(s)`);
         return apagados.length;
-    }
-
-    /**
-     * Apaga entradas antigas de reservas_log (retenção de 24 meses por padrão) via RPC
-     * no servidor — o cliente não tem DELETE direto na tabela de auditoria.
-     * @param {number} [meses=24]
-     * @returns {Promise<number>} Quantidade removida (0 em erro: manutenção nunca quebra o boot).
-     */
-    async limparLogsAntigos(meses = 24) {
-        const { data, error } = await this.client.rpc('limpar_logs_antigos', { p_meses: meses });
-        if (error) {
-            console.error('❌ Erro ao limpar reservas_log antigos:', error);
-            return 0;
-        }
-        return Number(data) || 0;
     }
 
     // ─────────────────────────────────────────────────────────────────────────

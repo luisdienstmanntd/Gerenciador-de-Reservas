@@ -36,22 +36,6 @@
 }
 
 /* ==========================================================================
-   TABLET (768px – 1200px) — sidebar fica só com ícones (52px, definido em home.css);
-   a lista de reservas ganha espaço para o nome não quebrar linha.
-   Fica ANTES do bloco landscape ≤900px para este continuar prevalecendo no que for igual.
-   ========================================================================== */
-@media (min-width: 768px) and (max-width: 1200px) {
-    .table-container {
-        padding: 12px 8px;
-    }
-    .tabela-reservas th:nth-child(1) { width: 60px; }  /* HORA */
-    .tabela-reservas th:nth-child(3) { width: 52px; }  /* PAX */
-    .tabela-reservas th:nth-child(4) { width: 48px; }  /* CHD */
-    .tabela-reservas th:nth-child(5) { width: 96px; }  /* MESA */
-    .tabela-reservas th:nth-child(6) { width: 80px; }  /* AV */
-}
-
-/* ==========================================================================
    MOBILE LANDSCAPE — sidebar oculta, botão ☰ abre/fecha com overlay
    ========================================================================== */
 @media (max-width: 900px) and (orientation: landscape) {

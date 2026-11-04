@@ -300,56 +300,6 @@ export async function aplicarBloqueiosSemanais(dataAlvo) {
 // RESERVAS — CRUD
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * Insere uma reserva NOVA num bloco: calcula a posição livre, trata a corrida de
- * posição (23505) e remove o slot vazio que ela passa a ocupar. Compartilhado por
- * salvarReserva() (id novo) e recriarReservaDoLog() (id fixo vindo do log).
- * Muta reservaData.posicao com a posição final.
- *
- * @param {Object} client       - Cliente Supabase (para limpar o slot vazio)
- * @param {Object} reservaData  - Dados no formato achatado
- * @param {string|null} [idFixo] - Id a preservar (recriação); null = banco gera
- * @returns {Promise<{docRef: string, blocoPreCarregado: Array<Object>}>}
- */
-async function _inserirReservaNoBloco(client, reservaData, idFixo = null) {
-    // Calcula posicao livre no bloco antes de salvar nova reserva
-    const snapBloco = await db.buscarReservasPorBloco(reservaData.data, reservaData.originalBase);
-    let blocoPreCarregado = snapBloco;
-
-    const posicaoFinal = _calcularPosicaoLivre(snapBloco, reservaData.posicao);
-    if (posicaoFinal !== reservaData.posicao) {
-        console.log('Posicao ' + reservaData.posicao + ' ocupada, usando: ' + posicaoFinal);
-    }
-    reservaData.posicao = posicaoFinal;
-
-    // Insere a reserva + remove doc vazio da mesma posição, sequencialmente
-    // (sem transação atômica no Supabase — ver cabeçalho do arquivo).
-    const vazioNaPosicao = snapBloco.filter(r =>
-        !r.nomes && !r.bloqueado && !r.somenteHospedes && (r.posicao ?? 0) === posicaoFinal
-    );
-
-    // Um concorrente pode ocupar a posição após a leitura: o índice no banco é
-    // a garantia final; uma segunda leitura recalcula antes de tentar de novo.
-    let docRef;
-    for (let tentativa = 0; ; tentativa++) {
-        // Só passa o 2º argumento na recriação: salvarReserva segue chamando criarReserva(dados) como sempre.
-        try { docRef = await (idFixo ? db.criarReserva(reservaData, idFixo) : db.criarReserva(reservaData)); break; }
-        catch (erro) {
-            if (erro.code !== '23505' || tentativa >= 2) throw erro;
-            const atualizado = await db.buscarReservasPorBloco(reservaData.data, reservaData.originalBase);
-            reservaData.posicao = _calcularPosicaoLivre(atualizado, reservaData.posicao);
-            blocoPreCarregado = atualizado;
-        }
-    }
-    for (const v of vazioNaPosicao) {
-        // O slot pode ter sido preenchido por outro tablet desde a leitura.
-        // Nunca transforma a limpeza de um vazio antigo em exclusão de cliente.
-        await _confirmarEscrita(client.from('reservas').delete().eq('id', v.id)
-            .is('hospede_id', null).eq('bloqueado', false).eq('somente_hospedes', false), false);
-    }
-    return { docRef, blocoPreCarregado };
-}
-
 export async function salvarReserva(dados) {
     try {
         const client = await _getClient();
@@ -384,7 +334,39 @@ export async function salvarReserva(dados) {
             await db.atualizarReserva(dados.id, reservaData);
             docRef = dados.id;
         } else {
-            ({ docRef, blocoPreCarregado } = await _inserirReservaNoBloco(client, reservaData));
+            // Calcula posicao livre no bloco antes de salvar nova reserva
+            const snapBloco = await db.buscarReservasPorBloco(reservaData.data, reservaData.originalBase);
+            blocoPreCarregado = snapBloco;
+
+            const posicaoFinal = _calcularPosicaoLivre(snapBloco, reservaData.posicao);
+            if (posicaoFinal !== reservaData.posicao) {
+                console.log('Posicao ' + reservaData.posicao + ' ocupada, usando: ' + posicaoFinal);
+            }
+            reservaData.posicao = posicaoFinal;
+
+            // Insere a reserva + remove doc vazio da mesma posição, sequencialmente
+            // (sem transação atômica no Supabase — ver cabeçalho do arquivo).
+            const vazioNaPosicao = snapBloco.filter(r =>
+                !r.nomes && !r.bloqueado && !r.somenteHospedes && (r.posicao ?? 0) === posicaoFinal
+            );
+
+            // Um concorrente pode ocupar a posição após a leitura: o índice no banco é
+            // a garantia final; uma segunda leitura recalcula antes de tentar de novo.
+            for (let tentativa = 0; ; tentativa++) {
+                try { docRef = await db.criarReserva(reservaData); break; }
+                catch (erro) {
+                    if (erro.code !== '23505' || tentativa >= 2) throw erro;
+                    const atualizado = await db.buscarReservasPorBloco(reservaData.data, reservaData.originalBase);
+                    reservaData.posicao = _calcularPosicaoLivre(atualizado, reservaData.posicao);
+                    blocoPreCarregado = atualizado;
+                }
+            }
+            for (const v of vazioNaPosicao) {
+                // O slot pode ter sido preenchido por outro tablet desde a leitura.
+                // Nunca transforma a limpeza de um vazio antigo em exclusão de cliente.
+                await _confirmarEscrita(client.from('reservas').delete().eq('id', v.id)
+                    .is('hospede_id', null).eq('bloqueado', false).eq('somente_hospedes', false), false);
+            }
         }
 
         if (reservaData.tipo === 'roomservice' && dadosAntesReserva?.tipo !== 'roomservice') {
@@ -415,76 +397,6 @@ export async function salvarReserva(dados) {
     } catch (error) {
         console.error('❌ Erro ao salvar reserva:', error);
         notificarErro('Erro ao salvar reserva. Tente novamente.');
-        throw error;
-    }
-}
-
-/**
- * Recria uma reserva EXCLUÍDA a partir do snapshot gravado no log de EXCLUIR.
- * Mantém o mesmo id (a cadeia de histórico em reservas_log continua ligada — a FK
- * foi removida de propósito) e reaproveita a regra de posição/bloqueio de uma
- * reserva nova. A mesa NÃO é restaurada: o lugar pode já ter sido usado por outra
- * reserva e a recepção reatribui na hora.
- *
- * @param {Object} dadosAntes - Snapshot do log (id, data, horario, nomes, ...). Logs antigos
- *   podem não ter originalBase/posicao/pagamento: cai em originalBase=horario, posicao=0.
- * @returns {Promise<string>} id da reserva recriada
- */
-export async function recriarReservaDoLog(dadosAntes) {
-    try {
-        if (!dadosAntes?.id) throw new Error('Registro de log sem id da reserva.');
-        if (dadosAntes.bloqueado || dadosAntes.somenteHospedes || !dadosAntes.nomes) {
-            throw new Error('Este registro é um bloqueio ou linha vazia e não pode ser recriado como reserva.');
-        }
-        if (!dadosAntes.data || !dadosAntes.horario) throw new Error('Registro de log sem data ou horário.');
-        // Reserva cancelada e depois excluída: recriá-la como ativa ressuscitaria uma desistência
-        // (ocupa linha, gera bloqueio e depósito). Quem quiser a reserva de volta a refaz à mão.
-        if (dadosAntes.canceladoEm) throw new Error('Esta reserva estava cancelada e não pode ser recriada como ativa.');
-
-        const client = await _getClient();
-
-        // Recusa se o id voltou a existir (já recriada, ou nunca foi apagada de fato).
-        if (await db.getReservaPorId(dadosAntes.id)) {
-            throw new Error('Esta reserva já existe. Recarregue a lista antes de tentar recriar.');
-        }
-
-        const reservaData = {
-            data: dadosAntes.data,
-            horario: dadosAntes.horario,
-            originalBase: dadosAntes.originalBase || dadosAntes.horario,
-            posicao: parseInt(dadosAntes.posicao) || 0,
-            tipo: dadosAntes.tipo || 'hospede',
-            nomes: dadosAntes.nomes.toUpperCase(),
-            apto: dadosAntes.apto || '',
-            codigoReserva: dadosAntes.codigoReserva || '',
-            whatsapp: dadosAntes.whatsapp || '',
-            avulsa: dadosAntes.avulsa || '',
-            paxs: parseInt(dadosAntes.paxs) || 0,
-            chd: parseInt(dadosAntes.chd) || 0,
-            obs: dadosAntes.obs ? dadosAntes.obs.toUpperCase() : '',
-            bloqueado: false,
-            somenteHospedes: false,
-            pagamento: dadosAntes.pagamento || '',
-            menuDegustacao: dadosAntes.menuDegustacao || false,
-        };
-
-        const { docRef, blocoPreCarregado } = await _inserirReservaNoBloco(client, reservaData, dadosAntes.id);
-
-        if (reservaData.tipo === 'roomservice') {
-            await _confirmarEscrita(client.from('reservas').update({ mesa_identificador: 'ROOM', inicio_mesa: null, fim_mesa: null }).eq('id', docRef));
-        }
-
-        await _reconciliarBloqueioAutomatico(docRef, null, reservaData, blocoPreCarregado)
-            .catch(e => {
-                console.error('Erro ao reconciliar bloqueio automático:', e);
-                notificarAviso('Reserva recriada. Não foi possível ajustar todos os bloqueios; confira o horário antes de aceitar novas reservas.');
-            });
-
-        await registrarLog('RECRIAR', null, { id: docRef, ...reservaData });
-        return docRef;
-    } catch (error) {
-        console.error('❌ Erro ao recriar reserva do log:', error);
-        notificarErro('Erro ao recriar reserva. Tente novamente.');
         throw error;
     }
 }
@@ -728,18 +640,11 @@ export async function cancelarMesa(id) {
 export async function atualizarBloqueio(id, dados) {
     if (!id) throw new Error('ID obrigatório');
     const client = await _getClient();
-    // Se a leitura do estado anterior falhar, o bloqueio ainda é salvo (só o diff do log se perde).
-    const antes = await db.getReservaPorId(id).catch(() => null);
-    const obs = dados.obs ? dados.obs.toUpperCase() : '';
-    const bloqueado = dados.bloqueado || false;
-    const somenteHospedes = dados.somenteHospedes || false;
     await _confirmarEscrita(client.from('reservas').update({
-        obs,
-        bloqueado,
-        somente_hospedes: somenteHospedes,
+        obs: dados.obs ? dados.obs.toUpperCase() : '',
+        bloqueado: dados.bloqueado || false,
+        somente_hospedes: dados.somenteHospedes || false,
     }).eq('id', id));
-    // registrarLog engole os próprios erros — o log nunca quebra a edição do bloqueio.
-    await registrarLog('EDITAR', antes || { id }, { ...(antes || { id }), obs, bloqueado, somenteHospedes });
     console.log('✅ Bloqueio atualizado (tipo + OBS):', id);
 }
 
@@ -751,7 +656,6 @@ export async function adicionarObservacao(id, novaObs) {
     if (obs) obs += ' | ';
     obs += novaObs.toUpperCase();
     await _confirmarEscrita(client.from('reservas').update({ obs }).eq('id', id));
-    await registrarLog('OBSERVAR', atual || { id }, { ...(atual || { id }), obs });
 }
 
 /**

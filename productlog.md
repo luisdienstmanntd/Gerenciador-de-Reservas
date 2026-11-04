@@ -328,3 +328,44 @@ O protocolo de continuidade entre computadores está versionado e disponível a 
 
 ### Riscos, limitações e pendências
 A regra não configura CI/CD nem garante execução automática. A divergência atual do aplicativo permanece pendente; esta alteração não publica nem modifica funcionalidades. Verificar o estado remoto das migrations necessárias antes de publicar o novo Log.
+
+## PL-2026-11-04-002 — Código público de produção como base de main
+
+- **Data:** 2026-11-04
+- **Status:** Vigente
+- **Tipo:** Pedido, Decisão, Reversão, Documentação
+- **Solicitado por:** proprietário: "faça com que o codigo do github esteja igual ao do site no ar"
+- **Responsável:** Codex
+- **Arquivos afetados:** arquivos públicos HTML/CSS/JS/manifest; productlog.md; docs/sincronizacao-producao-20261104.json
+- **Relacionados:** PL-2026-11-04-001; PL-2026-11-03-001
+- **Substitui:** PL-2026-11-03-001 somente quanto à versão ativa do frontend; evolução Log v4 preservada na branch backup/antes-sincronizacao-producao-20261104
+
+### Pedido
+Usar o site atualmente publicado como referência para o código do GitHub.
+
+### Por que foi pedido
+Permitir continuidade em três computadores sem que cópias locais antigas provoquem regressões.
+
+### Problema observado
+GitHub tinha Log v4 não publicado, enquanto produção tinha BI e alterações de no-show não versionadas em main.
+
+### Causa
+A divergência de artefatos foi confirmada por download público e hashes Git dos arquivos. Não foi estabelecida a origem dos deploys anteriores.
+
+### Decisão
+Por orientação expressa do proprietário, main passa a reproduzir os arquivos públicos de produção. Isso retoma o frontend Log v3 publicado e inclui o BI publicado, sem publicar main antigo sobre o site. A alteração não desfaz decisões de segurança do banco nem executa migrations. O trabalho do Log v4 fica preservado para futura integração explícita.
+
+### O que foi feito
+Preservado main 84a92282aa4c93bb01c209ae2ff468b71b85fa28 na branch backup/antes-sincronizacao-producao-20261104. Copiados os bytes dos arquivos servidos em produção, adicionados js/core/bi.js e js/features/dashboard-bi.js e removido css/log.css (HTTP 404 na produção). Mantidos AGENTS.md, regra de sincronização, histórico, migrations e arquivos de desenvolvimento que não são recuperáveis pela URL pública. Incluído manifesto de hashes para verificação.
+
+### Erros e tentativas que não funcionaram
+Nenhum. Diferenças de finais de linha também foram sincronizadas para permitir comparar os bytes diretamente.
+
+### Validação
+Captura pública: 43 arquivos HTTP 200 e css/log.css HTTP 404. Sintaxe dos 28 arquivos JavaScript e resolução dos imports locais verificadas. Comparação posterior dos hashes dos arquivos do commit com a produção. Não houve testes autenticados, consulta ou alteração de banco, nem deploy.
+
+### Resultado
+O código público de main corresponde ao snapshot do site publicado. O histórico anterior permanece acessível.
+
+### Riscos, limitações e pendências
+A URL pública não permite recuperar código de testes, configuração privada, fontes de backend ou estado do banco. Esses arquivos permanecem no repositório. Testes específicos do Log v4 podem não corresponder ao frontend v3 retomado e precisam ser reconciliados quando essa evolução for reintegrada; a suíte completa não foi executada nesta sincronização. O estado remoto da migration do Log não foi verificado. A correspondência vale para o snapshot capturado; um deploy externo posterior exige nova conferência.
