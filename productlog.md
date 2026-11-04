@@ -415,3 +415,8 @@ Telefone pertence ao cadastro compartilhado: atualizá-lo altera o contato visto
 ### Validação integrada posterior — 2026-11-04
 
 Em uma cópia local da branch, com sessão autenticada de recepção e o Supabase real, foi criada reserva fictícia de hóspede em 2027-11-04, informando número com +55. O telefone foi conferido no banco com DDD 51, editado pela interface para DDD 54 e novamente conferido. A reserva e o cadastro fictícios foram removidos por IDs e a ausência dos dois foi verificada. Os eventos de auditoria gerados pela aplicação podem permanecer. Testes de outros perfis, reuso de cadastro e visibilidade do DDD no dashboard não foram integrados nesta sessão; esses cenários foram testados localmente com dados simulados. Não houve deploy.
+
+
+### Publicação — 2026-11-04
+
+O commit 916500cdbbc3d8f2de92ddbe3ddb9f3eadf6389b foi integrado à main e publicado no Firebase Hosting site osteriadilucca, projeto osteriadilucca-afea6. Antes do deploy foram conferidos main, ausência de alterações locais, correspondência anterior de 44 arquivos com produção e teste local scripts/teste-qualidade-bi.mjs. Após o deploy index.html, os cinco módulos alterados e sw.js foram comparados por SHA-256 com o checkout publicado: todos iguais. O teste autenticado de hóspede e as limitações dos demais perfis constam acima. O service worker permaneceu com estratégia network-first. Nenhuma migration foi aplicada nesta publicação.
