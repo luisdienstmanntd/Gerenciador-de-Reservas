@@ -572,7 +572,7 @@ Em 2026-11-04 (Brasil), o commit 0ca8696fddec71d6ca21cc5ef76370e3725f3f70 foi pu
 - **Tipo:** Pedido, Banco de dados, Teste
 - **Solicitado por:** proprietário
 - **Responsável:** Codex
-- **Arquivos afetados:** supabase/migrations/20261105015458_view_bi_cortesia.sql, scripts/teste-view-cortesia.cjs, productlog.md
+- **Arquivos afetados:** supabase/migrations/20261105015614_view_bi_cortesia.sql, scripts/teste-view-cortesia.cjs, productlog.md
 - **Relacionados:** PL-2026-11-04-006
 - **Substitui:** não se aplica
 
@@ -605,3 +605,8 @@ View preparada para disponibilizar os dois indicadores após migration.
 
 ### Riscos, limitações e pendências
 O Power BI pode exigir atualização do esquema e dos dados para detectar as novas colunas. Não altera reservas nem a interface do site.
+
+
+### Aplicação remota — view BI Cortesia
+
+Migration 20261105015614 aplicada no Supabase e verificada. Comparação das colunas adicionadas com os dados detalhados em 204 dias retornou zero divergências. SELECT para authenticated permanece permitido, anon continua sem SELECT e opções da view permanecem inalteradas. Nenhuma reserva foi modificada. Atualizar esquema e dados no Power BI para detectar as novas colunas.
