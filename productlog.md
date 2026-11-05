@@ -461,3 +461,8 @@ As alterações estão preparadas para integração após revisão.
 
 ### Riscos, limitações e pendências
 Relatórios externos que consultam diretamente a tabela ainda verão NULL nas reservas externas legadas; o mapeamento é feito no aplicativo. Testar o fluxo autenticado antes da publicação. Migration ainda não aplicada, mas a constraint remota atual já aceita os três valores.
+
+
+### Publicação — pagamento direto
+
+Em 2026-11-04 foi publicado no Firebase Hosting o commit 74a7d04e4b56e950a95e2af53221362a2f7f3982, após verificar que produção correspondia à base e main não havia avançado. Após o deploy, index.html, bi.js, dashboard-bi.js, modal.js, render.js e sw.js publicados foram comparados por SHA-256 com o checkout limpo e coincidiram. Os testes locais de BI, modal, migration em PGlite e telefone/DDD passaram. Não houve teste autenticado do novo fluxo; a constraint remota foi consultada e já permite direto, sem alteração de banco. A migration foi versionada para reproduzir a constraint em outras instalações e ainda não foi aplicada à história remota de migrations.
