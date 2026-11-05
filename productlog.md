@@ -559,3 +559,8 @@ Aplicar migration antes do frontend. A view de detalhes do Power BI expõe o tip
 ### Migration remota — Cortesia
 
 Aplicada no Supabase em 2026-11-05 UTC e verificada a constraint hospedes_tipo_check com os cinco tipos. Histórico remoto registrou versão 20261105014550; o arquivo versionado foi alinhado a esse número. Nenhum registro de reserva foi alterado.
+
+
+### Publicação — Cortesia
+
+Em 2026-11-04 (Brasil), o commit 0ca8696fddec71d6ca21cc5ef76370e3725f3f70 foi publicado no Firebase Hosting osteriadilucca, após aplicar e confirmar a migration 20261105014550 no Supabase. Checkout limpo validado pelos testes de migration, modal, BI, pagamentos e telefone; agente revisor validou dados sintéticos independentemente. Dez arquivos do site, incluindo todos os alterados e sw.js, coincidiram por SHA-256 com o checkout publicado. Não foi executado teste autenticado de criação no ambiente de produção. A view agregada do Power BI continua sem coluna específica de Cortesia.
