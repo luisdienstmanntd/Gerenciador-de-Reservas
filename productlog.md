@@ -521,7 +521,7 @@ Em 2026-11-04, publicado o commit 22831384ffc21c1f3fe2ddac5633209ea2117c2f no Fi
 - **Tipo:** Pedido, Funcionalidade, Banco de dados, Teste
 - **Solicitado por:** proprietário
 - **Responsável:** Codex e agente revisor
-- **Arquivos afetados:** index.html, css/base.css, css/osteria-redesign.css, js/core/bi.js, js/core/theme.js, js/features/dashboard-bi.js, js/features/dashboard.js, js/features/home.js, js/ui/render.js, supabase/migrations/20261105014134_tipo_cliente_cortesia.sql, scripts/teste-cortesia.mjs, scripts/teste-modal-cortesia.cjs, scripts/teste-migration-cortesia.cjs.
+- **Arquivos afetados:** index.html, css/base.css, css/osteria-redesign.css, js/core/bi.js, js/core/theme.js, js/features/dashboard-bi.js, js/features/dashboard.js, js/features/home.js, js/ui/render.js, supabase/migrations/20261105014550_tipo_cliente_cortesia.sql, scripts/teste-cortesia.mjs, scripts/teste-modal-cortesia.cjs, scripts/teste-migration-cortesia.cjs.
 - **Relacionados:** PL-2026-11-04-003 e PL-2026-11-04-004
 - **Substitui:** não se aplica
 
@@ -554,3 +554,8 @@ Nova categoria preparada para publicação após aplicar migration.
 
 ### Riscos, limitações e pendências
 Aplicar migration antes do frontend. A view de detalhes do Power BI expõe o tipo, mas a view agregada vw_reservas_por_dia não tem coluna específica de cortesias. O dashboard do aplicativo conta Cortesia separadamente. Não houve teste autenticado no banco real.
+
+
+### Migration remota — Cortesia
+
+Aplicada no Supabase em 2026-11-05 UTC e verificada a constraint hospedes_tipo_check com os cinco tipos. Histórico remoto registrou versão 20261105014550; o arquivo versionado foi alinhado a esse número. Nenhum registro de reserva foi alterado.
