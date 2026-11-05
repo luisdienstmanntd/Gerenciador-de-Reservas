@@ -1,6 +1,6 @@
 import { paxReserva, reservaAtiva, tipoCliente } from './analytics.js';
 
-export const PERFIS_BI = ['hospede', 'externo', 'passante', 'roomservice'];
+export const PERFIS_BI = ['hospede', 'externo', 'passante', 'cortesia', 'roomservice'];
 export const DIAS_BI = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
 // Ministério das Comunicações, consultado em 03/11/2026. 61 abrange DF e GO.
 // https://www.gov.br/mcom/pt-br/noticias/2026/agosto/saiba-a-importancia-da-discagem-direta-a-distancia-ddd

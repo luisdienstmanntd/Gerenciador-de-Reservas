@@ -1,7 +1,7 @@
 /* A paleta dos gráficos é a mesma dos componentes DOM, inclusive após trocar tema. */
 const FALLBACK = Object.freeze({
     hospede: ['--cor-hospede', '#486676'], externo: ['--cor-externo', '#805a30'],
-    passante: ['--cor-passante', '#3f6948'], roomservice: ['--cor-roomservice', '#72557e'],
+    passante: ['--cor-passante', '#3f6948'], cortesia: ['--cor-cortesia', '#705b50'], roomservice: ['--cor-roomservice', '#72557e'],
     criancas: ['--cor-criancas', '#805a30'], accent: ['--primaria', '#6a5644'],
     sucesso: ['--cor-sucesso', '#3f6948'], aviso: ['--cor-aviso', '#805a30'],
     erro: ['--cor-erro', '#a34d42'], textoClaro: ['--texto', '#332e2b'],

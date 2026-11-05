@@ -2,7 +2,7 @@ import { calcularBI, DIAS_BI, PERFIS_BI } from '../core/bi.js';
 import { CORES_OSTERIA, coresGrafico } from '../core/theme.js';
 import { escapeHtml } from './reservas/validators.js';
 
-const NOMES = { hospede: 'Hóspedes', externo: 'Externos', passante: 'Passantes', roomservice: 'Room Service' };
+const NOMES = { hospede: 'Hóspedes', externo: 'Externos', passante: 'Passantes', cortesia: 'Cortesias', roomservice: 'Room Service' };
 let metricas = null;
 const graficos = new Map();
 const fmt = n => n == null ? '—' : new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 }).format(n);
@@ -66,6 +66,7 @@ function renderizarBI() {
     const unidade = document.getElementById('dashUnidadeBI')?.value || 'pax';
     const media = (document.getElementById('dashSemanaModo')?.value || 'media') === 'media';
     const unidadeNome = unidade === 'pax' ? 'Pessoas' : 'Reservas';
+    escrever('biCortesias', fmt(m.perfis.cortesia.reservas)); escrever('biCortesiasPax', fmt(m.perfis.cortesia.pax));
     escrever('biPaxRestaurante', fmt(m.restaurante.pax)); escrever('biReservas', fmt(m.restaurante.reservas));
     escrever('biAdultos', fmt(m.adultos)); escrever('biCriancas', fmt(m.criancas));
     escrever('biMediaDia', fmt(m.dias ? m.restaurante.pax / m.dias : null));

@@ -523,6 +523,7 @@
                         <b class="home-kpi-valor" id="home-kpi-cancelamentos">—</b>
                     </div>
                 </div>
+                <div class="home-kpi-card" style="--kpi-color: var(--cor-cortesia)"><div class="home-kpi-info"><span class="home-kpi-label">Cortesias</span><b class="home-kpi-valor" id="home-kpi-cortesias">—</b></div></div>
             </div><!-- fim home-kpis-grid -->
             <!-- KPI Ticker mobile/tablet: preenchido via JS -->
             <div id="kpi-ticker-wrap">
@@ -621,6 +622,7 @@
                         <span>PASSANTES</span>
                         <b id="dashPassantes">0</b>
                     </div>
+                    <div class="mini-card" data-filtro="cortesia" onclick="aplicarFiltro('cortesia')" style="cursor: pointer; border-left: 4px solid var(--cor-cortesia)"><span>CORTESIAS</span><b id="dashCortesias">0</b></div>
                     <div class="mini-card" style="border-left: 4px solid #9b59b6; cursor: pointer;" data-filtro="roomservice" onclick="aplicarFiltro('roomservice')">
                         <span>ROOM</span>
                         <b id="dashRoomService">0</b>
@@ -676,7 +678,7 @@
                         <input type="date" id="dashFim" class="filtro-data" style="margin: 0;">
                     </div>
                 </div>
-                <div><label for="dashPerfil">Tipo de cliente</label><select id="dashPerfil" class="filtro-data"><option value="todos">Todos os perfis</option><option value="hospede">Hóspedes</option><option value="externo">Externos</option><option value="passante">Passantes</option><option value="roomservice">Room Service</option></select></div>
+                <div><label for="dashPerfil">Tipo de cliente</label><select id="dashPerfil" class="filtro-data"><option value="todos">Todos os perfis</option><option value="hospede">Hóspedes</option><option value="externo">Externos</option><option value="passante">Passantes</option><option value="cortesia">Cortesias</option><option value="roomservice">Room Service</option></select></div>
                 <button class="btn-main" type="button" onclick="carregarDadosDashboard()">ANALISAR</button>
             </div>
 
@@ -705,13 +707,14 @@
                     <article class="bi-stat"><h2>Reservas</h2><p data-bi-value id="biReservas">—</p><small>Restaurante · não canceladas</small></article>
                     <article class="bi-stat"><h2>Média por dia</h2><p data-bi-value id="biMediaDia">—</p><small>Pessoas / dias selecionados</small></article>
                     <article class="bi-stat"><h2>Menu degustação</h2><p data-bi-value id="biDegustacao">—</p><small>Reservas marcadas · todos os perfis selecionados</small></article>
+                    <article class="bi-stat"><h2>Cortesias</h2><p id="biCortesias" data-bi-value>—</p><small>Reservas de cortesia não canceladas · <span id="biCortesiasPax" data-bi-value>—</span> pessoas</small></article>
                 </div>
                 <div class="bi-local-controls"><label for="dashUnidadeBI">Unidade da evolução e da comparação semanal</label><select id="dashUnidadeBI"><option value="pax">Pessoas</option><option value="reservas">Reservas</option></select></div>
                 <div class="bi-grid">
-                    <article id="biEvolucaoPainel" class="bi-panel bi-wide" hidden><h2>Evolução do movimento</h2><p class="bi-subtitle">Hóspedes, externos e passantes · datas selecionadas</p><div class="chart-container"><canvas data-bi-chart id="chartEvolucaoBI" role="img" aria-label="Aplique uma análise para ver a evolução"></canvas></div></article>
+                    <article id="biEvolucaoPainel" class="bi-panel bi-wide" hidden><h2>Evolução do movimento</h2><p class="bi-subtitle">Hóspedes, externos, passantes e cortesias · datas selecionadas</p><div class="chart-container"><canvas data-bi-chart id="chartEvolucaoBI" role="img" aria-label="Aplique uma análise para ver a evolução"></canvas></div></article>
                     <article class="bi-panel"><h2>Tipo de cliente</h2><div id="biPerfis" data-bi-content></div><p class="bi-note">Participação no total de pessoas, incluindo Room Service.</p></article>
                     <article class="bi-panel"><div class="bi-panel-top"><h2>Movimento por dia da semana</h2><label for="dashSemanaModo" class="bi-sr-only">Cálculo por dia da semana</label><select id="dashSemanaModo"><option value="media">Média por ocorrência</option><option value="total">Total no período</option></select></div><div class="chart-container"><canvas data-bi-chart id="chartSemanaBI" role="img" aria-label="Aplique uma análise para comparar os dias"></canvas></div><p class="bi-note" id="biSemanaBase" data-bi-value>—</p></article>
-                    <article class="bi-panel"><div class="bi-panel-top"><h2>Dias e horários de maior procura</h2><label for="dashMapaPerfil" class="bi-sr-only">Perfil do mapa de calor</label><select id="dashMapaPerfil"><option value="todos">Todos do restaurante</option><option value="hospede">Hóspedes</option><option value="externo">Externos</option><option value="passante">Passantes</option></select></div><div id="biMapa" data-bi-content></div><p class="bi-note">Intensidade indica total de pessoas reservadas; horário escolhido pelo cliente.</p></article>
+                    <article class="bi-panel"><div class="bi-panel-top"><h2>Dias e horários de maior procura</h2><label for="dashMapaPerfil" class="bi-sr-only">Perfil do mapa de calor</label><select id="dashMapaPerfil"><option value="todos">Todos do restaurante</option><option value="hospede">Hóspedes</option><option value="externo">Externos</option><option value="passante">Passantes</option><option value="cortesia">Cortesias</option></select></div><div id="biMapa" data-bi-content></div><p class="bi-note">Intensidade indica total de pessoas reservadas; horário escolhido pelo cliente.</p></article>
                     <article class="bi-panel"><h2>Tamanho dos grupos</h2><p class="bi-subtitle">Reservas de restaurante por faixa de pessoas</p><div class="chart-container"><canvas data-bi-chart id="chartGruposBI" role="img" aria-label="Reservas por tamanho de grupo"></canvas></div></article>
                 </div>
                 <details class="bi-details"><summary>Horários, Room Service e qualidade do registro</summary><p id="biRoom" data-bi-value>—</p><p id="biFamilias" data-bi-value>—</p><p id="biQualidade" data-bi-value>—</p>
@@ -873,6 +876,7 @@
                         <option value="hospede">HÓSPEDE (HOTEL)</option>
                         <option value="externo">CLIENTE EXTERNO</option>
                         <option value="passante">PASSANTE</option>
+                        <option value="cortesia">CORTESIA</option>
                         <option value="roomservice">ROOM SERVICE</option>
                     </select>
                     <div id="containerApto">

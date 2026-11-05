@@ -61,6 +61,7 @@ export function atualizarMiniCards(reservas) {
         hospedes: 0,
         externos: 0,
         passantes: 0,
+        cortesias: 0,
         roomservice: 0,
         menuDegustacao: 0,
         tempoTotal: 0,
@@ -83,6 +84,7 @@ export function atualizarMiniCards(reservas) {
         if (tipo === 'hospede') totais.hospedes += totalReserva;
         else if (tipo === 'externo') totais.externos += totalReserva;
         else if (tipo === 'passante') totais.passantes += totalReserva;
+        else if (tipo === 'cortesia') totais.cortesias += totalReserva;
         else if (tipo === 'roomservice') totais.roomservice += 1;
 
         if (r.menuDegustacao) totais.menuDegustacao += qtdAdultos;
@@ -104,6 +106,7 @@ export function atualizarMiniCards(reservas) {
     const elHosp = document.getElementById('dashHospedes');
     const elExt = document.getElementById('dashExternos');
     const elPass = document.getElementById('dashPassantes');
+    const elCortesia = document.getElementById('dashCortesias');
     const elRoom = document.getElementById('dashRoomService');
     const elDeg  = document.getElementById('dashMenuDegustacao');
     const elTempo = document.getElementById('countTempo');
@@ -114,6 +117,7 @@ export function atualizarMiniCards(reservas) {
     if (elHosp) elHosp.innerText = totais.hospedes;
     if (elExt) elExt.innerText = totais.externos;
     if (elPass) elPass.innerText = totais.passantes;
+    if (elCortesia) elCortesia.innerText = totais.cortesias;
     if (elRoom) elRoom.innerText = totais.roomservice;
     if (elDeg)  elDeg.innerText  = totais.menuDegustacao;
     if (elCancelamentos) elCancelamentos.innerText = totais.cancelamentos;
@@ -392,14 +396,14 @@ function renderizarLinha(res, horarioVisual, posicao, tdHora, hrBase, mostrarCan
         const labelApto = res.apto ? `APTO ${res.apto}` : (res.codigoReserva ? `RES ${escapeHtml(res.codigoReserva)}` : "APTO ?");
         const tipoBruto = String(res.tipo || "hospede").trim().toLowerCase();
         const tipo = tipoBruto === "ext" || tipoBruto.startsWith("extern") ? "externo" :
-            (tipoBruto === "pass" || tipoBruto.startsWith("pass") ? "passante" :
+            (tipoBruto === "cortesia" ? "cortesia" : tipoBruto === "pass" || tipoBruto.startsWith("pass") ? "passante" :
             (tipoBruto === "roomservice" || tipoBruto === "room service" ? "roomservice" : "hospede"));
         // Room service também é exibido como APTO e segue o padrão azul de hóspedes.
-        const tipoCor = tipo === "externo" ? "externo" : (tipo === "passante" ? "passante" : "hospede");
+        const tipoCor = tipo === "externo" ? "externo" : (tipo === "passante" ? "passante" : (tipo === "cortesia" ? "cortesia" : "hospede"));
         let label = tipo === "hospede" ? `<b>${labelApto}</b>` :
             (tipo === "externo" ? "<b>EXT</b>" :
             (tipo === "roomservice" ? `<b>APTO ${res.apto || "?"}</b>` :
-            "<b>PASS</b>"));
+            (tipo === "cortesia" ? "<b>CORTESIA</b>" : "<b>PASS</b>")));
         const iconeChegada = renderIconeChegada(res.statusRecepcao);
         let classePag = res.pagamento === 'pago' ? 'pg-confirmado' : (res.pagamento === 'pendente' ? 'pg-pendente' : '');
         let textoPag = (res.pagamento === 'direto' || (tipo === 'externo' && !res.pagamento)) ? '-' :

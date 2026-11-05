@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import { calcularBI } from '../js/core/bi.js';
+import { validarReserva } from '../js/features/reservas/validators.js';
+const reserva={tipo:'cortesia',nomes:'TESTE',data:'2026-11-04',horario:'20:30',paxs:2,chd:1,whatsapp:'(51) 99999-9999',menuDegustacao:true};
+assert.equal(validarReserva(reserva).valido,true);
+const m=calcularBI([reserva,{...reserva,nomes:'CANCELADA',canceladoEm:'2026-11-01'},{...reserva,nomes:'FALTA',statusRecepcao:'no_show'}, {...reserva,tipo:'roomservice'}],['2026-11-04']);
+assert.equal(m.perfis.cortesia.reservas,2);assert.equal(m.perfis.cortesia.pax,6);assert.equal(m.restaurante.reservas,2);
+assert.equal(m.degustacaoPerfil.cortesia.reservas,2);assert.equal(m.canceladasPerfil.cortesia.reservas,1);
+assert.equal(m.origem.valido,2);assert.equal(m.horarios['20:30'][2].cortesia.pax,6);
+console.log('Cortesia: validação, indicadores, DDD, cancelamento, no-show e horário passaram.');

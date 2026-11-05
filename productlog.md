@@ -513,3 +513,44 @@ A grade não identifica pagamento direto pelo texto; a situação permanece disp
 ### Publicação — coluna AV
 
 Em 2026-11-04, publicado o commit 22831384ffc21c1f3fe2ddac5633209ea2117c2f no Firebase Hosting osteriadilucca. Sintaxe e quatro cenários da coluna conferidos, além do teste local de pagamentos. Após deploy, render.js foi comparado por SHA-256 com o checkout publicado e coincidiu.
+
+## PL-2026-11-04-006 — Tipo de cliente Cortesia
+
+- **Data:** 2026-11-04
+- **Status:** Parcial (testes locais aprovados; migration e deploy pendentes)
+- **Tipo:** Pedido, Funcionalidade, Banco de dados, Teste
+- **Solicitado por:** proprietário
+- **Responsável:** Codex e agente revisor
+- **Arquivos afetados:** index.html, css/base.css, css/osteria-redesign.css, js/core/bi.js, js/core/theme.js, js/features/dashboard-bi.js, js/features/dashboard.js, js/features/home.js, js/ui/render.js, supabase/migrations/20261105014134_tipo_cliente_cortesia.sql, scripts/teste-cortesia.mjs, scripts/teste-modal-cortesia.cjs, scripts/teste-migration-cortesia.cjs.
+- **Relacionados:** PL-2026-11-04-003 e PL-2026-11-04-004
+- **Substitui:** não se aplica
+
+### Pedido
+Criar tipo Cortesia com nome, WhatsApp, adultos, crianças, menu degustação e observações, e contar cortesias nos indicadores do dashboard.
+
+### Por que foi pedido
+Distinguir e analisar separadamente reservas de cortesia, sem misturá-las com outros perfis.
+
+### Problema observado
+Banco e gráficos aceitavam apenas quatro perfis; um tipo não reconhecido poderia ser mostrado como hóspede ou ficar fora da distribuição.
+
+### Causa
+Restrições e agrupamentos foram construídos com uma lista fixa de tipos.
+
+### Decisão
+Cortesia ocupa lugar e capacidade no restaurante como Passante; WhatsApp é opcional; não apresenta apartamento, sinal ou avulsa. Indicadores do BI mostram reservas não canceladas e pessoas, inclusive no-show, conforme a regra analítica vigente. Cards operacionais excluem no-show como os demais perfis. Dados antigos permanecem inalterados.
+
+### O que foi feito
+Novo perfil, filtro e card de reservas; categoria nos gráficos e filtros do dashboard, indicador de quantidade e pessoas, gráfico e card da página inicial. Migration amplia a constraint preservando os tipos anteriores. Agente revisor conferiu listas de perfis, análise e compatibilidade.
+
+### Erros e tentativas que não funcionaram
+Revisão apontou indicador no local errado do layout e alias de cor ausente; ambos corrigidos.
+
+### Validação
+Testes sintéticos para validação, reservas, pessoas, degustação, horários, DDD, canceladas e no-show; teste de modal com DOM; teste de migration em PGlite com tipos prévios; testes existentes de pagamentos e telefone. Agente revisor verificou cálculos de BI independentemente. Teste autenticado e deploy pendentes.
+
+### Resultado
+Nova categoria preparada para publicação após aplicar migration.
+
+### Riscos, limitações e pendências
+Aplicar migration antes do frontend. A view de detalhes do Power BI expõe o tipo, mas a view agregada vw_reservas_por_dia não tem coluna específica de cortesias. O dashboard do aplicativo conta Cortesia separadamente. Não houve teste autenticado no banco real.

@@ -149,6 +149,7 @@ body.dark-theme .top-bar-unica { background: rgba(46,40,36,.96) !important; }
 /* Tipos de cliente e estados usam a mesma família cromática dos gráficos. */
 .tabela-reservas .border-hospede { border-left-color: var(--cor-hospede) !important; }
 .tabela-reservas .border-externo { border-left-color: var(--cor-externo) !important; }
+.tabela-reservas .border-cortesia { border-left-color: var(--cor-cortesia) !important; }
 .tabela-reservas .border-passante { border-left-color: var(--cor-passante) !important; }
 .tabela-reservas .border-roomservice { border-left-color: var(--cor-roomservice) !important; }
 .icone-chegada--aguardando, .status-recepcao--aguardando { color: var(--cor-aviso) !important; }

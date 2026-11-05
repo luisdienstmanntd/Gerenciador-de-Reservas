@@ -164,7 +164,7 @@ document.addEventListener('osteria:configchange', () => {
 // KPIs
 // ─────────────────────────────────────────────────────────────────────────────
 function _renderizarKPIs(reservas, cancelamentos = 0) {
-    let totalPax = 0, hospedes = 0, externos = 0, passantes = 0, roomservice = 0, criancas = 0, degustacao = 0;
+    let totalPax = 0, hospedes = 0, externos = 0, passantes = 0, cortesias = 0, roomservice = 0, criancas = 0, degustacao = 0;
 
     reservas.forEach(r => {
         const adt  = parseInt(r.paxs) || 0;
@@ -177,6 +177,7 @@ function _renderizarKPIs(reservas, cancelamentos = 0) {
         if      (tipo === 'hospede')      hospedes    += adt + chd;
         else if (tipo === 'externo')      externos    += adt + chd;
         else if (tipo === 'passante')     passantes   += adt + chd;
+        else if (tipo === 'cortesia')     cortesias += adt + chd;
         else if (tipo === 'roomservice')  roomservice += 1;
 
         if (r.menuDegustacao) degustacao += adt;
@@ -187,6 +188,7 @@ function _renderizarKPIs(reservas, cancelamentos = 0) {
     _setKPI('home-kpi-hospedes',    hospedes);
     _setKPI('home-kpi-externos',    externos);
     _setKPI('home-kpi-passantes',   passantes);
+    _setKPI('home-kpi-cortesias',   cortesias);
     _setKPI('home-kpi-roomservice', roomservice);
     _setKPI('home-kpi-criancas',    criancas);
     _setKPI('home-kpi-degustacao',  degustacao);
@@ -365,7 +367,7 @@ function _renderizarGraficos(reaisHoje, reaisSemana, hoje) {
         // mesma quebra do gráfico "Curva de Horário" do Dashboard (bug #45)
         const horarios  = horariosAnalise(reaisHoje);
         const paxPorHr  = {};
-        horarios.forEach(h => paxPorHr[h] = { hospede: 0, externo: 0, passante: 0 });
+        horarios.forEach(h => paxPorHr[h] = { hospede: 0, externo: 0, passante: 0, cortesia: 0 });
         reaisHoje.forEach(r => {
             const hr = r.originalBase || r.horario;
             const tipo = r.tipo ? r.tipo.toLowerCase() : 'hospede';
@@ -382,6 +384,7 @@ function _renderizarGraficos(reaisHoje, reaisSemana, hoje) {
                     { label: 'Hóspede', data: horarios.map(h => paxPorHr[h].hospede), backgroundColor: PALETA.hospede },
                     { label: 'Externo', data: horarios.map(h => paxPorHr[h].externo), backgroundColor: PALETA.externo },
                     { label: 'Passante', data: horarios.map(h => paxPorHr[h].passante), backgroundColor: PALETA.passante },
+                    { label: 'Cortesia', data: horarios.map(h => paxPorHr[h].cortesia), backgroundColor: PALETA.cortesia },
                 ]
             },
             options: {
@@ -623,7 +626,7 @@ function _somarDias(dataStr, dias) {
 
 function _mostrarSkeleton() {
     ['home-kpi-pax','home-kpi-hospedes','home-kpi-externos',
-     'home-kpi-passantes','home-kpi-roomservice','home-kpi-criancas','home-kpi-degustacao','home-kpi-cancelamentos','home-gauge-pct']
+     'home-kpi-passantes','home-kpi-cortesias','home-kpi-roomservice','home-kpi-criancas','home-kpi-degustacao','home-kpi-cancelamentos','home-gauge-pct']
         .forEach(id => _setKPI(id, '…'));
     _atualizarClonesKpiTicker();
     const obs = document.getElementById('home-obs-lista'); if (obs) obs.textContent = 'Carregando…';
@@ -634,7 +637,7 @@ function _mostrarSkeleton() {
 }
 
 function _mostrarErro() {
-    ['home-kpi-pax','home-kpi-hospedes','home-kpi-externos','home-kpi-passantes','home-kpi-roomservice','home-kpi-criancas','home-kpi-degustacao','home-kpi-cancelamentos','home-gauge-pct'].forEach(id => _setKPI(id, '—'));
+    ['home-kpi-pax','home-kpi-hospedes','home-kpi-externos','home-kpi-passantes','home-kpi-cortesias','home-kpi-roomservice','home-kpi-criancas','home-kpi-degustacao','home-kpi-cancelamentos','home-gauge-pct'].forEach(id => _setKPI(id, '—'));
     _atualizarClonesKpiTicker();
     const obs = document.getElementById('home-obs-lista'); if (obs) obs.textContent = 'Dados indisponíveis.';
     const label = document.getElementById('home-giro-tempo-label'); if (label) label.textContent = '';

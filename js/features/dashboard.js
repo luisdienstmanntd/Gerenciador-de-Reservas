@@ -50,11 +50,11 @@ function processarDashboard(reservas, diasNoPeriodo = 1, datasSelecionadas = nul
     console.log("📊 Dashboard processando", reservas.length, "reservas em", diasNoPeriodo, "dias");
 
     let kpis = { totalPax: 0, adultos: 0, criancas: 0, tempoTotalMinutos: 0, mesasFinalizadasCount: 0, cancelamentos: 0, paxRestaurante: 0 };
-    let mixCliente = { hospede: 0, externo: 0, passante: 0, roomservice: 0 };
+    let mixCliente = { hospede: 0, externo: 0, passante: 0, cortesia: 0, roomservice: 0 };
     // ✅ v3.11: ocupacaoHorario agora separa por tipo (hospede/externo/passante) — Room
     // Service fica de fora dessa quebra específica (decisão do dono do projeto)
     let ocupacaoHorario = Object.fromEntries(
-        horariosAnalise(reservas).map(h => [h, { hospede: 0, externo: 0, passante: 0 }])
+        horariosAnalise(reservas).map(h => [h, { hospede: 0, externo: 0, passante: 0, cortesia: 0 }])
     );
     let usoMesas = {};
     const config = getConfig();
@@ -62,7 +62,7 @@ function processarDashboard(reservas, diasNoPeriodo = 1, datasSelecionadas = nul
     for (let i = 1; i <= totalMesas; i++) usoMesas[i] = 0;
 
     // ✅ v3.12: Movimento por dia da semana, separado por tipo de cliente (bug #47)
-    let porDiaSemana = DIAS_SEMANA.map(() => ({ hospede: 0, externo: 0, passante: 0 }));
+    let porDiaSemana = DIAS_SEMANA.map(() => ({ hospede: 0, externo: 0, passante: 0, cortesia: 0 }));
 
     reservas.forEach(r => {
         // Cancelada (soft-delete) conta separadamente — não entra em nenhum KPI/gráfico
@@ -87,7 +87,7 @@ function processarDashboard(reservas, diasNoPeriodo = 1, datasSelecionadas = nul
         }
 
         let h = r.horario || r.originalBase;
-        if (h && !ocupacaoHorario[h]) ocupacaoHorario[h] = { hospede: 0, externo: 0, passante: 0 };
+        if (h && !ocupacaoHorario[h]) ocupacaoHorario[h] = { hospede: 0, externo: 0, passante: 0, cortesia: 0 };
         if (ocupacaoHorario[h] !== undefined && ocupacaoHorario[h][tipo] !== undefined) {
             ocupacaoHorario[h][tipo] += totalReserva;
         }
@@ -169,6 +169,7 @@ function renderizarGraficosAvancados(dadosHorario, dadosTipo, dadosDiaSemana, da
                     { label: 'Hóspede', data: horariosOrdenados.map(h => dadosHorario[h].hospede), backgroundColor: CORES_OSTERIA.hospede },
                     { label: 'Externo', data: horariosOrdenados.map(h => dadosHorario[h].externo), backgroundColor: CORES_OSTERIA.externo },
                     { label: 'Passante', data: horariosOrdenados.map(h => dadosHorario[h].passante), backgroundColor: CORES_OSTERIA.passante },
+                    { label: 'Cortesia', data: horariosOrdenados.map(h => dadosHorario[h].cortesia), backgroundColor: CORES_OSTERIA.cortesia },
                 ]
             },
             options: {
@@ -200,7 +201,7 @@ function renderizarGraficosAvancados(dadosHorario, dadosTipo, dadosDiaSemana, da
     if (ctxTipo) {
         chartTipoInstance = new Chart(ctxTipo.getContext('2d'), {
             type: 'doughnut',
-            data: { labels: ['Hóspede (PAX)', 'Externo (PAX)', 'Passante (PAX)', 'Room Service (PAX)'], datasets: [{ data: [dadosTipo.hospede, dadosTipo.externo, dadosTipo.passante, dadosTipo.roomservice], backgroundColor: [CORES_OSTERIA.hospede, CORES_OSTERIA.externo, CORES_OSTERIA.passante, CORES_OSTERIA.roomservice], borderWidth: 0 }] },
+            data: { labels: ['Hóspede (PAX)', 'Externo (PAX)', 'Passante (PAX)', 'Cortesia (PAX)', 'Room Service (PAX)'], datasets: [{ data: [dadosTipo.hospede, dadosTipo.externo, dadosTipo.passante, dadosTipo.cortesia, dadosTipo.roomservice], backgroundColor: [CORES_OSTERIA.hospede, CORES_OSTERIA.externo, CORES_OSTERIA.passante, CORES_OSTERIA.cortesia, CORES_OSTERIA.roomservice], borderWidth: 0 }] },
             options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { color: corTexto, font: { size: 11 } } } } }
         });
     }
@@ -216,6 +217,7 @@ function renderizarGraficosAvancados(dadosHorario, dadosTipo, dadosDiaSemana, da
                     { label: 'Hóspede', data: dadosDiaSemana.map(d => d.hospede), backgroundColor: CORES_OSTERIA.hospede },
                     { label: 'Externo', data: dadosDiaSemana.map(d => d.externo), backgroundColor: CORES_OSTERIA.externo },
                     { label: 'Passante', data: dadosDiaSemana.map(d => d.passante), backgroundColor: CORES_OSTERIA.passante },
+                    { label: 'Cortesia', data: dadosDiaSemana.map(d => d.cortesia), backgroundColor: CORES_OSTERIA.cortesia },
                 ]
             },
             options: {
