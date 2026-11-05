@@ -564,3 +564,44 @@ Aplicada no Supabase em 2026-11-05 UTC e verificada a constraint hospedes_tipo_c
 ### Publicação — Cortesia
 
 Em 2026-11-04 (Brasil), o commit 0ca8696fddec71d6ca21cc5ef76370e3725f3f70 foi publicado no Firebase Hosting osteriadilucca, após aplicar e confirmar a migration 20261105014550 no Supabase. Checkout limpo validado pelos testes de migration, modal, BI, pagamentos e telefone; agente revisor validou dados sintéticos independentemente. Dez arquivos do site, incluindo todos os alterados e sw.js, coincidiram por SHA-256 com o checkout publicado. Não foi executado teste autenticado de criação no ambiente de produção. A view agregada do Power BI continua sem coluna específica de Cortesia.
+
+## PL-2026-11-04-007 — Cortesia na view diária do Power BI
+
+- **Data:** 2026-11-04
+- **Status:** Parcial (migration preparada; aplicação e validação remotas pendentes)
+- **Tipo:** Pedido, Banco de dados, Teste
+- **Solicitado por:** proprietário
+- **Responsável:** Codex
+- **Arquivos afetados:** supabase/migrations/20261105015458_view_bi_cortesia.sql, scripts/teste-view-cortesia.cjs, productlog.md
+- **Relacionados:** PL-2026-11-04-006
+- **Substitui:** não se aplica
+
+### Pedido
+Incluir Cortesia na view agregada do Power BI.
+
+### Por que foi pedido
+Permitir analisar separadamente reservas e pessoas de Cortesia por dia.
+
+### Problema observado
+vw_reservas_por_dia somava Cortesia no total, mas não expunha coluna específica.
+
+### Causa
+View criada antes da inclusão do perfil.
+
+### Decisão
+Adicionar qtd_cortesia e pax_cortesia ao fim da view, contando apenas eh_reserva_real, preservando as colunas, propriedade e permissões existentes. Dias sem cortesias retornam zero. A view detalhada já informa tipo_cliente.
+
+### O que foi feito
+Migration CREATE OR REPLACE VIEW e teste de agregação sintética.
+
+### Erros e tentativas que não funcionaram
+Nenhum.
+
+### Validação
+PGlite com reservas de cortesia e externas, cancelamento e dia sem cortesia; comparar resultados e permissões no banco remoto após aplicação.
+
+### Resultado
+View preparada para disponibilizar os dois indicadores após migration.
+
+### Riscos, limitações e pendências
+O Power BI pode exigir atualização do esquema e dos dados para detectar as novas colunas. Não altera reservas nem a interface do site.
