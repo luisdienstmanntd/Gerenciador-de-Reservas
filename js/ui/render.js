@@ -402,7 +402,8 @@ function renderizarLinha(res, horarioVisual, posicao, tdHora, hrBase, mostrarCan
             "<b>PASS</b>"));
         const iconeChegada = renderIconeChegada(res.statusRecepcao);
         let classePag = res.pagamento === 'pago' ? 'pg-confirmado' : (res.pagamento === 'pendente' ? 'pg-pendente' : '');
-        let textoPag = (res.tipo === 'externo' && res.avulsa) ? escapeHtml(res.avulsa) :
+        let textoPag = (res.pagamento === 'direto' || (tipo === 'externo' && !res.pagamento)) ? 'PAGAMENTO DIRETO' :
+            (res.tipo === 'externo' && res.pagamento === 'pago' && res.avulsa) ? escapeHtml(res.avulsa) :
             (res.pagamento === 'pago' ? 'SINAL OK' : (res.pagamento === 'pendente' ? 'SINAL PENDENTE' : '-'));
 
         // Cancelada no filtro "cancelados": mostra dados completos e é clicável —

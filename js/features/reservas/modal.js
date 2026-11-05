@@ -735,12 +735,9 @@ export class ReservaModal {
     if (this.elementos.avulsa) this.elementos.avulsa.value = reserva.avulsa || "";
     if (this.elementos.paxs) this.elementos.paxs.value = reserva.paxs || 0;
     if (this.elementos.chd) this.elementos.chd.value = reserva.chd || 0;
-    // Reservas legadas podem ter pagamento vazio/null: não converter silenciosamente
-    // esse estado em "pendente" ao editar e salvar novamente.
+    // A opção vazia legada para externos representa pagamento direto.
     if (this.elementos.pagamento) {
-      this.elementos.pagamento.value = reserva.pagamento !== undefined
-        ? reserva.pagamento
-        : "pendente";
+      this.elementos.pagamento.value = reserva.pagamento || (reserva.tipo === 'externo' ? 'direto' : 'pendente');
     }
     if (this.elementos.obs) this.elementos.obs.value = reserva.obs || "";
     if (this.elementos.checkBloquear) {
@@ -968,7 +965,8 @@ export class ReservaModal {
       avulsa: this.elementos.avulsa?.value || "",
       paxs: parseInt(this.elementos.paxs?.value) || 0,
       chd: parseInt(this.elementos.chd?.value) || 0,
-      pagamento: tipo === "externo" ? (this.elementos.pagamento?.value || "") : "",
+      pagamento: tipo === "externo" ? (this.elementos.pagamento?.value || "direto") :
+        (this._reservaContexto?.id === this.elementos.reservaId?.value && this._reservaContexto.tipo === tipo ? (this._reservaContexto.pagamento || "") : ""),
       obs: this.elementos.obs?.value?.trim().toUpperCase() || "",
       bloqueado: this.elementos.checkBloquear?.checked || false,
       somenteHospedes: this.elementos.checkHospedes?.checked || false,

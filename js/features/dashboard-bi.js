@@ -76,7 +76,7 @@ function renderizarBI() {
     escrever('biDDDCobertura', m.restaurante.reservas ? fmt(m.origem.valido / m.restaurante.reservas * 100) + '%' : '—');
     escrever('biDDDFaltantes', `${m.origem.ausente} sem telefone · ${m.origem.invalido} inválidos · ${m.origem.internacional} internacionais`);
     escrever('biRecebidos', fmt(m.pagamentos.pago)); escrever('biPendentes', fmt(m.pagamentos.pendente)); escrever('biDireto', fmt(m.pagamentos.direto));
-    escrever('biPagamentosEscopo', `${m.pagamentoTotal} reservas não canceladas de restaurante · ${m.pagamentos.desconhecido} sem informação/não aplicável · ${m.pagamentos.outro} com outro valor`);
+    escrever('biPagamentosEscopo', `${m.pagamentoTotal} reservas de restaurante com situação de pagamento aplicável · ${m.pagamentos.outro} com valor não reconhecido`);
     escrever('biAvulsaAusente', `${m.avulsaAusente} reservas com depósito recebido sem número de avulsa registrado.`);
     escrever('biCancelamentos', fmt(m.canceladas.reservas)); escrever('biCancelamentosPax', fmt(m.canceladas.pax));
     escrever('biCancelTaxa', fmt(m.taxaCancelamento) + (m.taxaCancelamento == null ? '' : '%'));
@@ -104,7 +104,7 @@ function renderizarBI() {
     barras('chartUFBI', Object.entries(m.origem.ufs).sort((a,b) => b[1]-a[1]), CORES_OSTERIA.accent);
     barras('chartDegustacaoBI', PERFIS_BI.map(p => [NOMES[p], m.degustacaoPerfil[p].reservas]), PERFIS_BI.map(p => CORES_OSTERIA[p]));
     barras('chartGruposBI', Object.entries(m.grupos), CORES_OSTERIA.hospede);
-    barras('chartPagamentosBI', [['Depósito recebido',m.pagamentos.pago],['Depósito pendente',m.pagamentos.pendente],['Pagamento direto',m.pagamentos.direto],['Não informado / N.A.',m.pagamentos.desconhecido],['Outro valor',m.pagamentos.outro]], [CORES_OSTERIA.sucesso,CORES_OSTERIA.aviso,CORES_OSTERIA.hospede,CORES_OSTERIA.accent,CORES_OSTERIA.erro]);
+    barras('chartPagamentosBI', [['Depósito recebido',m.pagamentos.pago],['Depósito pendente',m.pagamentos.pendente],['Pagamento direto',m.pagamentos.direto]], [CORES_OSTERIA.sucesso,CORES_OSTERIA.aviso,CORES_OSTERIA.hospede]);
     barras('chartCancelamentosBI', PERFIS_BI.map(p => [NOMES[p],m.canceladasPerfil[p].reservas]), PERFIS_BI.map(p => CORES_OSTERIA[p]));
     barras('chartCancelamentosNoShowBI', [['Canceladas',m.canceladas.reservas],['No-show registrado',m.noShows.reservas]], [CORES_OSTERIA.erro,CORES_OSTERIA.aviso]);
     renderizarMapa(m);

@@ -420,3 +420,44 @@ Em uma cópia local da branch, com sessão autenticada de recepção e o Supabas
 ### Publicação — 2026-11-04
 
 O commit 916500cdbbc3d8f2de92ddbe3ddb9f3eadf6389b foi integrado à main e publicado no Firebase Hosting site osteriadilucca, projeto osteriadilucca-afea6. Antes do deploy foram conferidos main, ausência de alterações locais, correspondência anterior de 44 arquivos com produção e teste local scripts/teste-qualidade-bi.mjs. Após o deploy index.html, os cinco módulos alterados e sw.js foram comparados por SHA-256 com o checkout publicado: todos iguais. O teste autenticado de hóspede e as limitações dos demais perfis constam acima. O service worker permaneceu com estratégia network-first. Nenhuma migration foi aplicada nesta publicação.
+
+## PL-2026-11-04-004 — Pagamento direto e análise de sinal
+
+- **Data:** 2026-11-04
+- **Status:** Parcial (implementação e testes locais; publicação pendente)
+- **Tipo:** Pedido, Correção, Banco de dados, Teste
+- **Solicitado por:** proprietário
+- **Responsável:** Codex e agente revisor
+- **Arquivos afetados:** index.html, js/features/reservas/modal.js, js/ui/render.js, js/core/bi.js, js/features/dashboard-bi.js, supabase/migrations/20261105012710_pagamento_direto.sql, scripts/teste-pagamento-direto.mjs, scripts/teste-modal-pagamento.cjs, scripts/teste-migration-pagamento.cjs
+- **Relacionados:** PL-2026-11-04-003
+- **Substitui:** interpretação de opção vazia em reservas externas como desconhecida.
+
+### Pedido
+Apresentar pendente, recebido e pagamento direto; considerar a antiga opção não se aplica/não informado como pagamento direto e refletir isso na análise do dashboard.
+
+### Por que foi pedido
+Reserva sem cobrança antecipada deve ser identificada como pagamento direto.
+
+### Problema observado
+Modal só oferecia opção vazia; gráfico tinha cinco categorias; edição de passante podia apagar pagamento informado. Uma avulsa antiga podia ocultar pagamento direto na grade.
+
+### Causa
+Regra de sinal era aplicada somente a externos; o banco contém valores nulos de hóspedes e passantes que nunca viram o campo e não significam necessariamente pagamento direto.
+
+### Decisão
+Externo vazio legado é interpretado como direto, sem reescrever dados históricos. Valores explícitos dos demais perfis de restaurante são mantidos; vazios desses perfis não entram no denominador de pagamento. Alterar o perfil limpa a situação de sinal anterior; editar sem trocar perfil preserva o pagamento. Pagamentos não reconhecidos são sinalizados no escopo, sem categoria adicional no gráfico. Cancelamentos e estornos mantêm regras próprias.
+
+### O que foi feito
+Modal, grade e dashboard usam as três opções; migration versiona o check já existente no banco remoto. A análise inclui registros explícitos de passantes e externos legados vazios. A migration não altera registros nem é necessária no banco remoto atual, cuja constraint já aceita direto.
+
+### Erros e tentativas que não funcionaram
+A revisão independente identificou prioridade incorreta da avulsa e preservação indevida após mudança de perfil, corrigidas antes da entrega.
+
+### Validação
+Consulta agregada e constraint remota sem dados pessoais; testes de BI, modal e migration idempotente em PGlite; suíte local de telefone/DDD. Teste autenticado do novo fluxo e deploy ainda não realizados.
+
+### Resultado
+As alterações estão preparadas para integração após revisão.
+
+### Riscos, limitações e pendências
+Relatórios externos que consultam diretamente a tabela ainda verão NULL nas reservas externas legadas; o mapeamento é feito no aplicativo. Testar o fluxo autenticado antes da publicação. Migration ainda não aplicada, mas a constraint remota atual já aceita os três valores.

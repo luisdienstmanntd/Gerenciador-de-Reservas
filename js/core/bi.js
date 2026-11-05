@@ -121,8 +121,13 @@ export function calcularBI(reservas, datas = []) {
         const grupo = pax === 0 ? 'PAX não informado' : pax === 1 ? '1 pessoa' : pax === 2 ? '2 pessoas' : pax <= 4 ? '3–4 pessoas' : pax <= 6 ? '5–6 pessoas' : '7+ pessoas';
         m.grupos[grupo]++;
         const pagamento = String(r.pagamento || '').trim().toLowerCase();
-        m.pagamentos[!pagamento ? 'desconhecido' : ['pago', 'pendente', 'direto'].includes(pagamento) ? pagamento : 'outro']++;
-        m.pagamentoTotal++;
+        // O campo legado vazio foi oferecido apenas a externos; outros perfis vazios
+        // não significam pagamento direto. Mantém valores explícitos de qualquer perfil.
+        if (pagamento || tipo === 'externo') {
+            const categoria = !pagamento && tipo === 'externo' ? 'direto' : pagamento;
+            m.pagamentos[['pago', 'pendente', 'direto'].includes(categoria) ? categoria : 'outro']++;
+            m.pagamentoTotal++;
+        }
         if (pagamento === 'pago' && !String(r.avulsa || '').trim()) m.avulsaAusente++;
     });
     m.diario = Object.fromEntries(Object.entries(m.diario).sort(([a], [b]) => a.localeCompare(b)));
