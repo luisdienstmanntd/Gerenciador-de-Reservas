@@ -508,3 +508,8 @@ A coluna apresenta uma indicação compacta.
 
 ### Riscos, limitações e pendências
 A grade não identifica pagamento direto pelo texto; a situação permanece disponível no formulário e no dashboard.
+
+
+### Publicação — coluna AV
+
+Em 2026-11-04, publicado o commit 22831384ffc21c1f3fe2ddac5633209ea2117c2f no Firebase Hosting osteriadilucca. Sintaxe e quatro cenários da coluna conferidos, além do teste local de pagamentos. Após deploy, render.js foi comparado por SHA-256 com o checkout publicado e coincidiu.
