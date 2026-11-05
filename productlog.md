@@ -466,3 +466,45 @@ Relatórios externos que consultam diretamente a tabela ainda verão NULL nas re
 ### Publicação — pagamento direto
 
 Em 2026-11-04 foi publicado no Firebase Hosting o commit 74a7d04e4b56e950a95e2af53221362a2f7f3982, após verificar que produção correspondia à base e main não havia avançado. Após o deploy, index.html, bi.js, dashboard-bi.js, modal.js, render.js e sw.js publicados foram comparados por SHA-256 com o checkout limpo e coincidiram. Os testes locais de BI, modal, migration em PGlite e telefone/DDD passaram. Não houve teste autenticado do novo fluxo; a constraint remota foi consultada e já permite direto, sem alteração de banco. A migration foi versionada para reproduzir a constraint em outras instalações e ainda não foi aplicada à história remota de migrations.
+
+
+## PL-2026-11-04-005 — Traço na coluna AV para pagamento direto
+
+- **Data:** 2026-11-04
+- **Status:** Vigente
+- **Tipo:** Pedido, Correção visual
+- **Solicitado por:** proprietário
+- **Responsável:** Codex
+- **Arquivos afetados:** js/ui/render.js, productlog.md
+- **Relacionados:** PL-2026-11-04-004
+- **Substitui:** somente a indicação textual de pagamento direto na coluna AV.
+
+### Pedido
+Exibir um traço na coluna AV para reservas com pagamento direto.
+
+### Por que foi pedido
+O texto comprido ocupa espaço e quebra a apresentação da grade.
+
+### Problema observado
+A coluna mostrava PAGAMENTO DIRETO para valores direto e para externos legados sem pagamento.
+
+### Causa
+A alteração anterior havia definido o texto diretamente no renderizador da grade.
+
+### Decisão
+Mostrar traço para pagamento direto, inclusive externo legado vazio, sem mudar pagamento, análise ou sinalização de outros estados.
+
+### O que foi feito
+Substituído o rótulo exibido na coluna AV por um traço.
+
+### Erros e tentativas que não funcionaram
+Nenhum.
+
+### Validação
+Conferir sintaxe e a expressão para direto, externo legado, pendente, recebido e avulsa; conferir o arquivo servido após deploy.
+
+### Resultado
+A coluna apresenta uma indicação compacta.
+
+### Riscos, limitações e pendências
+A grade não identifica pagamento direto pelo texto; a situação permanece disponível no formulário e no dashboard.
